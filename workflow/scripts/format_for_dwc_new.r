@@ -9,6 +9,7 @@ library('stringr')
 library('phyloseq')
 library('dplyr')
 #library('tidyverse')
+library("xml2")
 
 args <- commandArgs(trailingOnly = T)
 
@@ -129,16 +130,21 @@ phydf_present=phydf[phydf$organismQuantity>0,]
 
 #Is there a way to list all allowed fields for the Dwc-A occurrence core?
 
-Occurrence_table_fields=c('occurrenceID','BasisOfRecord','eventDate','scientificName','scientificNameID','occurrenceStatus','eventID','recordedBy',
-                          'organismQuantity','organismQuantityType','SampleSizeValue','sampleSizeUnit','materialSampleID',
-                          'decimalLatitude','decimalLongitude','taxonID','kingdom','phylum','class','order','family','genus','species',
-                          'associatedSequences','identificationRemarks', 'identificationReferences','minimumDepthInMeters','maximumDepthInMeters','Country' )
+get_dwc_fields <- function(spec_url) {
+  doc <- read_xml(spec_url)
+  doc %>%
+    xml_ns_strip() %>%
+    xml_find_all("//property") %>%
+    xml_attr(attr = "name")
+}
+
+spec_occurrence <- "https://rs.gbif.org/core/dwc_occurrence_2020-07-15.xml"
+Occurrence_table_fields <- get_dwc_fields(spec_occurrence)
 
 #Is there a way to list all allowed fields for the extension?
 
-DNA_extension_fields=c('occurrenceID','DNA_sequence', 'sop', 'target_gene', 'target_subfragment', 'pcr_primer_forward', 'pcr_primer_reverse',
-                       'pcr_primer_name_forw', 'pcr_primer_name_reverse', 'pcr_primer_reference', 'env_broad_scale', 'env_local_scale',
-                       'env_medium', 'lib_layout', 'seq_meth', 'votu_class_appr', 'votu_seq_comp_appr', 'votu_db')
+spec_dna <- "https://rs.gbif.org/extension/gbif/1.0/dna_derived_data_2021-07-05.xml"
+DNA_extension_fields <- get_dwc_fields(spec_dna)
 
 Occurrence_table=phydf_present[,colnames(phydf_present)%in%Occurrence_table_fields]
 DNA_derived_data_extension=phydf_present[,colnames(phydf_present)%in%DNA_extension_fields]
