@@ -1,0 +1,8 @@
+channels:
+ - r
+ - bioconda
+dependencies:
+ - r=4.0.3
+ - bioconductor-phyloseq=1.34.0
+ - r-stringr=1.4.0
+ - r-dplyr=1.0.7

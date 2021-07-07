@@ -1,0 +1,7 @@
+channels:
+ - r
+ - bioconda
+dependencies:
+ - r=4.0.3
+ - bioconductor-dada2=1.18.0
+ - r-ggplot2=3.3.3

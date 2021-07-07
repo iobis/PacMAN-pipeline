@@ -1,0 +1,33 @@
+---
+title: "Report_PacMAN_Pipeline"
+author: "Saara Suominen"
+date: "6/29/2021"
+output: html_document
+---
+
+
+
+
+```{r}
+library('here')
+here()
+getwd()
+
+#![alt text here]("./results/TRIAL2/runs/ARMS_4_SAMPLES/06-report/dada2/aggregate_quality_profiles_forward.png")
+
+
+#![alt text here]("./results/TRIAL2/runs/ARMS_4_SAMPLES/06-report/dada2/aggregate_quality_profiles_forward.png")
+```
+
+READ in config file, and build from there
+
+```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
+
+#here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_forward.png")
+knitr::include_graphics(c(here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_forward.png"), here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_reverse.png")))
+```
+
+```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
+
+knitr::include_graphics(c(here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_filtered_forward.png"), here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_filtered_reverse.png")))
+```
