@@ -83,7 +83,7 @@ qualRs <- gsub('.fastq.gz','.png',qualRs)
 
 # Make quality profile plots.
 
-dir.create(paste0(outpath, "03-dada2/quality"))
+dir.create(paste0(outpath, "03-dada2/quality"), recursive = TRUE)
 plot_list_F = list()
 plot_list_R = list()
 for (i in 1:length(qualFs)) {

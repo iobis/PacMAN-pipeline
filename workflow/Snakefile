@@ -446,7 +446,7 @@ rule get_lsids:
   conda:
     "envs/worrms.yaml"
   shell:
-    "Rscript ./workflow/scripts/get_lsids.r \
+    "Rscript ./workflow/scripts/get_lsids.R \
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
     {input.f1} \
     {input.f2}"
@@ -462,7 +462,7 @@ rule make_dwca:
   conda:
     "envs/dwca.yaml"
   shell:
-    "Rscript ./workflow/scripts/format_for_dwc_new.r \
+    "Rscript ./workflow/scripts/format_for_dwc_new.R \
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
     {input.f1} \
     {input.f2} \
