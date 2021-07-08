@@ -49,8 +49,8 @@ rule all:
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt", PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
         expand("results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt", PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
         expand("results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.csv",PROJECT=PROJECT, RUN=RUN),
-        #expand("results/{PROJECT}/runs/{RUN}/06-report/{PROJECT}_{RUN}.html",PROJECT=PROJECT, RUN=RUN)
-        "./workflow/reports/RUN.html"
+        expand("results/{PROJECT}/runs/{RUN}/report.html",PROJECT=PROJECT, RUN=RUN)
+
 
 # RULES: INITIATE STRUCTURE ----------------------------------------------------------------
 
@@ -484,10 +484,9 @@ rule make_dwca:
 
 
 rule reporting:
+  conda:
+    "envs/rmd.yaml"
   output:
-#       "./results/{PROJECT}/runs/{RUN}/06-report/{PROJECT}_{RUN}.html"
-    "./workflow/reports/RUN.html"
+    "results/{PROJECT}/runs/{RUN}/report.html"
   shell:
-#    "Rscript -e 'rmarkdown::render('./workflow/scripts/Report_PacMAN_Pipeline.Rmd', output_file = path('workflow/reports/RUN.html'))'"
-#    "Rscript -e 'rmarkdown::render(""workflow/scripts/Report_PacMAN_Pipeline.Rmd"")'"
-     "Rscript -e \"rmarkdown::render('workflow/scripts/Report_PacMAN_Pipeline.Rmd', output_file = './workflow/RUN.html')\""
+    "Rscript -e \"rmarkdown::render('workflow/scripts/Report_PacMAN_Pipeline.Rmd', output_file = '../../results/{PROJECT}/runs/{RUN}/report.html')\""

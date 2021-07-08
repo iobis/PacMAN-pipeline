@@ -1,0 +1,6 @@
+channels:
+ - r
+dependencies:
+ - r-base=4.0.3
+ - r-rmarkdown=2.9
+ - r-here=1.0.1
