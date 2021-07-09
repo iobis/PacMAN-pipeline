@@ -20,24 +20,27 @@ rep_seqs <- Biostrings::readDNAStringSet(args[3])
 
 message("1. Modify tax table for taxonomic ranks, and find all possible worms ids (using worrms package)")
 
-levels <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
-taxmat <- str_split(tax_file$sum.taxonomy, ";", simplify = T)
-colnames(taxmat) <- levels
-rownames(taxmat) <- tax_file$rowname
+# Move names to the appropriate columns
 
-# First remove extra characters from strings
+taxonomies <- str_split(tax_file$sum.taxonomy, ";")
 
-taxmat <- gsub(".*[__]([^.]+)[_].*", "\\1", taxmat)
+clean_taxonomy <- function(taxa) {
+  taxa <- taxa[taxa != "" & taxa != "NA"]
+  if (length(taxa) == 0) return(list(kingdom = NA))
+  parts <- str_match(taxa, "([a-z]+)__(.*)_[0-9]")
+  ranks <- recode(parts[,2], "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
+  taxon_names <- as.list(parts[,3])
+  names(taxon_names) <- ranks
+  return(taxon_names)    
+}
 
-# Replace all empty strings with na
-
-taxmat[taxmat == ""] <- NA
-taxmat[taxmat == "NA"] <- NA
+cleaned <- lapply(taxonomies, clean_taxonomy)
+taxmat <- as.data.frame(bind_rows(cleaned))
+row.names(taxmat) <- tax_file$rowname
 
 # Collect the highest known taxonomic value to the last column
 
-taxmat <- as.data.frame(taxmat)
-taxmat$lastvalue <- taxmat[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "last"))]
+taxmat$lastvalue <- as.matrix(taxmat)[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "last"))]
 
 # Because WORMS doesn't recognize Eukaryota, change those that have this in the lastvalue to Biota:
 
@@ -101,7 +104,7 @@ taxmat$lsid[is.na(taxmat$lsid)] <- "urn:lsid:marinespecies.org:taxname:1"
 
 #Add sequence to the tax_table slot (linked to each asv)
 
-taxmat$DNA_sequence <- as.character(rep_seqs[rownames(taxmat)])
+taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 
 # Write table of unknown names to make manual inspection easier:
 
