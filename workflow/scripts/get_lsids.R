@@ -43,9 +43,7 @@ taxmat$lastvalue <- taxmat[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "
 
 taxmat$lastvalue <- recode(taxmat$lastvalue, "Eukaryota" = "Biota")
 
-# Find worrms value with worrms
-# Function from Pieter, but I removed the exact match requirement so be careful with this.
-# I removed it, because I was getting 'like' matches even for exact matches, but I am not sure why.
+# Find WoRMS LSID with worrms
 
 tax_names <- unique(na.omit(taxmat$lastvalue))
 
