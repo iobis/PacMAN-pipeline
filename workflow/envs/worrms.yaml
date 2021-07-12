@@ -6,4 +6,5 @@ dependencies:
  - r-base=4.0.3
  - r-worrms=0.4.2
  - r-stringr=1.4.0
+ - r-dplyr=1.0.7
  - bioconductor-biostrings=2.58.0
