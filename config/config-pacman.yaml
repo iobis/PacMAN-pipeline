@@ -10,7 +10,7 @@ RUN: ARMS_4_SAMPLES
 #Values that differ between samples should be added to the sample_data_template.csv file!
 meta:
   sampling:
-    sample_data_file: /Users/saara/Documents/OBIS_work/github/bioinformatics/PacMAN-pipeline/config/sample_data_template_4samples.csv
+    sample_data_file: config/sample_data_template_4samples.csv
   sequencing:
     target_gene: COI
     subfragment: 5P
@@ -28,7 +28,7 @@ meta:
 #This needs to have three columns: sample-id,absolute-filepath,direction
 #Where absolute filepath points to each samples forward and reverse files separately
 #direction is either 'forward' or 'reverse'
-SAMPLE_SET: /Users/saara/Documents/OBIS_work/github/bioinformatics/PacMAN-pipeline/config/manifest_pe_4samples.csv
+SAMPLE_SET: /Users/pieter/Desktop/PacMAN-pipeline/config/manifest_pe_4samples.csv
 
 #TRIMMOMATIC
 trimmomatic:
@@ -118,11 +118,10 @@ DADA2:
 #DATABASE
 DATABASE:
   #The location of the bowtie2 database must be with the basename of the index FILES
-  location_bowtie2:
-    #/Users/saara/Documents/OBIS_work/github/bioinformatics/Anacapa/Anacapa_db/CO1/CO1_bowtie2_database/CO1_bowtie2_index
+  location_bowtie2: data/bowtie2_dbs/MIDORI_UNIQ_GB241_CO1/MIDORI_UNIQ_GB241_CO1
   name: MIDORI_UNIQ_GB241_CO1
-  taxa: /Users/saara/Documents/OBIS_work/github/bioinformatics/Anacapa/Anacapa_db/CO1/CO1_fasta_and_taxonomy/CO1_taxonomy.txt
-  fasta: /Users/saara/Documents/OBIS_work/github/bioinformatics/Anacapa/Anacapa_db/CO1/CO1_fasta_and_taxonomy/CO1_.fasta
+  taxa: data/CO1_fasta_and_taxonomy/CO1_taxonomy.txt
+  fasta: data/CO1_fasta_and_taxonomy/CO1_.fasta
 
 #Taxonomy
 TAXONOMY:
