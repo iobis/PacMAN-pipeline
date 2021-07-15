@@ -121,7 +121,7 @@ phydf = phydf %>%
 
 
 #Remove those occurrences which did not return an lsid:
-phydf <- phydf[!is.na(phydf$lsid),]
+phydf <- phydf[!is.na(phydf$scientificNameID),]
 
 #Remove 0 Abundance data (not valuable for us)
 phydf_present <- phydf[phydf$organismQuantity > 0,]
