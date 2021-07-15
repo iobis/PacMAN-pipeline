@@ -28,11 +28,11 @@ meta:
 #This needs to have three columns: sample-id,absolute-filepath,direction
 #Where absolute filepath points to each samples forward and reverse files separately
 #direction is either 'forward' or 'reverse'
-SAMPLE_SET: /Users/pieter/Desktop/PacMAN-pipeline/config/manifest_pe_4samples.csv
+SAMPLE_SET: config/manifest_pe_4samples.csv
 
 #TRIMMOMATIC
 trimmomatic:
-  ILLUMINACLIP: ./resources/adapters/NexteraPE-PE.fa:2:30:15
+  ILLUMINACLIP: resources/adapters/NexteraPE-PE.fa:2:30:15
   LEADING: 10
   TRAILING: 15
   MAXINFO: 200\:0.3

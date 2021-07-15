@@ -64,8 +64,10 @@ rule init_structure:
     output:
         r1="results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
         r2="results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz"
+    conda:
+        "envs/init.yaml"
     shell:
-        "workflow/scripts/init_sample_from_manifest_by_sample.sh "+config["PROJECT"]+" {input} {wildcards.samples} "
+        "python workflow/scripts/init_sample_from_manifest_by_sample.py "+config["PROJECT"]+" {input} {wildcards.samples} "
 
 #{sample} should be read from the manifest file, {PROJECT} should be read from the configfile
 
