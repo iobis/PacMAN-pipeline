@@ -410,7 +410,8 @@ rule classified_taxa:
   output:
     "results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt"
   shell:
-    "echo 'The number of taxa classified at each level with the provided cutoff: ' > {output}; \
+    "mkdir -p results/{PROJECT}/runs/{RUN}/06-report/taxonomy; \
+    echo 'The number of taxa classified at each level with the provided cutoff: ' > {output}; \
     echo 'Kingdom  Phylum  Class   Order   Family  Genus   Species' >> {output}; \
     grep -Eo 'k__|p__|c__|o__|f__|g__|s__' {input} | sort | uniq -c | sort -nr | awk '{{print $2" "$1}}' | column >> {output}"
 
