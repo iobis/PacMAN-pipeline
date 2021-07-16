@@ -1,5 +1,7 @@
 channels:
  - conda-forge
+ - bioconda
 dependencies:
  - python=3.8.8
  - biopython=1.79
+ - muscle=3.8.1551
