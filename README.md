@@ -1,3 +1,4 @@
+# PacMAN-pipeline
 ## Bioinformatics pipeline for the PacMAN project *UNDER DEVELOPMENT*
 
 This is the bioinformatics pipeline developed for the PacMAN (Pacific Islands Marine Bioinvasions Alert Network). This pipeline cleans and classifies sequences from eDNA samples. The PacMAN-pipeline is under development at the moment, and we expect to have a first version by the end of 2021. The steps in this pipeline are compiled from publicly available bioinformatic pipelines like [ANACAPA](https://github.com/limey-bean/Anacapa), [tourmaline](https://github.com/lukenoaa/tourmaline), [tagseq-qiime2-snakemake](https://github.com/shu251/tagseq-qiime2-snakemake), [pema](https://github.com/hariszaf/pema), [CASCABEL](https://github.com/AlejandroAb/CASCABEL) and [MBARI-BOG](https://github.com/MBARI-BOG/BOG-Banzai-Dada2-Pipeline). The pipeline is based on the snakemake workflow management system. At first, we will develop this pipeline only keeping in mind CO1 data, but we want to expand the process to other barcodes as well, so that in the future it could be used for OBIS datasets broadly.
@@ -63,11 +64,24 @@ Once this information is added, and the config file is filled in, a dry-run of t
 ```
 snakemake --use-conda -np
 ```
+
 Removing the -np flag should initiate the run.
 
 *Note, the pipeline is still under development and testing*
 
-**The pipeline will run the following steps:**
+## Run using Docker
+
+The repository includes a Dockerfile to run the entire pipeline in a Docker container. To do so, add your data files to the `data` directory and run the following commands to build the container and run the pipeline:
+
+```bash
+docker build -t snakemake .
+docker run -v $(pwd):/code snakemake /bin/bash \
+  -c "source activate snakemake && snakemake --use-conda -p --cores all"
+```
+
+## Steps
+
+The pipeline will run the following steps:
 
 ### 1. Initiate file structure
 
