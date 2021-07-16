@@ -374,8 +374,6 @@ rule blca:
     o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.out",
   log:
     f1 = "results/{PROJECT}/runs/{RUN}/06-report/blca/blca_{DATABASE}_log.txt"
-  params:
-    m = "workflow/scripts/muscle"
   conda:
     "envs/blca.yaml"
   shell:
@@ -385,7 +383,6 @@ rule blca:
     -q {config[DATABASE][fasta]} \
     -b {config[TAXONOMY][min_identity]} \
     -l {config[TAXONOMY][min_length]} \
-    -p {params.m} \
     -n {config[TAXONOMY][bootstrap_no]} \
     -m {config[TAXONOMY][match_score]} \
     -f {config[TAXONOMY][mismatch_penalty]} \
