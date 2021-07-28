@@ -4,9 +4,13 @@ Authors: Saara Suominen,
 Last update: 24/06/2021
 """
 import pandas as pd
+import sys
 
 #Better to initiate the run with the configfile, so no need to change the snakefile each time it is run
-configfile: "./config/config-pacman.yaml"
+#configfile: "./config/config-pacman_Saara.yaml"
+
+args = sys.argv
+config_path = args[args.index("--configfiles") + 1]
 
 PROJECT = config["PROJECT"]
 RUN = config["RUN"]
@@ -49,7 +53,7 @@ rule all:
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt", PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
         expand("results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt", PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
         expand("results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.csv",PROJECT=PROJECT, RUN=RUN),
-        expand("results/{PROJECT}/runs/{RUN}/report.html",PROJECT=PROJECT, RUN=RUN)
+        expand("results/{PROJECT}/runs/{RUN}/06-report/report.html",PROJECT=PROJECT, RUN=RUN)
 
 
 # RULES: INITIATE STRUCTURE ----------------------------------------------------------------
@@ -177,7 +181,8 @@ rule cutadapt_unpaired:
     o1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
     o2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
   log:
-    f1 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_unpaired_log.txt",
+    f1 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_unpaired1_log.txt",
+    f2 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_unpaired2_log.txt",
   conda:
     "envs/trim.yaml"
   shell:
@@ -186,14 +191,15 @@ rule cutadapt_unpaired:
         -a {config[cutadapt][rc_reverse_primer]} \
         -o {output.o1} \
         {input.u1} \
-        {config[cutadapt][se_extra_params]}; \
+        {config[cutadapt][se_extra_params]} \
+        1> {log.f1}; \
         cutadapt \
         -g {config[cutadapt][reverse_primer]} \
         -a {config[cutadapt][rc_forward_primer]} \
         -o {output.o2} \
         {input.u2} \
         --minimum-length 1 {config[cutadapt][se_extra_params]} \
-        1> {log.f1}"
+        1> {log.f2}"
 
 #Repeat quality control
 #Then we may want to have a rule that checks the results of the multiqc for any big problems.
@@ -484,9 +490,11 @@ rule make_dwca:
 
 
 rule reporting:
+  input:
+    "results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.csv",
   conda:
     "envs/rmd.yaml"
   output:
-    "results/{PROJECT}/runs/{RUN}/report.html"
+    "results/{PROJECT}/runs/{RUN}/06-report/report.html"
   shell:
-    "Rscript -e \"rmarkdown::render('workflow/scripts/Report_PacMAN_Pipeline.Rmd', output_file = '../../results/{PROJECT}/runs/{RUN}/report.html')\""
+    "Rscript -e \"rmarkdown::render('workflow/scripts/Report_PacMAN_Pipeline.Rmd', output_file = '../../results/{PROJECT}/runs/{RUN}/06-report/report.html', params=list(config='../."+config_path+"'))\""
