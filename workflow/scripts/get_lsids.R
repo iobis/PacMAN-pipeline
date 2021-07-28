@@ -31,7 +31,7 @@ clean_taxonomy <- function(taxa) {
   ranks <- recode(parts[,2], "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
   taxon_names <- as.list(parts[,3])
   names(taxon_names) <- ranks
-  return(taxon_names)    
+  return(taxon_names)
 }
 
 cleaned <- lapply(taxonomies, clean_taxonomy)
@@ -101,6 +101,7 @@ not_in_worms <- taxmat[is.na(taxmat$lsid),]
 # Add 'Biota' as the name for the unknown sequences
 
 taxmat$lsid[is.na(taxmat$lsid)] <- "urn:lsid:marinespecies.org:taxname:1"
+taxmat$lastvalue[is.na(taxmat$lastvalue)] <- "Biota"
 
 #Add sequence to the tax_table slot (linked to each asv)
 
