@@ -1,6 +1,11 @@
 channels:
  - r
+ - bioconda
 dependencies:
  - r-base=4.0.3
  - r-rmarkdown=2.9
- - r-here=1.0.1
+ - r-knitr=1.33
+ - bioconductor-phyloseq=1.34.0
+ - r-ggplot2
+ - r-dplyr=1.0.7
+ - r-reshape2=1.4.4
