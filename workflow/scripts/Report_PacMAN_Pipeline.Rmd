@@ -1,24 +1,428 @@
 ---
-title: "Report_PacMAN_Pipeline"
-author: "Saara Suominen"
-date: "6/29/2021"
-output: html_document
+title: "Report of the PacMAN pipeline"
+author: "OBIS secretariat"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    number_sections: TRUE
+    toc: true
+params:
+  config: ""
 ---
 
+<br>
+
+# PacMAN pipeline report
+<br>
+Congratulations! You have finished running the PacMAN pipeline. In this report you will find the information of all the main steps run with your sequences, and the statistics related to how it went.
+
+<br>
+```{r, include=FALSE}
+library(yaml)
+library(knitr)
+library(phyloseq)
+library(ggplot2)
+library(dplyr)
+
+config=read_yaml(params$config)
+#config=read_yaml("/Users/saara/Documents/OBIS_work/github/bioinformatics/PacMAN-pipeline/config/config-pacman.yaml")
+
+config$PROJECT
+config$RUN
+```
+
+
+```{r, echo=FALSE}
+cat("Specifically, this is the report for the project: ", config$PROJECT  , ", and the pipeline run: ", config$RUN, ".", sep="")
+
+sample_data=read.table(config$meta$sampling$sample_data_file, sep=";", header=TRUE)
+sample_ids=unique(sample_data$sample.id)
+
+cat("And the samples that were run in this analysis are:\n", unique(sample_data$sample.id))
+```
+
+## Quality control
+<br>
+Quality control of the raw samples was done so that any issues in the final analysis can possibly be traced back to issues in the original data.
+<br>
+
+```{r, echo=F}
+cat("Visual representation of the results of the QC on the raw data can be found in an html report in: results/", config$PROJECT, "/samples/multiqc_", config$RUN,".html", sep="")
+
+
+cat("Generally, the sequences in the samples had the following composition:\n")
+
+raw_stats_path=paste0("../../results/", config$PROJECT, "/samples/multiqc_", config$RUN,"_data/multiqc_general_stats.txt")
+
+raw_stats=read.table(raw_stats_path, header=TRUE, sep="\t")
+colnames(raw_stats)=gsub("FastQC_mqc.generalstats.fastqc.","",colnames(raw_stats))
+colnames(raw_stats)=gsub("_"," ",colnames(raw_stats))
+raw_stats[,c(2,5)]=round(raw_stats[,c(2,5)], digits=1)
+
+kable(raw_stats)
+```
+
+## Sequence trimming
+<br>
+As you can most likely see, there are several issues with the raw sequences. Therefore, the sequences were trimmed and cleaned-up prior to the analysis of sequence variants and the taxonomic composition of the samples.
+<br>
+The first step of the process was to trim the samples using [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic) (Bolger et al. 2014).
+<br>
+The command that was used was:
+<br>
+```{r, echo=F}
+
+trim_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/trimmomatic/", sample_ids[1], "_log.txt")
+
+readLines(trim_report, n=2)
+
+```
+<br>
+And the results for each sample in reads, and in percentages of original reads:
+<br>
+```{r, echo=F}
+#Loop across all sample_ids and collect results to table
+trimResults=data.frame(InputReadPairs=NA, BothSurviving=NA, ForwardOnlySurviving=NA, ReverseOnlySurviving=NA, Dropped=NA)
+
+for (i in 1:length(sample_ids)) {
+trim_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/trimmomatic/", sample_ids[i], "_log.txt")
+sample=scan(trim_report,sep="\n",what="char(0)",skip=10, nlines=1)
+sample=unlist(strsplit(sample, "\\s+"))
+sample=as.numeric(sample[c(4, 7, 12, 17, 20)])
+trimResults[i,]=sample
+rownames(trimResults)[i]=sample_ids[i]
+
+}
+
+kable(trimResults)
+
+TrimResults_Percentage=round(trimResults[,c(2:5)]/trimResults[,c(1)]*100, digits=2)
+kable(TrimResults_Percentage)
+
+```
+
+## Cutadapt
+<br>
+The next step in the process ran cutadapt on all samples (paired and unpaired results).
+<br>
+The command that was used was:
+<br>
+
+```{r, echo=F}
+#cut_report=capture.output(cat("../PacMAN-pipeline-backup/results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[1], "_log.txt", sep=""))
+
+cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[1], "_log.txt")
+
+readLines(cut_report, n=2)
+```
+
+
+### Paired reads
+
+
+The results for all paired samples were:
+<br>
+
+```{r, echo=F}
+cutResults=data.frame(TotalReadPairsProcessed=NA, Read1withPrimer=NA, Read2withPrimer=NA, PairsTooShort=NA, PairsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
+
+for (i in 1:length(sample_ids)) {
+cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[i], "_log.txt")
+sample=scan(cut_report,sep="\n",what="char(0)",skip=7, nlines=12)
+sample=unlist(strsplit(sample, "\\s+"))
+sample=sample[c(5, 11, 18, 25, 31, 36, 51)]
+sample=as.numeric(gsub(',', '', sample))
+cutResults[i,]=sample
+rownames(cutResults)[i]=sample_ids[i]
+
+}
+
+kable(cutResults)
+
+cutResults_Percentage=round(cutResults[,c(2:5)]/cutResults[,c(1)]*100, digits=2)
+cutResults_Percentage$BasePairsWritten=round(cutResults[,7]/cutResults[,6]*100, digits=2)
+kable(cutResults_Percentage)
+
+
+
+```
+
+### Unpaired reads
+
+While for forward unpaired reads they were:
+
+
+```{r, echo=F}
+cutResults=data.frame(TotalReadPairsProcessed=NA, ReadwithPrimer=NA, ReadsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
+
+for (i in 1:length(sample_ids)) {
+cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[i], "_unpaired1_log.txt")
+sample=scan(cut_report,sep="\n",what="char(0)",skip=7, nlines=6)
+sample=unlist(strsplit(sample, "\\s+"))
+sample=sample[c(4,8,14,19,24)]
+sample=as.numeric(gsub(',', '', sample))
+if (length(sample)==5){
+cutResults[i,]=sample
+rownames(cutResults)[i]=sample_ids[i]
+}
+}
+
+kable(cutResults)
+
+cutResults_Percentage=round(cutResults[,c(2:3)]/cutResults[,c(1)]*100, digits=2)
+cutResults_Percentage$BasePairsWritten=round(cutResults[,5]/cutResults[,4]*100, digits=2)
+kable(cutResults_Percentage)
+```
+<br>
+And for reverse unpaired reads they were:
+<br><br>
+
+```{r, echo=F}
+cutResults=data.frame(TotalReadPairsProcessed=NA, ReadwithPrimer=NA, ReadsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
+
+for (i in 1:length(sample_ids)) {
+cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[i], "_unpaired2_log.txt")
+
+sample=scan(cut_report,sep="\n",what="char(0)",skip=7, nlines=6)
+sample=unlist(strsplit(sample, "\\s+"))
+sample=sample[c(4,8,14,19,24)]
+sample=as.numeric(gsub(',', '', sample))
+if (length(sample)==5){
+cutResults[i,]=sample
+rownames(cutResults)[i]=sample_ids[i]
+}
+}
+
+kable(cutResults)
+
+cutResults_Percentage=round(cutResults[,c(2:3)]/cutResults[,c(1)]*100, digits=2)
+cutResults_Percentage$BasePairsWritten=round(cutResults[,5]/cutResults[,4]*100, digits=2)
+kable(cutResults_Percentage)
+```
+<br>
+
+## ASV inference with dada2
+
+Next the reads without adapters and primers, were analysed using the dada2 pipeline. This pipeline evaluates the error rates in reads, and based on the results defines amplicon sequence variants (ASVs).
+
+**Note!** At this moment in this step we are only analysing the reads that are still paired after sequence trimming. We plan to include the analysis of unpaired reads also in the future.
+
+### Filter and trim
+
+The first step of the dada2 pipeline is to perform more filtering and trimming based on sequence quality.
+
+The parameters used in this run were:
+<br><br>
+```{r, echo=F}
+cat("filterAndTrim(filesForw, filtFs, filesRev, filtRs,
+  truncLen = c(" ,config$DADA2$filterAndTrim$Trunc_len_f,", " ,config$DADA2$filterAndTrim$Trunc_len_r,"),truncQ=" ,config$DADA2$filterAndTrim$TruncQ,",
+  trimRight = ",config$DADA2$filterAndTrim$Trim_right,", trimLeft = ",config$DADA2$filterAndTrim$Trim_left,",
+  maxLen = ",config$DADA2$filterAndTrim$maxLen,", minLen = ",config$DADA2$filterAndTrim$minLen,",
+  maxN = ",config$DADA2$filterAndTrim$maxN,", minQ = ",config$DADA2$filterAndTrim$minQ,", maxEE = ",config$DADA2$filterAndTrim$MaxEE,",
+  rm.phix = ",config$DADA2$filterAndTrim$Rm.phix,", orient.fwd = ",config$DADA2$filterAndTrim$orient.fwd,",
+  matchIDs = ",config$DADA2$filterAndTrim$matchIDs,", id.sep = ",config$DADA2$filterAndTrim$id.sep,", id.field = ",config$DADA2$filterAndTrim$id.field,",
+  compress = ",config$DADA2$filterAndTrim$compress,", multithread = ",config$DADA2$filterAndTrim$multithread,",
+  n = ",config$DADA2$filterAndTrim$n,", OMP = ",config$DADA2$filterAndTrim$OMP,",
+  verbose = ",config$DADA2$filterAndTrim$verbose,"
+)", sep="")
+
+```
+<br><br>
+
+The quality profile of all analysed paired reads before trimming (Forward reads in left panel, while reverse reads are in right panel):
+<br><br>
+
+```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
+
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_reverse.png")))
+
+```
+<br><br>
+And after trimming it was:
+<br><br>
+```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
+
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filtered_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filtered_reverse.png")))
+
+```
+
+### Asv inference
+
+The following step of the dada2 pipeline was define the ASVs from these trimmed reads.
+<br>
+First error rates were learned for both forward and reverse reads separately with the following command:
+
+```{r, echo=F}
+cat("learnErrors(filtFs, multithread = ",config$DADA2$learnERRORS$multithread,", nbases = ",config$DADA2$learnERRORS$nbases,", randomize = ",config$DADA2$learnERRORS$randomize,",MAX_CONSIST = ",config$DADA2$learnERRORS$MAX_CONSIST,", OMEGA_C = ",config$DADA2$learnERRORS$OMEGA_C,", verbose = ",config$DADA2$learnERRORS$verbose,")", sep="")
+```
+
+The forward and reverse error profiles were the following (in absolute numbers and in percentage of analysed reads):
+
+```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
+
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_reverse.png")))
+
+```
+
+Next the reads were dereplicated with the following command:
+
+```{r, echo=F}
+cat("derepFastq(filtFs, n = ",config$DADA2$derepFastq$n,")", sep="")
+```
+
+The error rates were then used to infer ASVs from the dereplicated sequences using the following command for both forward and reverse reads separately:
+
+```{r, echo=F}
+cat("dada(derepFs, err = errF, selfConsist = ",config$DADA2$dada$selfConsist,", pool = ",config$DADA2$dada$pool,", priors = ",config$DADA2$dada$priors,",
+  multithread = ",config$DADA2$learnERRORS$multithread,")", sep="")
+```
+
+Sequence pairs were combined using:
+
+```{r, echo=F}
+cat("mergePairs(dadaFs, derepFs, dadaRs, derepRs,
+  minOverlap = ",config$DADA2$mergePairs$minOverlap,", maxMismatch = ",config$DADA2$mergePairs$maxMismatch,", returnRejects = ",config$DADA2$mergePairs$returnRejects,",
+  propagateCol = ",config$DADA2$mergePairs$propagateCol,", justConcatenate = ",config$DADA2$mergePairs$justConcatenate,", trimOverhang = ",config$DADA2$mergePairs$trimOverhang,")", sep="")
+
+```
+
+And finally, chimeras were removed with:
+
+```{r, echo=F}
+cat("removeBimeraDenovo(seqtab, method = ",config$DADA2$removeBimeraDenovo$method,", multithread = ",config$DADA2$learnERRORS$multithread,")", sep="")
+
+```
+
+The amount of reads analysed in each step and remaining at the end of the pipeline were:
+
+```{r, echo=F}
+
+dada2_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/dada2_stats.txt")
+
+dada2_stats=read.table(dada2_report, header=TRUE)
+kable(dada2_stats)
+```
+
+## Assigning taxonomy
+
+Next, taxonomy was assigned to the inferred reads. The sequences were aligned to the provided reference database using bowtie2. Because of this the bowtie2 database was also built (if not already provided), from the reference sequences.
+
+The command used for the alignment was the following:
+
+```{r, echo=F}
+cat("bowtie2 -x bowtie2-database -f -U representative_seqs -S alignment.sam --no-hd --no-sq --very-sensitive --local --no-unal -p ",config$TAXONOMY$threads," -k " ,config$TAXONOMY$distinct_alignments," --un rejects.fasta", sep="")
+
+```
+The best distinct alignments (parameter -k), were then used to infer the taxonomy based on a bayesian least common ancestor method. In this method, a higher taxonomy is assigned, if it shared enough times in the alignments made in the first step.
+
+For this step the user defines the cutoff value used for accepting a taxonomic assignment (what is the likelihood that it is correct based on the 100 alignments made).
+
+The used command was the following:
+
+```{r, echo=F}
+cat("python ./workflow/scripts/blca_from_bowtie.py  -i alignment.sam  -r ",config$DATABASE$taxa,"  -q ",config$DATABASE$fasta," -b ",config$TAXONOMY$min_identity," -l ",config$TAXONOMY$min_length,"  -n ",config$TAXONOMY$bootstrap_no,"  -m ",config$TAXONOM$match_score," -f ",config$TAXONOMY$mismatch_penalty,"  -g ",config$TAXONOMY$gap_penalty," -o blca.output", sep="")
+```
+
+The provided **cutoff** was then used to filter the blca output for reliable taxonomic assignments:
+
+```{r, echo=F}
+cat("python ./workflow/scripts/reformat_summary_for_r.py blca.output tax.table   ",config$TAXONOMY$blca_identity_cutoff, sep="")
+
+```
+
+A phyloseq object was built with this information, and can be found here:
+
+```{r, echo=F}
+cat("./results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/phyloseq_object.rds", sep="")
+```
+
+
+The total information stored in the phyloseq object is:
+
+```{r, echo=F}
+pseq=readRDS(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/phyloseq_object.rds"))
+
+pseq
+```
+Note also that the sequences of the ASVs are stored in the tax_table of the phyloseq object.
+<br><br>
+The total number of taxa assigned at each taxonomic level:
+
+```{r, echo=F}
+colSums(!is.na(tax_table(pseq)[,c(1:7)]))
+
+```
+
+In relative abundance (see total number of reads in the dada2 output), the most abundant taxa at phylumn level and at species level are shown in the following images.
 
 ```{r}
-library(here)
-#![alt text here]("./results/TRIAL2/runs/ARMS_4_SAMPLES/06-report/dada2/aggregate_quality_profiles_forward.png")
-#![alt text here]("./results/TRIAL2/runs/ARMS_4_SAMPLES/06-report/dada2/aggregate_quality_profiles_forward.png")
+
+pseq_rel<- transform_sample_counts(pseq, function(x) x / sum(x) )
+pmelt<- psmelt(pseq_rel)
+
+pmelt%>%
+  group_by(phylum) %>%
+  filter(Abundance > 0.01) %>%
+  ggplot(aes(phylum, y=Abundance, fill=phylum))+
+  geom_bar(stat='identity')+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none')+
+  facet_grid(~Sample)
+
+pmelt %>%
+  group_by(species) %>%
+  filter(Abundance > 0.01) %>%
+  ggplot(aes(species, y=Abundance, fill=phylum))+
+  geom_bar(stat='identity')+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none')+
+  facet_grid(~Sample, scales='free_x')
+
 ```
 
-READ in config file, and build from there
+The relationship of the biodiversity between the samples is shown in the following ordination. The closer together the samples are depicted, the more similar the biodiversity measured in each of the samples was.
 
-```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
-#here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_forward.png")
-#knitr::include_graphics(c(here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_forward.png"), here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_reverse.png")))
+```{r, echo=F}
+
+pseq.ord <- ordinate(pseq_rel, "PCoA", "bray")
+sample_data(pseq_rel)$sample_id=sample_names(pseq_rel)
+
+plot_ordination(pseq_rel, pseq.ord)+
+geom_point(size = 4, fill='white', shape=21) +
+geom_text(aes(label = sample_id), size = 4, vjust = 'inward', hjust ='inward') +
+theme_bw()
+
 ```
 
-```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
-#knitr::include_graphics(c(here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_filtered_forward.png"), here("results","TRIAL2", "runs", "ARMS_4_SAMPLES", "06-report", "dada2", "aggregate_quality_profiles_filtered_reverse.png")))
+## Darwin core archive tables
+
+Finally, the results of this analysis were collected in a Darwin Core Occurrence table and DNA-derived data extension, to facilitate submitting the data to OBIS.
+
+First, lsids for the assigned taxa were collected based on names in the WoRMS database. Occurrences that are not included in the final tables are mostly known taxa that are not marine. These occurrences are listed in the table 05-dwca/Taxa_not_in_worms.csv. This table also potentially has marine species that are not recognized by WoRMS yet, and therefore it is recommended to manually review this table.
+
+All unknown sequences that did not have a taxonomic assignment are added in the occurrence table as 'Biota', however in the future more checks will be made to filter out sequences that were not from the target gene region or are likely not marine.
+
+In addition, if there was a control sample which was labelled in the original sample as OccurrenceStatus; "absent", any occurrences of the taxa found in this sample were removed from all samples.
+
+The final tables can be found at:
+
+```{r, echo=F}
+cat("results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurrence_table.csv", sep="")
+cat("results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/DNA_extension_table.csv", sep="")
+
+```
+From this analysis run there were
+
+```{r, echo=F}
+occ_path=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurence_table.csv")
+occ_table=read.table(occ_path, header=TRUE, sep="\t")
+
+cat("The total number of occurrences was", nrow(occ_table))
+cat("Of which", sum(occ_table$scientificName!="Biota"), "were known, and therefore", sum(occ_table$scientificName=="Biota"), "or", sum(occ_table$scientificName=="Biota")/nrow(occ_table)*100, "% remained unknown. The sequences of these occurrences can nevertheless be added to the database, and it is possible that their taxonomy will be defined when reference databases develop.")
+
+notinworms_path=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Taxa_not_in_worms.csv")
+notinworms_table=read.table(notinworms_path, header=TRUE, sep="\t")
+
+cat("The number of names not found in the marine records of WoRMS was", nrow(notinworms_table))
+
 ```
