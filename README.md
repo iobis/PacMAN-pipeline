@@ -23,10 +23,8 @@ Steps that still need to be added to the pipeline:
   1. Data quality checkpoints for the scripts
   2. Automatic revese complement of primer sequences.
   3. Simplify use of default parameters for dada2?
-  3. Simple pdf report
-     - Contains all information of the parameters used in the run
-     - Contains data quality checkpoints and most important statistics of each workflow step
-  4. Alternative taxonomic classification methods, or additional steps for unidentified species
+  4. ASV inference also from unpaired reads
+  4. Alternative taxonomic classification methods, and/or additional steps for unidentified sequences
   5. Either make downstream formatting from taxonomic assignment more broad, or make separate downstream rules for other taxonomic classification methods.
 
 
@@ -34,7 +32,7 @@ Steps that still need to be added to the pipeline:
 
 Install conda and snakemake.
 
-At the moment, the pipeline is planned to be run with the [--use-conda](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html#integrated-package-management) flag (not yet tested), where each rule has an isolated environment, that will be installed in the working directory using conda. Other possible ways to acquire all the dependencies should also be looked at (one env file for whole pipeline?).
+At the moment, the pipeline is planned to be run with the [--use-conda](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html#integrated-package-management) flag, where each rule has an isolated environment, that will be installed in the working directory using conda. Other possible ways to acquire all the dependencies should also be looked at (one env file for whole pipeline?).
 
 **Note**: An interesting possibility for OBIS, would be to start building pipelines based on snakemake modules, to allow for more flexible development in the future? Similar to what is being done [here](https://github.com/EnvGen/snakemake-workflows).
 
@@ -59,13 +57,15 @@ What is needed:
      f. Primers used in both forward and reverse configuration
      g. Chosen parameters for each step. (Template file configured for CO1 data using the Leray-Geller primer set).
 
+The config file is then given to the pipeline during initiation (can be located anywhere).
+
 Once this information is added, and the config file is filled in, a dry-run of the pipeline can be performed for testing with:
 
 ```
-snakemake --use-conda -np
+snakemake --use-conda --configfiles ./config/config-pacman.yaml --cores 1 -np
 ```
 
-Removing the -np flag should initiate the run.
+Removing the -np flag will initiate the run.
 
 *Note, the pipeline is still under development and testing*
 
@@ -164,4 +164,4 @@ All analysis steps will be explained in the report, will this be enough?
 
 ### 6. Reporting
 
-At the moment the idea is to make a R markdown file than can be rendered when the full pipeline has been run to a format that is readable and portable. This section still needs to be developed!
+An html report is made in the final steps with the statistics of the full run, to give an overview of what was done during the analysis and what the effect was on the results. Still more analysis will be added to this report. 
