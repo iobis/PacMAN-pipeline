@@ -33,15 +33,15 @@ n <-               as.numeric(args[14])
 selfConsist <-     as.logical(args[15])
 pool <-            as.logical(args[16])
 priors <-          if (args[17] == "None") "" else args[17]
-#mergePairs
-minOverlap <-      as.numeric(args[18])
-maxMismatch <-     as.numeric(args[19])
-returnRejects <-   as.logical(args[20])
-propagateCol <-    if (args[21] == "None") "" else args[21]
-justConcatenate <- as.logical(args[22])
-trimOverhang <-    as.logical(args[23])
+mergePairs <-      as.logical(args[18])
+minOverlap <-      as.numeric(args[19])
+maxMismatch <-     as.numeric(args[20])
+returnRejects <-   as.logical(args[21])
+propagateCol <-    if (args[22] == "None") "" else args[22]
+justConcatenate <- as.logical(args[23])
+trimOverhang <-    as.logical(args[24])
 #removeBimeraDenovo
-method <-          args[24]
+method <-          args[25]
 #args[25:n]...= input.files}
 
 # The parameters nti/ntj, need the chosen nucleotides in a vector format:
@@ -59,7 +59,7 @@ if (length(nti) == 0) {
 
 # Set the different paths for all the supplied libraries
 #NOTICE: only forward files given as input
-filtFs <- args[25:length(args)]
+filtFs <- args[26:length(args)]
 #print(filtFs)
 filtRs <- gsub("_1P", "_2P", filtFs)
 #print(filtRs)
@@ -109,11 +109,19 @@ dadaFs <- dada(derepFs, err = errF, selfConsist = selfConsist, pool = pool, prio
 dadaRs <- dada(derepRs, err = errR, selfConsist = selfConsist, pool = pool, priors = priors,
   multithread = multithread, verbose = verbose)
 
+if (mergePairs) {
+
 mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs,
   minOverlap = minOverlap, maxMismatch = maxMismatch, returnRejects = returnRejects,
   propagateCol = propagateCol, justConcatenate = justConcatenate, trimOverhang = trimOverhang, verbose = verbose)
 
 seqtab <- makeSequenceTable(mergers)
+
+} else {
+
+seqtab <- makeSequenceTable(dadaFs)
+
+}
 
 seqtab.nochim <- removeBimeraDenovo(seqtab, method = method, multithread = multithread, verbose = verbose)
 
@@ -138,9 +146,14 @@ getN <- function(x) sum(getUniques(x))
 #track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim!=0))
 #colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim","ASVs")
 #rownames(track) <- sample.names
-
+if (mergePairs) {
 track <- cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
 colnames(track) <- c("denoisedF", "denoisedR", "merged", "nonchim", "ASVs")
+} else {
+  track <- cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
+  colnames(track) <- c("denoisedF", "denoisedR", "nonchim", "ASVs")
+}
+
 rownames(track) <- sample.names
 message(track)
 # Read results of filtering step and append the results of ASV step:
