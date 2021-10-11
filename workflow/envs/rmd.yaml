@@ -9,3 +9,4 @@ dependencies:
  - r-ggplot2
  - r-dplyr=1.0.7
  - r-reshape2=1.4.4
+ - r-stringr=1.4.0

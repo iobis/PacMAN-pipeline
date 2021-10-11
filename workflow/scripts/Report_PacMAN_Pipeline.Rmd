@@ -16,29 +16,27 @@ params:
 <br>
 Congratulations! You have finished running the PacMAN pipeline. In this report you will find the information of all the main steps run with your sequences, and the statistics related to how it went.
 
-<br>
 ```{r, include=FALSE}
 library(yaml)
 library(knitr)
 library(phyloseq)
 library(ggplot2)
 library(dplyr)
+library(stringr)
 
 config=read_yaml(params$config)
 #config=read_yaml("/Users/saara/Documents/OBIS_work/github/bioinformatics/PacMAN-pipeline/config/config-pacman.yaml")
 
-config$PROJECT
-config$RUN
 ```
 
 
-```{r, echo=FALSE}
-cat("Specifically, this is the report for the project: ", config$PROJECT  , ", and the pipeline run: ", config$RUN, ".", sep="")
+```{r, echo=FALSE, results='asis'}
+cat("Specifically, this is the report for the project: ", config$PROJECT  , "  \nAnd the pipeline run: ", config$RUN, ".  \n", sep="")
 
-sample_data=read.table(config$meta$sampling$sample_data_file, sep=";", header=TRUE)
+sample_data=read.table(paste0("../../",config$meta$sampling$sample_data_file), sep=";", header=TRUE)
 sample_ids=unique(sample_data$sample.id)
 
-cat("And the samples that were run in this analysis are:\n", unique(sample_data$sample.id))
+cat("And the samples that were run in this analysis are:\n", unique(sample_data$sample.id), sep="  \n")
 ```
 
 ## Quality control
@@ -46,11 +44,11 @@ cat("And the samples that were run in this analysis are:\n", unique(sample_data$
 Quality control of the raw samples was done so that any issues in the final analysis can possibly be traced back to issues in the original data.
 <br>
 
-```{r, echo=F}
-cat("Visual representation of the results of the QC on the raw data can be found in an html report in: results/", config$PROJECT, "/samples/multiqc_", config$RUN,".html", sep="")
+```{r, echo=F, results='asis'}
+cat("Visual representation of the results of the QC on the raw data can be found in an html report in:  \n results/", config$PROJECT, "/samples/multiqc_", config$RUN,".html  \n", sep="")
 
 
-cat("Generally, the sequences in the samples had the following composition:\n")
+cat("Generally, the sequences in the samples had the following composition:  \n  \n")
 
 raw_stats_path=paste0("../../results/", config$PROJECT, "/samples/multiqc_", config$RUN,"_data/multiqc_general_stats.txt")
 
@@ -80,16 +78,22 @@ readLines(trim_report, n=2)
 <br>
 And the results for each sample in reads, and in percentages of original reads:
 <br>
-```{r, echo=F}
+```{r, echo=F, warning=F}
 #Loop across all sample_ids and collect results to table
 trimResults=data.frame(InputReadPairs=NA, BothSurviving=NA, ForwardOnlySurviving=NA, ReverseOnlySurviving=NA, Dropped=NA)
 
 for (i in 1:length(sample_ids)) {
 trim_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/trimmomatic/", sample_ids[i], "_log.txt")
-sample=scan(trim_report,sep="\n",what="char(0)",skip=10, nlines=1)
-sample=unlist(strsplit(sample, "\\s+"))
-sample=as.numeric(sample[c(4, 7, 12, 17, 20)])
-trimResults[i,]=sample
+
+#sample=scan(trim_report,sep="\n",what="char(0)",skip=7, nlines=1)
+file=file(trim_report, "r")
+line <- readLines(file, 1)
+while(!grepl("Input Read Pairs", line)) {
+  line <- readLines(file, 1)
+}
+
+results = line %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% as.numeric
+trimResults[i,]=results[!is.na(results)]
 rownames(trimResults)[i]=sample_ids[i]
 
 }
@@ -123,16 +127,16 @@ readLines(cut_report, n=2)
 The results for all paired samples were:
 <br>
 
-```{r, echo=F}
-cutResults=data.frame(TotalReadPairsProcessed=NA, Read1withPrimer=NA, Read2withPrimer=NA, PairsTooShort=NA, PairsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
+```{r, echo=F, warning=F}
+cutResults=data.frame(TotalReadPairsProcessed=NA, Read1withPrimer=NA, Read2withPrimer=NA, PairsTooShort=NA, PairsWritten=NA, BasePairsProcessed=NA, Read1BpProcessed=NA, Read2BpProcessed=NA, BasePairsWritten=NA, Read1BpWritten=NA, Read2BpWritten=NA)
 
 for (i in 1:length(sample_ids)) {
 cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[i], "_log.txt")
-sample=scan(cut_report,sep="\n",what="char(0)",skip=7, nlines=12)
-sample=unlist(strsplit(sample, "\\s+"))
-sample=sample[c(5, 11, 18, 25, 31, 36, 51)]
-sample=as.numeric(gsub(',', '', sample))
-cutResults[i,]=sample
+text <- readLines(cut_report)
+rows <- grep("^===", text)
+report=text[c((rows[1]+2):(rows[2]-2))]
+sample = report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+cutResults[i,]=sample[!is.na(sample)]
 rownames(cutResults)[i]=sample_ids[i]
 
 }
@@ -152,52 +156,70 @@ kable(cutResults_Percentage)
 While for forward unpaired reads they were:
 
 
-```{r, echo=F}
-cutResults=data.frame(TotalReadPairsProcessed=NA, ReadwithPrimer=NA, ReadsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
+```{r, echo=F, warning=F}
+cutResults=data.frame(TotalReadPairsProcessed=NA, ReadwithPrimer=NA, ReadsTooShort=NA, ReadsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
 
 for (i in 1:length(sample_ids)) {
 cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[i], "_unpaired1_log.txt")
-sample=scan(cut_report,sep="\n",what="char(0)",skip=7, nlines=6)
-sample=unlist(strsplit(sample, "\\s+"))
-sample=sample[c(4,8,14,19,24)]
-sample=as.numeric(gsub(',', '', sample))
-if (length(sample)==5){
-cutResults[i,]=sample
+text <- readLines(cut_report)
+
+if (any(grepl("^===", text))) {
+rows <- grep("^===", text)
+report=text[c((rows[1]+2):(rows[2]-2))]
+sample = report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+
+#Not all of the reports list ReadsTooShort, so add for those that don't a 0
+if (any(!grepl("short", report))) {
+  sample=append(sample, 0, after=2)
+}
+cutResults[i,]=sample[!is.na(sample)]
+rownames(cutResults)[i]=sample_ids[i]
+} else {
+cutResults[i,]=rep(0,6)
 rownames(cutResults)[i]=sample_ids[i]
 }
 }
 
 kable(cutResults)
 
-cutResults_Percentage=round(cutResults[,c(2:3)]/cutResults[,c(1)]*100, digits=2)
-cutResults_Percentage$BasePairsWritten=round(cutResults[,5]/cutResults[,4]*100, digits=2)
+cutResults_Percentage=round(cutResults[,c(2:3)]/cutResults$TotalReadPairsProcessed*100, digits=2)
+cutResults_Percentage$BasePairsWritten=round(cutResults$BasePairsWritten/cutResults$BasePairsProcessed*100, digits=2)
 kable(cutResults_Percentage)
 ```
 <br>
 And for reverse unpaired reads they were:
 <br><br>
 
-```{r, echo=F}
-cutResults=data.frame(TotalReadPairsProcessed=NA, ReadwithPrimer=NA, ReadsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
+```{r, echo=F, warning=F}
+cutResults=data.frame(TotalReadPairsProcessed=NA, ReadwithPrimer=NA, ReadsTooShort=NA, ReadsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
 
 for (i in 1:length(sample_ids)) {
 cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[i], "_unpaired2_log.txt")
+text <- readLines(cut_report)
 
-sample=scan(cut_report,sep="\n",what="char(0)",skip=7, nlines=6)
-sample=unlist(strsplit(sample, "\\s+"))
-sample=sample[c(4,8,14,19,24)]
-sample=as.numeric(gsub(',', '', sample))
-if (length(sample)==5){
-cutResults[i,]=sample
+if (any(grepl("^===", text))) {
+rows <- grep("^===", text)
+report=text[c((rows[1]+2):(rows[2]-2))]
+sample = report %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+
+#Not all of the reports list ReadsTooShort, so add for those that don't a 0
+if (any(!grepl("short", report))) {
+  sample=append(sample, 0, after=2)
+}
+cutResults[i,]=sample[!is.na(sample)]
+rownames(cutResults)[i]=sample_ids[i]
+} else {
+cutResults[i,]=rep(0,6)
 rownames(cutResults)[i]=sample_ids[i]
 }
 }
 
 kable(cutResults)
 
-cutResults_Percentage=round(cutResults[,c(2:3)]/cutResults[,c(1)]*100, digits=2)
-cutResults_Percentage$BasePairsWritten=round(cutResults[,5]/cutResults[,4]*100, digits=2)
+cutResults_Percentage=round(cutResults[,c(2:3)]/cutResults$TotalReadPairsProcessed*100, digits=2)
+cutResults_Percentage$BasePairsWritten=round(cutResults$BasePairsWritten/cutResults$BasePairsProcessed*100, digits=2)
 kable(cutResults_Percentage)
+
 ```
 <br>
 
@@ -332,8 +354,8 @@ cat("python ./workflow/scripts/reformat_summary_for_r.py blca.output tax.table  
 
 A phyloseq object was built with this information, and can be found here:
 
-```{r, echo=F}
-cat("./results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/phyloseq_object.rds", sep="")
+```{r, echo=F, results='asis'}
+cat("./results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/phyloseq_object.rds\n", sep="")
 ```
 
 
@@ -406,19 +428,19 @@ In addition, if there was a control sample which was labelled in the original sa
 
 The final tables can be found at:
 
-```{r, echo=F}
-cat("results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurrence_table.csv", sep="")
-cat("results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/DNA_extension_table.csv", sep="")
+```{r, echo=F, results='asis'}
+cat("results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurrence_table.csv  \n", sep="")
+cat("results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/DNA_extension_table.csv  \n  \n", sep="")
 
 ```
 From this analysis run there were
 
-```{r, echo=F}
+```{r, echo=F, results='asis'}
 occ_path=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurence_table.csv")
 occ_table=read.table(occ_path, header=TRUE, sep="\t")
 
-cat("The total number of occurrences was", nrow(occ_table))
-cat("Of which", sum(occ_table$scientificName!="Biota"), "were known, and therefore", sum(occ_table$scientificName=="Biota"), "or", sum(occ_table$scientificName=="Biota")/nrow(occ_table)*100, "% remained unknown. The sequences of these occurrences can nevertheless be added to the database, and it is possible that their taxonomy will be defined when reference databases develop.")
+cat("The total number of occurrences was", nrow(occ_table), ".  \n")
+cat("Of which", sum(occ_table$scientificName!="Biota"), "were known, and therefore", sum(occ_table$scientificName=="Biota"), "or", sum(occ_table$scientificName=="Biota")/nrow(occ_table)*100, "% remained unknown.  \n  \nThe sequences of these occurrences can nevertheless be added to the database, and it is possible that their taxonomy will be defined when reference databases develop.  \n  \n")
 
 notinworms_path=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Taxa_not_in_worms.csv")
 notinworms_table=read.table(notinworms_path, header=TRUE, sep="\t")
