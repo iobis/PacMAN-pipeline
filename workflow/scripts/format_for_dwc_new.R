@@ -26,7 +26,7 @@ outpath <- args[1]
 tax_file <- read.csv(args[3], sep = "\t", header = T, row.names = 1)
 otu_file <- read.csv(args[2], sep = "\t", header = T, row.names = 1)
 #Rep_seqs=Biostrings::readDNAStringSet(args[4])
-sample_file <- read.csv(args[4], sep = ";", row.names = 1)
+sample_file <- read.csv(args[4], sep = ";",header=T, row.names = 1)
 
 
 #Add checks!
@@ -99,11 +99,19 @@ if ("absent" %in% sample_data$occurrenceStatus) {
 
 #Here add the total read counts in each sample to the sample_data table:
 #Here we should add a check that the samples are in the right order:
+if ("absent" %in% sample_data$occurrenceStatus) {
 sample_data(phydata_no_control)$SampleSizeValue <- sample_sums(phydata)
 sample_data(phydata_no_control)$OrganismQuantityType <- "DNA Sequence reads"
 sample_data(phydata_no_control)$sameSizeUnit <- "DNA Sequence reads"
-
 phydf <- psmelt(phydata_no_control)
+} else {
+  sample_data(phydata)$SampleSizeValue <- sample_sums(phydata)
+  sample_data(phydata)$OrganismQuantityType <- "DNA Sequence reads"
+  sample_data(phydata)$sameSizeUnit <- "DNA Sequence reads"
+  phydf <- psmelt(phydata)  
+}
+
+
 phydf$occurrenceID <- paste(phydf$OTU, phydf$Sample, sep = "_")
 
 
@@ -147,7 +155,7 @@ spec_dna <- "https://rs.gbif.org/extension/gbif/1.0/dna_derived_data_2021-07-05.
 DNA_extension_fields <- get_dwc_fields(spec_dna)
 
 occurrence_table <- phydf_present[,colnames(phydf_present) %in% occurrence_table_fields]
-DNA_derived_data_extension <- phydf_present[,colnames(phydf_present) %in% DNA_extension_fields]
+DNA_derived_data_extension <- phydf_present[,colnames(phydf_present) %in% c('occurrenceID', DNA_extension_fields)]
 
 write.table(occurrence_table, paste0(outpath, "Occurence_table.csv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 write.table(DNA_derived_data_extension, paste0(outpath, "DNA_extension_table.csv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
