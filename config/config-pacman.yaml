@@ -105,6 +105,7 @@ DADA2:
     priors: NULL
 
   mergePairs:
+    include: TRUE
     minOverlap: 12
     maxMismatch: 0
     returnRejects: FALSE
