@@ -6,6 +6,7 @@ library(worrms)
 library(stringr)
 library(Biostrings)
 library(dplyr)
+library(tidyr)
 
 args <- commandArgs(trailingOnly = T)
 
@@ -20,9 +21,12 @@ rep_seqs <- Biostrings::readDNAStringSet(args[3])
 
 message("1. Modify tax table for taxonomic ranks, and find all possible worms ids (using worrms package)")
 
-# Move names to the appropriate columns
+# Move names to the appropriate columns if using the MIDORI database
+
+if (grepl('MIDORI_UNIQ', args[2], fixed = TRUE, ignore.case=TRUE)) {
 
 taxonomies <- str_split(tax_file$sum.taxonomy, ";")
+
 
 clean_taxonomy <- function(taxa) {
   taxa <- taxa[taxa != "" & taxa != "NA"]
@@ -38,6 +42,13 @@ cleaned <- lapply(taxonomies, clean_taxonomy)
 taxmat <- as.data.frame(bind_rows(cleaned))
 row.names(taxmat) <- tax_file$rowname
 
+} else {
+
+taxmat=separate(tax_file, 'sum.taxonomy', into=c("kingdom","phylum","class","order","family","genus","species"), sep=";")
+rownames(taxmat)=taxmat$rowname
+taxmat = subset(taxmat, select = -c(rowname))
+
+}
 # Collect the highest known taxonomic value to the last column
 
 taxmat$lastvalue <- as.matrix(taxmat)[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "last"))]
@@ -112,5 +123,5 @@ taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 write.table(not_in_worms, paste0(outpath, "Taxa_not_in_worms.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
 
 # Write tax table
-
+#taxmat <- apply(taxmat,2,as.character)
 write.table(taxmat, paste0(outpath, "Full_tax_table_with_lsids.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
