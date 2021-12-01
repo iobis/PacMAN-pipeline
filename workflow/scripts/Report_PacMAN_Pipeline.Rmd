@@ -182,7 +182,7 @@ rownames(cutResults)[i]=sample_ids[i]
 
 kable(cutResults)
 
-cutResults_Percentage=round(cutResults[,c(2:3)]/cutResults$TotalReadPairsProcessed*100, digits=2)
+cutResults_Percentage=round(cutResults[,c("ReadwithPrimer","ReadsWritten")]/cutResults$TotalReadPairsProcessed*100, digits=2)
 cutResults_Percentage$BasePairsWritten=round(cutResults$BasePairsWritten/cutResults$BasePairsProcessed*100, digits=2)
 kable(cutResults_Percentage)
 ```
@@ -216,7 +216,7 @@ rownames(cutResults)[i]=sample_ids[i]
 
 kable(cutResults)
 
-cutResults_Percentage=round(cutResults[,c(2:3)]/cutResults$TotalReadPairsProcessed*100, digits=2)
+cutResults_Percentage=round(cutResults[,c("ReadwithPrimer","ReadsWritten")]/cutResults$TotalReadPairsProcessed*100, digits=2)
 cutResults_Percentage$BasePairsWritten=round(cutResults$BasePairsWritten/cutResults$BasePairsProcessed*100, digits=2)
 kable(cutResults_Percentage)
 
