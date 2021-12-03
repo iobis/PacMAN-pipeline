@@ -6,60 +6,19 @@
 # modified by Saara Suominen on the 15.6.2021
 
 #input=snakemake@input[[1]] Not working with the shell command, files are read as {input}
-
+library(yaml)
 library(dada2)
 library(Biostrings)
 library(ggplot2)
 
+
 args <- commandArgs(trailingOnly = T)
-
-# Add all arguments for dada2 parameters from configfile!
-#args[1]... = outpath for dada2 files (project/run/dada2/)
-#learnERRORS:
-multithread <-     as.logical(args[2])
-nbases <-          as.numeric(args[3])
-randomize <-       as.logical(args[4])
-MAX_CONSIST <-     as.numeric(args[5])
-OMEGA_C <-         as.numeric(args[6])
-verbose <-         as.logical(args[7])
-# PlotERRORS
-obs <-             as.logical(args[10])
-err_out <-         as.logical(args[11])
-err_in <-          as.logical(args[12])
-nominalQ <-        as.logical(args[13])
-#derepFastq
-n <-               as.numeric(args[14])
-#dada
-selfConsist <-     as.logical(args[15])
-pool <-            as.logical(args[16])
-priors <-          if (args[17] == "None") "" else args[17]
-mergePairs <-      as.logical(args[18])
-minOverlap <-      as.numeric(args[19])
-maxMismatch <-     as.numeric(args[20])
-returnRejects <-   as.logical(args[21])
-propagateCol <-    if (args[22] == "None") "" else args[22]
-justConcatenate <- as.logical(args[23])
-trimOverhang <-    as.logical(args[24])
-#removeBimeraDenovo
-method <-          args[25]
-#args[25:n]...= input.files}
-
-# The parameters nti/ntj, need the chosen nucleotides in a vector format:
-nti <- strsplit(args[8], "")[[1]]
-if (length(nti) == 0) {
-  message("Default value given to nti, all nucleotide transitions will be shown in the error plot")
-  nti <- c("A", "C", "G", "T")
-}
-
-ntj <- strsplit(args[9], "")[[1]]
-if (length(nti) == 0) {
-  message("Default value given to ntj, all nucleotide transitions will be shown in the error plot")
-  ntj <- c("A", "C", "G", "T")
-}
+#print(args)
+config=read_yaml(args[2])
 
 # Set the different paths for all the supplied libraries
 #NOTICE: only forward files given as input
-filtFs <- args[26:length(args)]
+filtFs <- args[3:length(args)]
 #print(filtFs)
 filtRs <- gsub("_1P", "_2P", filtFs)
 #print(filtRs)
@@ -67,69 +26,95 @@ filtRs <- gsub("_1P", "_2P", filtFs)
 outpath <- args[1]
 #print(outpath)
 
-#List files
-#filtFs <- sort(list.files(paths, pattern="_1P.fastq.gz", full.names = TRUE))
-#filtRs <- sort(list.files(paths, pattern="_2P.fastq.gz", full.names = TRUE))
-#filtFs <- gsub("//", "/", filtFs)
-#filtRs <- gsub("//", "/", filtRs)
-
-
 # Get sample names
 sample.names <- gsub("_1P.fastq.gz", "", basename(filtFs))
 message(paste0("Sample ", sample.names, " will be analyzed", collapse = "\n"))
-
-#print(args[1:26])
 
 # assign names to files
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
 
-# learn error rates
-errF <- learnErrors(filtFs, multithread = multithread, nbases = nbases, randomize = randomize,
-  MAX_CONSIST = MAX_CONSIST, OMEGA_C = OMEGA_C, verbose = verbose)
-errR <- learnErrors(filtRs, multithread = multithread, nbases = nbases, randomize = randomize,
-  MAX_CONSIST = MAX_CONSIST, OMEGA_C = OMEGA_C, verbose = verbose)
+print("learning error rates")
+errF <- learnErrors(filtFs, multithread = config$DADA2$learnERRORS$multithread,
+  nbases = as.numeric(config$DADA2$learnERRORS$nbases), randomize = config$DADA2$learnERRORS$randomize,
+  MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST), OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
+  verbose = config$DADA2$learnERRORS$verbose)
+
+errR <- learnErrors(filtFs, multithread = config$DADA2$learnERRORS$multithread,
+  nbases = as.numeric(config$DADA2$learnERRORS$nbases), randomize = config$DADA2$learnERRORS$randomize,
+  MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST), OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
+  verbose = config$DADA2$learnERRORS$verbose)
 
 # Plot estimated erros as a sanity check:
+
+# The parameters nti/ntj, need the chosen nucleotides in a vector format:
+nti <- strsplit(config$DADA2$plotERRORS$nti, "")[[1]]
+if (length(nti) == 0) {
+  message("Default value given to nti, all nucleotide transitions will be shown in the error plot")
+  nti <- c("A", "C", "G", "T")
+}
+
+ntj <- strsplit(config$DADA2$plotERRORS$ntj, "")[[1]]
+if (length(nti) == 0) {
+  message("Default value given to ntj, all nucleotide transitions will be shown in the error plot")
+  ntj <- c("A", "C", "G", "T")
+}
+
+print("Making error estimation plots")
 png(filename = paste0(outpath, "06-report/dada2/error_profile_forward.png"))
-plotErrors(errF, nti = nti, ntj = ntj, obs = obs, err_out = err_out,
-  err_in = err_in, nominalQ = nominalQ)
+plotErrors(errF, nti = nti, ntj = ntj,
+  obs = config$DADA2$plotERRORS$obs, err_out = config$DADA2$plotERRORS$err_out,
+  err_in = config$DADA2$plotERRORS$err_in, nominalQ = config$DADA2$plotERRORS$nominalQ)
 dev.off()
 
 png(filename = paste0(outpath, "06-report/dada2/error_profile_reverse.png"))
-plotErrors(errR, nti = nti, ntj = ntj, obs = obs, err_out = err_out,
-  err_in = err_in, nominalQ = nominalQ)
+plotErrors(errR, nti = nti, ntj = ntj,
+  obs = config$DADA2$plotERRORS$obs, err_out = config$DADA2$plotERRORS$err_out,
+  err_in = config$DADA2$plotERRORS$err_in, nominalQ = config$DADA2$plotERRORS$nominalQ)
 dev.off()
 
-derepFs <- derepFastq(filtFs, n = n, verbose = verbose)
-derepRs <- derepFastq(filtRs, n = n, verbose = verbose)
+message("Running dereplication")
+derepFs <- derepFastq(filtFs, n = as.numeric(config$DADA2$derepFastq$num), config$DADA2$learnERRORS$verbose)
+derepRs <- derepFastq(filtRs, n = as.numeric(config$DADA2$derepFastq$num), config$DADA2$learnERRORS$verbose)
 
-dadaFs <- dada(derepFs, err = errF, selfConsist = selfConsist, pool = pool, priors = priors,
-  multithread = multithread, verbose = verbose)
-dadaRs <- dada(derepRs, err = errR, selfConsist = selfConsist, pool = pool, priors = priors,
-  multithread = multithread, verbose = verbose)
+message("Running dada")
+dadaFs <- dada(derepFs, errF, selfConsist = config$DADA2$dada$selfConsist, pool = config$DADA2$dada$pool,
+  priors = config$DADA2$dada$priors, multithread = config$DADA2$learnERRORS$multithread,
+  verbose = config$DADA2$learnERRORS$verbose)
+dadaRs <- dada(derepRs, errR, selfConsist = config$DADA2$dada$selfConsist, pool = config$DADA2$dada$pool,
+  priors = config$DADA2$dada$priors, multithread = config$DADA2$learnERRORS$multithread,
+  verbose = config$DADA2$learnERRORS$verbose)
+print(names(dadaFs)); print(names(dadaRs))
 
-if (mergePairs) {
-
+message("attempting merge")
+if (config$meta$sequencing$lib_layout=="Paired"|config$meta$sequencing$lib_layout=="paired"|config$meta$sequencing$lib_layout=="PAIRED") {
+message("merging pairs")
 mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs,
-  minOverlap = minOverlap, maxMismatch = maxMismatch, returnRejects = returnRejects,
-  propagateCol = propagateCol, justConcatenate = justConcatenate, trimOverhang = trimOverhang, verbose = verbose)
+  minOverlap = as.numeric(config$DADA2$mergePairs$minOverlap), maxMismatch = as.numeric(config$DADA2$mergePairs$maxMismatch),
+  returnRejects = config$DADA2$mergePairs$returnRejects, propagateCol = config$DADA2$mergePairs$propagateCol,
+  justConcatenate = config$DADA2$mergePairs$justConcatenate, trimOverhang = config$DADA2$mergePairs$trimOverhang,
+  verbose = config$DADA2$learnERRORS$verbose)
 
 seqtab <- makeSequenceTable(mergers)
 
 } else {
-
-seqtab <- makeSequenceTable(dadaFs)
-
+message("no merging")
+seqtab1 <- makeSequenceTable(dadaFs)
+seqtab2 <- makeSequenceTable(dadaRs)
+seqtab <- cbind(seqtab1, seqtab2)
 }
 
-seqtab.nochim <- removeBimeraDenovo(seqtab, method = method, multithread = multithread, verbose = verbose)
+message("removing chimeras")
+seqtab.nochim <- removeBimeraDenovo(seqtab, method = config$DADA2$removeBimeraDenovo$method,
+  multithread = config$DADA2$learnERRORS$multithread, verbose = config$DADA2$learnERRORS$verbose)
 
+print(dim(seqtab.nochim))
 # ASVs denominated by the actual sequence, we want to simplify the names.
 new.names <- c(paste("asv.", 1:length(colnames(seqtab.nochim)), sep = ""))
 message(head(new.names))
 
 # Save fasta, before changing names in the seqtab table
+message("Making fasta table")
 uniquesToFasta(seqtab.nochim, fout = paste0(outpath, "03-dada2/rep-seqs.fna"), ids = new.names)
 
 # Finally, change names in otu table
@@ -146,7 +131,7 @@ getN <- function(x) sum(getUniques(x))
 #track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim!=0))
 #colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim","ASVs")
 #rownames(track) <- sample.names
-if (mergePairs) {
+if (config$meta$sequencing$lib_layout=="Paired"|config$meta$sequencing$lib_layout=="paired"|config$meta$sequencing$lib_layout=="PAIRED") {
 track <- cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
 colnames(track) <- c("denoisedF", "denoisedR", "merged", "nonchim", "ASVs")
 } else {

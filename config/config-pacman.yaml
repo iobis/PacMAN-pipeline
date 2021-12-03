@@ -71,7 +71,7 @@ DADA2:
     id.field: NULL
     compress: TRUE
     multithread: TRUE
-    n: 100000
+    num: 100000
     OMP: TRUE
     verbose: FALSE
 
@@ -96,13 +96,13 @@ DADA2:
     nominalQ: TRUE
 
   derepFastq:
-    n: 1e6
+    num: 1e6
 
   dada:
     errorEstimationFunction: loessErrfun
     selfConsist: FALSE
     pool: FALSE
-    priors: NULL
+    priors: ""
 
   mergePairs:
     include: TRUE

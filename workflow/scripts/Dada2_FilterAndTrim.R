@@ -6,67 +6,26 @@
 # modified by Saara Suominen on the 15.6.2021
 
 #input=snakemake@input[[1]] Not working with the shell command, files are read as {input}
-
+library(yaml)
 library(dada2)
 #library(Biostrings)
 library(ggplot2)
 
 args <- commandArgs(trailingOnly = TRUE)
-
 #Add all arguments for dada2 parameters from configfile!
-#args[1]... = outpath for dada2 files (project/run/dada2/)
-truncLen_F <-    as.numeric(args[2])
-truncLen_R <-    as.numeric(args[3])
-truncQ <-        as.numeric(args[4])
-trimRight <-     as.numeric(args[5])
-trimLeft <-      as.numeric(args[6])
-maxLen <-        as.numeric(args[7])
-minLen <-        as.numeric(args[8])
-maxN <-          as.numeric(args[9])
-minQ <-          as.numeric(args[10])
-maxEE <-         as.numeric(args[11])
-rm.phix <-       as.logical(args[12])
-orient.fwd <-    if (args[13] == "None") NULL else args[13]
-matchIDs <-      as.logical(args[14])
-id.sep <-        args[15]
-id.field <-      if (args[16] == "None") NULL else args[16]
-compress <-      as.logical(args[17])
-#args[18]...= multithread]} \
-n <-             as.numeric(args[19])
-OMP <-           as.logical(args[20])
-verbose <-       as.logical(args[21])
-#args[22:n]...= input.files}
-
-#Multithread can either be logical or a numeric: probably will be False and True..
-if (args[18] == "FALSE" | args[18] == "TRUE" | args[18] == "T" | args[18] == "F" | args[18] == "False" | args[18] == "True") {
-  multithread <- as.logical(args[18])
-} else {
-  multithread <- as.numeric(args[18])
-}
-
-#print(args[1:22])
+config=read_yaml(args[2])
 
 #Set the different paths for all the supplied libraries
-paths <- args[22:length(args)]
+paths <- args[3:length(args)]
 #print(paths)
 
 outpath <- args[1]
 #print(outpath)
 
-#List files
-#filesForw <- sort(list.files(paths, pattern="_1P.fastq.gz", full.names = TRUE))
-#filesRev <- sort(list.files(paths, pattern="_2P.fastq.gz", full.names = TRUE))
-#filesForw <- gsub("//", "/", filesForw)
-#filesRev <- gsub("//", "/", filesRev)
-#print(filesForw)
-#print(filesRev)
-
 #Set the different paths for all the supplied libraries
 #NOTICE: only forward files given as input
 filesForw <- paths
-#print(filtFs)
 filesRev <- gsub("_1P", "_2P", filesForw)
-#print(filtRs)
 
 #Get sample names
 sample.names <- gsub("_1P.fastq.gz", "", basename(filesForw))
@@ -126,15 +85,18 @@ names(filtFs) <- sample.names
 names(filtRs) <- sample.names
 
 out <- filterAndTrim(filesForw, filtFs, filesRev, filtRs,
-  truncLen = c(truncLen_F,truncLen_R),truncQ=truncQ,
-  trimRight = trimRight, trimLeft = trimLeft,
-  maxLen = maxLen, minLen = minLen,
-  maxN = maxN, minQ = minQ, maxEE = maxEE,
-  rm.phix = rm.phix, orient.fwd = orient.fwd,
-  matchIDs = matchIDs, id.sep = id.sep, id.field = id.field,
-  compress = compress, multithread = multithread,
-  n = n, OMP = OMP,
-  verbose = verbose
+  truncLen = c(config$DADA2$filterAndTrim$Trunc_len_f,config$DADA2$filterAndTrim$Trunc_len_r),
+  truncQ=config$DADA2$filterAndTrim$TruncQ,
+  trimRight = config$DADA2$filterAndTrim$Trim_right, trimLeft = config$DADA2$filterAndTrim$Trim_left,
+  maxLen = config$DADA2$filterAndTrim$maxLen, minLen = config$DADA2$filterAndTrim$minLen,
+  maxN = config$DADA2$filterAndTrim$maxN, minQ = config$DADA2$filterAndTrim$minQ,
+  maxEE = config$DADA2$filterAndTrim$MaxEE,
+  rm.phix = config$DADA2$filterAndTrim$Rm.phix, orient.fwd = config$DADA2$filterAndTrim$orient.fwd,
+  matchIDs = config$DADA2$filterAndTrim$matchIDs, id.sep = config$DADA2$filterAndTrim$id.sep,
+  id.field = config$DADA2$filterAndTrim$id.field,
+  compress = config$DADA2$filterAndTrim$compress, multithread = config$DADA2$filterAndTrim$multithread,
+  n = config$DADA2$filterAndTrim$num, OMP = config$DADA2$filterAndTrim$OMP,
+  verbose = config$DADA2$filterAndTrim$verbose
 )
 
 #Write out to save the effect of filtering on the reads:
