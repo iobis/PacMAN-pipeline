@@ -104,6 +104,9 @@ DADA2:
     pool: FALSE
     priors: ""
 
+#In case the reads are not overlapping, but paired, there are two choices.
+#1. Skip the merging with include: FALSE, ASV's will be inferred from the forw and reverse reads separately
+#2. jusConcatenate, concantenates the reads with a number of NNNNs in between. This may complicate the taxonomic assignment step. 
   mergePairs:
     include: TRUE
     minOverlap: 12

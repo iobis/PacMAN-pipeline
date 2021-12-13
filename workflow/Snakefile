@@ -1,7 +1,7 @@
 """
 Pacman-pipeline
 Authors: Saara Suominen,
-Last update: 24/06/2021
+Last update: 03/12/2021
 """
 import pandas as pd
 import sys
@@ -217,7 +217,7 @@ rule cutadapt_unpaired:
         -a {config[cutadapt][rc_reverse_primer]} \
         -o {output.o1} \
         {input.u1} \
-        {config[cutadapt][se_extra_params]} \
+        --minimum-length 1 {config[cutadapt][se_extra_params]} \
         1> {log.f1}; \
         cutadapt \
         -g {config[cutadapt][reverse_primer]} \
@@ -233,7 +233,7 @@ rule cutadapt_unpaired:
 
 # RULES: ASV INFERENCE WITH DADA2----------------------------------------------------------------
 
-#In this section we run the dada2 pipeline
+#In this section we run the dada2 pipeline, both paired and single reads are analysed and added to the final tables.
 
 if config["meta"]["sequencing"]["lib_layout"] == "Paired":
     rule dada2_filter:
@@ -252,7 +252,7 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
         conda:
             "envs/dada2.yaml"
         shell:
-            "Rscript ./workflow/scripts/Dada2_FilterAndTrim.R \
+            "Rscript ./workflow/scripts/Dada2_FilterAndTrim_combined.R \
             results/{config[PROJECT]}/runs/{config[RUN]}/ \
             "+config_path+" \
             {input.f1}"
@@ -274,7 +274,7 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
         conda:
             "envs/dada2.yaml"
         shell:
-            "Rscript ./workflow/scripts/Dada2_ASVInference.R \
+            "Rscript ./workflow/scripts/Dada2_ASVInference_Single.R \
             results/{config[PROJECT]}/runs/{config[RUN]}/ \
             "+config_path+" \
             {input.FiltF}"

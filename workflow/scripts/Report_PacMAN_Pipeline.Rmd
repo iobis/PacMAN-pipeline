@@ -256,7 +256,7 @@ The quality profile of all analysed paired reads before trimming (Forward reads 
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
 
-knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_reverse.png")))
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesForw.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesRev.png")))
 
 ```
 <br><br>
@@ -264,7 +264,18 @@ And after trimming it was:
 <br><br>
 ```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
 
-knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filtered_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filtered_reverse.png")))
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png")))
+
+```
+
+In case unpaired reads were kept after trimming and primer removal, quality profiles for unpaired reads can also be found in:
+
+```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
+
+message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesForw_single.png"))
+message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesRev_single.png"))
+message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filtered_unpaired_forward.png"))
+message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_fitlered_unpaired_reverse.png"))
 
 ```
 
@@ -272,7 +283,7 @@ knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", con
 
 The following step of the dada2 pipeline was define the ASVs from these trimmed reads.
 <br>
-First error rates were learned for both forward and reverse reads separately with the following command:
+First error rates were learned for both forward and reverse paired reads separately as well as any unpaired remaining reads which survived filtering, with the following command:
 
 ```{r, echo=F}
 cat("learnErrors(filtFs, multithread = ",config$DADA2$learnERRORS$multithread,", nbases = ",config$DADA2$learnERRORS$nbases,", randomize = ",config$DADA2$learnERRORS$randomize,",MAX_CONSIST = ",config$DADA2$learnERRORS$MAX_CONSIST,", OMEGA_C = ",config$DADA2$learnERRORS$OMEGA_C,", verbose = ",config$DADA2$learnERRORS$verbose,")", sep="")
@@ -299,7 +310,7 @@ cat("dada(derepFs, err = errF, selfConsist = ",config$DADA2$dada$selfConsist,", 
   multithread = ",config$DADA2$learnERRORS$multithread,")", sep="")
 ```
 
-Sequence pairs were combined using:
+In case reads were overlapping (include merge in the config file), sequence pairs were combined using:
 
 ```{r, echo=F}
 cat("mergePairs(dadaFs, derepFs, dadaRs, derepRs,
@@ -307,6 +318,10 @@ cat("mergePairs(dadaFs, derepFs, dadaRs, derepRs,
   propagateCol = ",config$DADA2$mergePairs$propagateCol,", justConcatenate = ",config$DADA2$mergePairs$justConcatenate,", trimOverhang = ",config$DADA2$mergePairs$trimOverhang,")", sep="")
 
 ```
+If returnRejects was selected, also the returned unpaired sequences were kept in the final tables.
+Otherwise, the dereplicated sequences were kept without merging.
+Also any sequences unpaired forward or reverse sequences were added to the sequence tables at this stage.
+All single reverse sequences (unpaired either in trimmomatic or here, or if pairs were not merged), were reverse complemented for the bowtie2 algorithm.
 
 And finally, chimeras were removed with:
 
