@@ -40,7 +40,7 @@ errF <- learnErrors(filtFs, multithread = config$DADA2$learnERRORS$multithread,
   MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST), OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
   verbose = config$DADA2$learnERRORS$verbose)
 
-errR <- learnErrors(filtFs, multithread = config$DADA2$learnERRORS$multithread,
+errR <- learnErrors(filtRs, multithread = config$DADA2$learnERRORS$multithread,
   nbases = as.numeric(config$DADA2$learnERRORS$nbases), randomize = config$DADA2$learnERRORS$randomize,
   MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST), OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
   verbose = config$DADA2$learnERRORS$verbose)
