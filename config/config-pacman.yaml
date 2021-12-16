@@ -71,7 +71,7 @@ DADA2:
     id.field: NULL
     compress: TRUE
     multithread: TRUE
-    n: 100000
+    num: 100000
     OMP: TRUE
     verbose: FALSE
 
@@ -96,14 +96,17 @@ DADA2:
     nominalQ: TRUE
 
   derepFastq:
-    n: 1e6
+    num: 1e6
 
   dada:
     errorEstimationFunction: loessErrfun
     selfConsist: FALSE
     pool: FALSE
-    priors: NULL
+    priors: ""
 
+#In case the reads are not overlapping, but paired, there are two choices.
+#1. Skip the merging with include: FALSE, ASV's will be inferred from the forw and reverse reads separately
+#2. jusConcatenate, concantenates the reads with a number of NNNNs in between. This may complicate the taxonomic assignment step. 
   mergePairs:
     include: TRUE
     minOverlap: 12

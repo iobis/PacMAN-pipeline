@@ -1,7 +1,7 @@
 """
 Pacman-pipeline
 Authors: Saara Suominen,
-Last update: 24/06/2021
+Last update: 03/12/2021
 """
 import pandas as pd
 import sys
@@ -217,7 +217,7 @@ rule cutadapt_unpaired:
         -a {config[cutadapt][rc_reverse_primer]} \
         -o {output.o1} \
         {input.u1} \
-        {config[cutadapt][se_extra_params]} \
+        --minimum-length 1 {config[cutadapt][se_extra_params]} \
         1> {log.f1}; \
         cutadapt \
         -g {config[cutadapt][reverse_primer]} \
@@ -233,96 +233,51 @@ rule cutadapt_unpaired:
 
 # RULES: ASV INFERENCE WITH DADA2----------------------------------------------------------------
 
-#In this section we run the dada2 pipeline
-#Should this be divided into a few separate parts? so that each part can be modified in the configfile if needed.
-#Be sure to record how many reads have passed the filters before this step! (should all be in the log files of the other steps, which still need to be saved)
-#Still need to add all the params to the configfile and to the script
+#In this section we run the dada2 pipeline, both paired and single reads are analysed and added to the final tables.
 
-rule dada2_filter:
-  input:
-    #files = expand("{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/", PROJECT=PROJECT, RUN=RUN, samples=samples),
-    f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
-                PROJECT=PROJECT, RUN=RUN, samples=samples),
-    #f2 = expand("{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz", PROJECT=PROJECT, RUN=RUN, samples=samples),
-  output:
-    FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
-                   PROJECT=PROJECT, RUN=RUN, samples=samples),
-    FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
-                   PROJECT=PROJECT, RUN=RUN, samples=samples),
-    #directory(expand("{PROJECT}/runs/{RUN}/dada2/filtered/{samples}/"), PROJECT=PROJECT, RUN=RUN, samples=samples),
-    #stats="{PROJECT}/runs/{RUN}/dada2/dada2_filtering_stats.txt",
-  conda:
-    "envs/dada2.yaml"
-  shell:
-    "Rscript ./workflow/scripts/Dada2_FilterAndTrim.R \
-    results/{config[PROJECT]}/runs/{config[RUN]}/ \
-    {config[DADA2][filterAndTrim][Trunc_len_f]} \
-    {config[DADA2][filterAndTrim][Trunc_len_r]} \
-    {config[DADA2][filterAndTrim][TruncQ]} \
-    {config[DADA2][filterAndTrim][Trim_right]} \
-    {config[DADA2][filterAndTrim][Trim_left]} \
-    {config[DADA2][filterAndTrim][maxLen]} \
-    {config[DADA2][filterAndTrim][minLen]} \
-    {config[DADA2][filterAndTrim][maxN]} \
-    {config[DADA2][filterAndTrim][minQ]} \
-    {config[DADA2][filterAndTrim][MaxEE]} \
-    {config[DADA2][filterAndTrim][Rm.phix]} \
-    {config[DADA2][filterAndTrim][orient.fwd]} \
-    {config[DADA2][filterAndTrim][matchIDs]} \
-    {config[DADA2][filterAndTrim][id.sep]} \
-    {config[DADA2][filterAndTrim][id.field]} \
-    {config[DADA2][filterAndTrim][compress]} \
-    {config[DADA2][filterAndTrim][multithread]} \
-    {config[DADA2][filterAndTrim][n]} \
-    {config[DADA2][filterAndTrim][OMP]} \
-    {config[DADA2][filterAndTrim][verbose]} \
-    {input.f1}"
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+    rule dada2_filter:
+        input:
+            #files = expand("{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/", PROJECT=PROJECT, RUN=RUN, samples=samples),
+            f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
+                        PROJECT=PROJECT, RUN=RUN, samples=samples),
+            #f2 = expand("{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz", PROJECT=PROJECT, RUN=RUN, samples=samples),
+        output:
+            FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
+                           PROJECT=PROJECT, RUN=RUN, samples=samples),
+            FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
+                           PROJECT=PROJECT, RUN=RUN, samples=samples),
+            #directory(expand("{PROJECT}/runs/{RUN}/dada2/filtered/{samples}/"), PROJECT=PROJECT, RUN=RUN, samples=samples),
+            #stats="{PROJECT}/runs/{RUN}/dada2/dada2_filtering_stats.txt",
+        conda:
+            "envs/dada2.yaml"
+        shell:
+            "Rscript ./workflow/scripts/Dada2_FilterAndTrim_combined.R \
+            results/{config[PROJECT]}/runs/{config[RUN]}/ \
+            "+config_path+" \
+            {input.f1}"
 
-
-rule dada2_ASV:
-  input:
-    FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
-                   PROJECT=PROJECT, RUN=RUN, samples=samples),
-    FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
-                   PROJECT=PROJECT, RUN=RUN, samples=samples),
-  output:
-    #o1 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN),
-    #o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN),
-    #o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
-    o2 = "results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt",
-    o3 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
-  log:
-    o1 = "results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt",
-  conda:
-    "envs/dada2.yaml"
-  shell:
-    "Rscript ./workflow/scripts/Dada2_ASVInference.R \
-    results/{config[PROJECT]}/runs/{config[RUN]}/ \
-    {config[DADA2][learnERRORS][multithread]} \
-    {config[DADA2][learnERRORS][nbases]} \
-    {config[DADA2][learnERRORS][randomize]} \
-    {config[DADA2][learnERRORS][MAX_CONSIST]} \
-    {config[DADA2][learnERRORS][OMEGA_C]} \
-    {config[DADA2][learnERRORS][verbose]} \
-    {config[DADA2][plotERRORS][nti]} \
-    {config[DADA2][plotERRORS][ntj]} \
-    {config[DADA2][plotERRORS][obs]} \
-    {config[DADA2][plotERRORS][err_out]} \
-    {config[DADA2][plotERRORS][err_in]} \
-    {config[DADA2][plotERRORS][nominalQ]} \
-    {config[DADA2][derepFastq][n]} \
-    {config[DADA2][dada][selfConsist]} \
-    {config[DADA2][dada][pool]} \
-    {config[DADA2][dada][priors]} \
-    {config[DADA2][mergePairs][include]} \
-    {config[DADA2][mergePairs][minOverlap]} \
-    {config[DADA2][mergePairs][maxMismatch]} \
-    {config[DADA2][mergePairs][returnRejects]} \
-    {config[DADA2][mergePairs][propagateCol]} \
-    {config[DADA2][mergePairs][justConcatenate]} \
-    {config[DADA2][mergePairs][trimOverhang]} \
-    {config[DADA2][removeBimeraDenovo][method]} \
-    {input.FiltF}"
+    rule dada2_ASV:
+        input:
+            FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
+                           PROJECT=PROJECT, RUN=RUN, samples=samples),
+            FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
+                           PROJECT=PROJECT, RUN=RUN, samples=samples),
+        output:
+            #o1 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN),
+            #o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN),
+            #o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
+            o2 = "results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt",
+            o3 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
+        log:
+            o1 = "results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt",
+        conda:
+            "envs/dada2.yaml"
+        shell:
+            "Rscript ./workflow/scripts/Dada2_ASVInference_Single.R \
+            results/{config[PROJECT]}/runs/{config[RUN]}/ \
+            "+config_path+" \
+            {input.FiltF}"
 
 
 # RULES: TAXONOMIC ASSIGNMENT ----------------------------------------------------------------

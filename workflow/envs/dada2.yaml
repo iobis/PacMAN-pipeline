@@ -7,3 +7,5 @@ dependencies:
  - r-reshape2=1.4.4
  - bioconductor-dada2=1.18.0
  - r-ggplot2=3.3.3
+ - r-yaml=2.2.1
+ - r-dplyr=1.0.7
