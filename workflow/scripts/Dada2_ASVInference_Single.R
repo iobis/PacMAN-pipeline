@@ -152,29 +152,25 @@ seqtab <- makeSequenceTable(mergers)
   if (config$DADA2$mergePairs$returnRejects==TRUE){
     unmerged_f=list()
     unmerged_r=list()
+    concatenated=list()
     for (i in 1:length(sample.names)){
-      unmerged_f[[i]]=ldply(dadas[[1]][[sample.names[i]]]$denoised[mergers[[sample.names[i]]]$forward[!mergers[[sample.names[i]]]$accept]])
-      unmerged_r[[i]]=ldply(dadas[[2]][[sample.names[i]]]$denoised[mergers[[sample.names[i]]]$reverse[!mergers[[sample.names[i]]]$accept]])
+      unmerged_f[[i]]=dadas[[1]][[sample.names[i]]]$sequence[mergers[[sample.names[i]]]$forward[!mergers[[sample.names[i]]]$accept]]
+      unmerged_r[[i]]=dadas[[2]][[sample.names[i]]]$sequence[mergers[[sample.names[i]]]$reverse[!mergers[[sample.names[i]]]$accept]]
       #Here for the rejected reads (!merger$sample$accept) the indices are collected (merger$sample$forward, merger$sample$reverse)
       #The sequences are sourced from the original dada-file (dadaF$sample$denoised, dadaR$sample$denoised)
-      #Some of the sequences are tried for merging multiple times?
+      #It seems that concatenating these reads and keeping them for further analyses can result in better taxonomic coverage (Dacey et al. 2021 https://doi.org/10.1186/s12859-021-04410-2)
       #Abundances for these reads is taken from the merged abundances.
-      #Now the abundances are therefore 2x, anacapa concatenates the sequences for this table and separates them later again, but I am not sure about this.
-      colnames(unmerged_f[[i]])=c("sequence", "abundance")
-      unmerged_f[[i]]$abundance=mergers[[sample.names[i]]]$abundance[!mergers[[sample.names[i]]]$accept]/2
-      colnames(unmerged_r[[i]])=c("sequence", "abundance")
-      unmerged_r[[i]]$abundance=mergers[[sample.names[i]]]$abundance[!mergers[[sample.names[i]]]$accept]/2
+      #reverse complement reverse reads so that the following taxonomic assignment will work optimally.
+      unmerged_r[[i]]=sapply(sapply(sapply(unmerged_r[[i]], DNAString), reverseComplement), toString)
+      sequence=paste0(unmerged_f[[i]], unmerged_r[[i]])
+      abundance=mergers[[sample.names[i]]]$abundance[!mergers[[sample.names[i]]]$accept]
+      concatenated[[i]]=tibble(sequence, abundance)
     }
-    names(unmerged_f)=sample.names
-    names(unmerged_r)=sample.names
+    names(concatenated)=sample.names
+    #names(unmerged_r)=sample.names
 
-    #Combine forward and reverse sequences to one table
-    seqtab1 <- makeSequenceTable(unmerged_f)
-    seqtab2 <- makeSequenceTable(unmerged_r)
-
-    #reverse complement reverse reads so that the following taxonomic assignment will work optimally.
-    colnames(seqtab2)<- sapply(sapply(sapply(colnames(seqtab2), DNAString), reverseComplement), toString)
-    seqtab_unmerged <- cbind(seqtab1, seqtab2)
+    #Make sequence table
+    seqtab_unmerged <- makeSequenceTable(concatenated)
 
     #The merged returnrejects=T seqtab also contains a column with an empty header,
     #This is all rejected (non-merged) abundances combined.
