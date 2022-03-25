@@ -92,23 +92,19 @@ if ("absent" %in% sample_data$occurrenceStatus) {
   phydata_no_control <- prune_taxa(good_taxa, phydata)
 }
 
-#Note: ARMS data: asv.83 found in control data, unclassified, can be found with ncbi blast and bold searches as 100% pinna nobilis (an endangered species)
-#For some reason not in MIDORI?
-#Another choice would be to manually format the tables together in long format,
-#as I am only using the phyloseq package for very simple data manipulations
 
 #Here add the total read counts in each sample to the sample_data table:
 #Here we should add a check that the samples are in the right order:
 if ("absent" %in% sample_data$occurrenceStatus) {
-sample_data(phydata_no_control)$SampleSizeValue <- sample_sums(phydata)
-sample_data(phydata_no_control)$OrganismQuantityType <- "DNA Sequence reads"
-sample_data(phydata_no_control)$sameSizeUnit <- "DNA Sequence reads"
+sample_data(phydata_no_control)$sampleSizeValue <- sample_sums(phydata)
+sample_data(phydata_no_control)$organismQuantityType <- "DNA Sequence reads"
+sample_data(phydata_no_control)$sampleSizeUnit <- "DNA Sequence reads"
 phydf <- psmelt(phydata_no_control)
 } else {
-  sample_data(phydata)$SampleSizeValue <- sample_sums(phydata)
-  sample_data(phydata)$OrganismQuantityType <- "DNA Sequence reads"
-  sample_data(phydata)$sameSizeUnit <- "DNA Sequence reads"
-  phydf <- psmelt(phydata)  
+  sample_data(phydata)$sampleSizeValue <- sample_sums(phydata)
+  sample_data(phydata)$organismQuantityType <- "DNA Sequence reads"
+  sample_data(phydata)$sampleSizeUnit <- "DNA Sequence reads"
+  phydf <- psmelt(phydata)
 }
 
 

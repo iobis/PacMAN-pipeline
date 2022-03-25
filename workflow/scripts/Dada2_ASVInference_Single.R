@@ -77,13 +77,14 @@ if (any(file.exists(allfiles[[i]]))) {
 
   message("Making error estimation plots of reads")
   png(filename = paste0(outpath, "06-report/dada2/error_profile_", names(allfiles)[i], ".png"))
-      plotErrors(errs[[i]],
+      p_ERR=plotErrors(errs[[i]],
       nti = nti,
       ntj = ntj,
       obs = config$DADA2$plotERRORS$obs,
       err_out = config$DADA2$plotERRORS$err_out,
       err_in = config$DADA2$plotERRORS$err_in,
       nominalQ = config$DADA2$plotERRORS$nominalQ)
+      print(p_ERR)
   dev.off()
 
   message("Running dereplication of reads")

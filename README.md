@@ -1,7 +1,7 @@
 # PacMAN-pipeline
 ## Bioinformatics pipeline for the PacMAN project *UNDER DEVELOPMENT*
 
-This is the bioinformatics pipeline developed for the PacMAN (Pacific Islands Marine Bioinvasions Alert Network). This pipeline cleans and classifies sequences from eDNA samples. The PacMAN-pipeline is under development at the moment, and we expect to have a first version by the end of 2021. The steps in this pipeline are compiled from publicly available bioinformatic pipelines like [ANACAPA](https://github.com/limey-bean/Anacapa), [tourmaline](https://github.com/lukenoaa/tourmaline), [tagseq-qiime2-snakemake](https://github.com/shu251/tagseq-qiime2-snakemake), [pema](https://github.com/hariszaf/pema), [CASCABEL](https://github.com/AlejandroAb/CASCABEL) and [MBARI-BOG](https://github.com/MBARI-BOG/BOG-Banzai-Dada2-Pipeline). The pipeline is based on the snakemake workflow management system. At first, we will develop this pipeline only keeping in mind CO1 data, but we want to expand the process to other barcodes as well, so that in the future it could be used for OBIS datasets broadly.
+This is the bioinformatics pipeline developed for the PacMAN (Pacific Islands Marine Bioinvasions Alert Network). This pipeline cleans and classifies sequences from eDNA samples. The PacMAN-pipeline is under development at the moment, and we expect to have a first version by mid 2022. The steps in this pipeline are compiled from publicly available bioinformatic pipelines like [ANACAPA](https://github.com/limey-bean/Anacapa), [tourmaline](https://github.com/lukenoaa/tourmaline), [tagseq-qiime2-snakemake](https://github.com/shu251/tagseq-qiime2-snakemake), [pema](https://github.com/hariszaf/pema), [CASCABEL](https://github.com/AlejandroAb/CASCABEL) and [MBARI-BOG](https://github.com/MBARI-BOG/BOG-Banzai-Dada2-Pipeline). The pipeline is based on the snakemake workflow management system. At first, we will develop this pipeline only keeping in mind CO1 data, but we want to expand the process to other barcodes as well, so that in the future it could be used for OBIS datasets broadly.
 
 The initial pipeline has the following steps:
 
@@ -15,6 +15,8 @@ The initial pipeline has the following steps:
      - sequence alignment with a reference database
   5. **BLCA**
      - Bayesian-based last common ancestor inference
+  6. **BLAST**
+     - Blast search of remaining unknown sequences agains the NCBI nt database
   6. **Data formatting**
      - Export to DwC-A compatible tables
 
@@ -23,18 +25,16 @@ Steps that still need to be added to the pipeline:
   1. Data quality checkpoints for the scripts
   2. Automatic revese complement of primer sequences.
   3. Simplify use of default parameters for dada2?
-  4. ASV inference also from unpaired reads
-  4. Alternative taxonomic classification methods, and/or additional steps for unidentified sequences
-  5. Either make downstream formatting from taxonomic assignment more broad, or make separate downstream rules for other taxonomic classification methods.
+  4. Either make downstream formatting from taxonomic assignment more broad, or make separate downstream rules for other taxonomic classification methods.
 
 
 ## Preparation for the run:
 
 Install conda and snakemake.
 
-At the moment, the pipeline is planned to be run with the [--use-conda](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html#integrated-package-management) flag, where each rule has an isolated environment, that will be installed in the working directory using conda. Other possible ways to acquire all the dependencies should also be looked at (one env file for whole pipeline?).
+At the moment, the pipeline is planned to be run with the [--use-conda](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html#integrated-package-management) flag, where each rule has an isolated environment, that will be installed in the working directory using conda.
 
-**Note**: An interesting possibility for OBIS, would be to start building pipelines based on snakemake modules, to allow for more flexible development in the future? Similar to what is being done [here](https://github.com/EnvGen/snakemake-workflows).
+**Note**: A future possibility for OBIS, would be to start building pipelines based on snakemake modules, to allow for more flexible development. Similar to what is being done [here](https://github.com/EnvGen/snakemake-workflows).
 
 Before running the pipeline, the user must modify the files found in the config folder.
 
@@ -42,7 +42,7 @@ What is needed:
   1. The information on the provided sequence files connected to the sample names
      a. ***manifest_pe.csv***, contains the columns: sample-id, absolute filepath and direction (forward or reverse).
   2. The information on the samples and linked metadata.
-     a. Fill in ***sample_data_template.csv***: can contain all DwC-data that should be added to the occurrence table
+     a. Fill in ***sample_data_template.csv***: can contain all DwC-data that should be added to the occurrence and dna-derived data tables
      b. **Note!** control samples can be marked by adding occurrenceStatus as absent
      --> The ASVs from these samples will be removed from all samples, before the occurrence table is made
   3. Make sure you have the ***reference database*** of choice
@@ -137,31 +137,28 @@ In the next step the user can decide which cutoff will be used for the final tax
 
 The tax table returned by BLCA is then filtered based on this cutoff, and returned in the 04-taxonomy/identity_filtered/ folder
 
+### 5. Blast and lca (optional)
+
+There is an option in the pipeline to further classify sequences that remained unclassified with BLASTn against the full ncbi nt database. However multiple resources are required for this to work. We recommend having a local copy of the full NCBI nt database available to run this step with the pipeline. If you have in total <10kbp of data (50 unknown sequences of 200 bp), you may also run the query in remote mode. We may include a loop to do this with more data at a later stage, but running the analysis remotely for more sequences will require a lot of time.
+
+The user will need to also have access to NCBI-nt to TaxonID mapping files to get the scientific names of the sequences. The pipeline uses [BASTA](https://github.com/timkahlke/BASTA) to filter and classify the Blast results based on an lca analysis. If a tax database is not provided in the configfile, the pipeline will prompt BASTA to download the tax_db (gb) to the resources folder. This will also take a long time.
 
 ### 5. dwca
 
 In the final steps of the pipeline lsids are defined for the assigned taxonomic names, and the occurrence table and dna-derived data extension table are built for submitting into OBIS.
 
-Notes for improvement: now loops over all ASVs, but could be faster, if each unique name was only linked once to the lsid.
-
 This step also returns a table 05-dwca/Taxa_not_in_worms.csv, containing the taxonomic names and linked asvs that were not given an lsid. This table will require manual inspection, and possibly contacting the WoRMS team.
 
 In this step the unknown sequences are given the id for 'Biota'. Non-marine species (most taxa with no lsid), and asvs found in the control sample(s) are not added to the final dwca-tables. All of these can still be found in the table 05-dwca/Full_tax_table_with_lsids as well as the 05-dwca/phyloseq_object.rds, which can be read with the R-phyloseq package for further analysis and visualization.
 
-Note! With this strategy, sequences that are known but not marine, are not included in the occurrence tables, while sequences that are not known are always included (as 'Biota').
+**Note!** With this strategy, sequences that are known but not marine, are not included in the occurrence tables, while sequences that are not known are always included (as 'Biota').
 
-This section will require more work to align the tables in a flexible way to the data standard.
 Fields that also still need to be added/modified based on the genetic data guidelines are:
 
-  - OccurrenceID is now asvID_sampleID
-  - TaxonID to link to the records in the reference database
-  - IdentificationRemarks: The report of the analysis run?
-  - IdentificationReferences: Website of this pipeline?
-  - otu_class_appr: 	Cutoffs and approach used when clustering new UViGs in "species-level" OTUs.
-  - otu_seq_comp_appr:  Tool and thresholds used to compare sequences when computing "species-level" OTUs
+  - IdentificationRemarks: The report of the analysis run
+  - IdentificationReferences: Website of this pipeline
 
-All analysis steps will be explained in the report, will this be enough?
 
 ### 6. Reporting
 
-An html report is made in the final steps with the statistics of the full run, to give an overview of what was done during the analysis and what the effect was on the results. Still more analysis will be added to this report. 
+An html report is made in the final steps with the statistics of the full run, to give an overview of what was done during the analysis and what the effect was on the results. Still more analysis will be added to this report.

@@ -10,7 +10,7 @@ import sys
 #configfile: "./config/config-pacman_Saara.yaml"
 
 args = sys.argv
-config_path = args[args.index("--configfiles") + 1]
+config_path = args[args.index("--configfile") + 1]
 
 PROJECT = config["PROJECT"]
 RUN = config["RUN"]
@@ -69,6 +69,10 @@ rule all:
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
         expand("results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt",
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
+        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
+               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
+        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab",
+               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
         expand("results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.csv",
                PROJECT=PROJECT, RUN=RUN),
         expand("results/{PROJECT}/runs/{RUN}/06-report/report.html",
@@ -388,7 +392,6 @@ rule blca:
     -g {config[TAXONOMY][gap_penalty]} \
     -o {output.o1} "
 
-
 rule filter_taxa:
   input:
     f1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.out",
@@ -401,6 +404,77 @@ rule filter_taxa:
     {output.o1} \
     {output.o2} \
     {config[TAXONOMY][blca_identity_cutoff]}"
+
+
+#The remaining unknown sequences from blca are blasted against nt, so that all possible public information is checked.
+if config["BLAST"]["include"] == True:
+    rule blast_unknown:
+        input:
+            taxa = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.out",
+            filtered = "results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
+            fasta = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
+        output:
+            o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local_unknowns_cutoff{CUTOFF}.sam.blca.out",
+            o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_unclassified-seqs_cutoff{CUTOFF}.fna",
+            o3 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
+            #o2 = add information to the sam.blca.out table.
+        conda:
+            "envs/seqs.yaml",
+        shell:
+            "awk '/Unclassified/ {{print $1}}' {input.taxa} > {output.o1}; \
+            awk '/;;;;;;/ {{print $1}}' {input.filtered} | cat >> {output.o1}; \
+            sort -t . -k 2n -o {output.o1} {output.o1}; \
+            seqtk subseq {input.fasta} {output.o1}  > {output.o2}; \
+            blastn \
+            -query {output.o2} \
+            -out {output.o3} \
+            -outfmt 6 \
+            {config[BLAST][database]}"
+            # removed this as can be filtered later: -evalue 5e-13 \
+
+#Here we add those that were completely unclassified (no matches in the provided reference database),
+#As well as those that did not have a good match in the database (lower confidence tha the cutoff value at Kingdom)
+
+    if config["BLAST"]["tax_db"] != None:
+        rule lca_blast:
+            input:
+                blast_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
+            output:
+                basta_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab"
+            conda:
+                "envs/seqs.yaml"
+            shell:
+                "basta sequence \
+                -p {config[BLAST][portion_of_hits]} \
+                -i {config[BLAST][percent_identity]} \
+                -e {config[BLAST][e-value]} \
+                -n {config[BLAST][max_hits]} \
+                -m {config[BLAST][min_hits]} \
+                -d {config[BLAST][tax_db]} \
+                {input.blast_results} \
+                {output.basta_results} \
+                gb"
+    else:
+        rule lca_blast:
+            input:
+                blast_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
+            output:
+                basta_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab"
+            conda:
+                "envs/seqs.yaml"
+            shell:
+                "basta download gb -d ./resources/tax_db/; \
+                basta sequence \
+                -p {config[BLAST][portion_of_hits]} \
+                -i {config[BLAST][percent_identity]} \
+                -e {config[BLAST][e-value]} \
+                -n {config[BLAST][max_hits]} \
+                -m {config[BLAST][min_hits]} \
+                -d ./resources/tax_db/ \
+                {input.blast_results} \
+                {output.basta_results} \
+                gb"
+
 
 rule classified_taxa:
   #This rule is just to print a simple table where the amount of taxa that are classified in the previous step are recorded:
@@ -443,16 +517,20 @@ rule get_lsids:
     f1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
                 PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
     f2 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
+    f3 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab",
+                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
   output:
     o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Taxa_not_in_worms.csv",
     o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/Full_tax_table_with_lsids.csv"
   conda:
     "envs/worrms.yaml"
-  shell:
+  shell: #Add here if statement for the
     "Rscript ./workflow/scripts/get_lsids.R \
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
     {input.f1} \
-    {input.f2}"
+    {input.f2} \
+    {input.f3} \
+    {config[BLAST][database_date]}"
 
 rule make_dwca:
   input:

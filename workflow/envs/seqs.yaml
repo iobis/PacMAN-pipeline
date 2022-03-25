@@ -1,0 +1,8 @@
+channels:
+ - bioconda
+ - bnoon
+ - timkahlke
+dependencies:
+ - blast=2.12.0
+ - seqtk=1.3
+ - basta

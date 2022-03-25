@@ -135,8 +135,9 @@ cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-re
 text <- readLines(cut_report)
 rows <- grep("^===", text)
 report=text[c((rows[1]+2):(rows[2]-2))]
-sample = report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
-cutResults[i,]=sample[!is.na(sample)]
+sample = report %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+cutResults[i,]=sample[c(1,3,6,8,10,12,14,16,17,20,22)]
+#Collect only meaningful numbers (should always be in the same order for paired reads from cutadapt)
 rownames(cutResults)[i]=sample_ids[i]
 
 }
@@ -293,7 +294,7 @@ The forward and reverse error profiles were the following (in absolute numbers a
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
 
-knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_reverse.png")))
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_filtFs.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_filtRs.png")))
 
 ```
 

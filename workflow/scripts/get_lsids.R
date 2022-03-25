@@ -17,6 +17,12 @@ outpath <- args[1]
 tax_file <- read.csv(args[2], sep = "\t", header = T)
 rep_seqs <- Biostrings::readDNAStringSet(args[3])
 
+#If blast was performed on the unknown sequences:
+if (!is.na(args[4])) {
+  message("0. Results of Blast annotation read")
+  basta_file <- read.csv(args[4], sep = "\t", header = F)
+}
+
 ########################### 2. Modify tax table for taxonomic ranks, and find all possible worms ids (using worrms package) ######################################
 
 message("1. Modify tax table for taxonomic ranks, and find all possible worms ids (using worrms package)")
@@ -49,9 +55,40 @@ rownames(taxmat)=taxmat$rowname
 taxmat = subset(taxmat, select = -c(rowname))
 
 }
-# Collect the highest known taxonomic value to the last column
 
+# Collect the highest known taxonomic value to the last column
 taxmat$lastvalue <- as.matrix(taxmat)[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "last"))]
+
+#Add information on the classification approach
+taxmat$otu_seq_comp_appr <- "bowtie2;2.4.4;ANACAPA-blca;2021"
+
+#Get otu_db name from the input filename
+pattern <- "identity_filtered/\\s*(.*?)\\s*_blca_tax_table"
+result <- regmatches(args[2], regexec(pattern, args[2]))
+taxmat$otu_db <- result[[1]][2]
+
+
+
+#If Blast was performed on unknown sequences
+if (!is.na(args[4])) {
+  message("1.1 Adding Blast results to taxonomic table")
+  colnames(basta_file)=c("rowname", "sum.taxonomy")
+  taxmat2=separate(basta_file, 'sum.taxonomy', into=c("kingdom","phylum","class","order","family","genus","species"), sep=";")
+  taxmat2[taxmat2==""]<-NA
+  taxmat2$species=gsub("_", " ", taxmat2$species)
+  taxmat2$lastvalue <- as.matrix(taxmat2)[cbind(seq(1, nrow(taxmat2)), max.col(!is.na(taxmat2), "last"))]
+#Add also the fields that separate the otu assignment methods
+#Note: read these from the config file?
+  taxmat2$otu_seq_comp_appr<-"blastn;2.12.0"
+  taxmat2$otu_db<-paste0("NCBI-nt;", args[5])
+  rownames(taxmat2)=taxmat2$rowname
+  taxmat2 = subset(taxmat2, select = -c(rowname))
+#Combine this taxmat to the original one
+#At the moment the unknowns are there twice! So first remove duplicates before you combine them
+  taxmat=taxmat[!(rownames(taxmat)%in%rownames(taxmat2)),]
+  taxmat=rbind(taxmat, taxmat2)
+}
+
 
 # Because WORMS doesn't recognize Eukaryota, change those that have this in the lastvalue to Biota:
 
@@ -115,7 +152,6 @@ taxmat$lsid[is.na(taxmat$lsid)] <- "urn:lsid:marinespecies.org:taxname:1"
 taxmat$lastvalue[is.na(taxmat$lastvalue)] <- "Biota"
 
 #Add sequence to the tax_table slot (linked to each asv)
-
 taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 
 # Write table of unknown names to make manual inspection easier:
