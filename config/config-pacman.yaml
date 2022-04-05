@@ -1,16 +1,16 @@
 
 #Name of the project
-PROJECT: TRIAL2
+PROJECT: ARMS
 
 #Name of the analysis run
-RUN: ARMS_4_SAMPLES
+RUN: Blast_trials3
 
 #Metadata for the sequencing run:
 #Here values can be added that are shared across all samples (can also be added to the sample data csv file if wanted).
 #Values that differ between samples should be added to the sample_data_template.csv file!
 meta:
   sampling:
-    sample_data_file: config/sample_data_template_4samples.csv
+    sample_data_file: data/sample_data_template_4samples.csv
   sequencing:
     target_gene: COI
     subfragment: 5P
@@ -28,7 +28,7 @@ meta:
 #This needs to have three columns: sample-id,absolute-filepath,direction
 #Where absolute filepath points to each samples forward and reverse files separately
 #direction is either 'forward' or 'reverse'
-SAMPLE_SET: config/manifest_pe_4samples.csv
+SAMPLE_SET: data/manifest_pe_4samples.csv
 
 #TRIMMOMATIC
 trimmomatic:
@@ -75,7 +75,7 @@ DADA2:
     OMP: TRUE
     verbose: FALSE
 
-#DADA2 anaylysis part2 ######################
+#DADA2 analysis part2 ######################
 
   learnERRORS:
     multithread: TRUE
@@ -106,7 +106,7 @@ DADA2:
 
 #In case the reads are not overlapping, but paired, there are two choices.
 #1. Skip the merging with include: FALSE, ASV's will be inferred from the forw and reverse reads separately
-#2. jusConcatenate, concantenates the reads with a number of NNNNs in between. This may complicate the taxonomic assignment step. 
+#2. jusConcatenate, concantenates the reads with a number of NNNNs in between. This may complicate the taxonomic assignment step.
   mergePairs:
     include: TRUE
     minOverlap: 12
@@ -122,10 +122,11 @@ DADA2:
 #DATABASE
 DATABASE:
   #The location of the bowtie2 database must be with the basename of the index FILES
-  location_bowtie2: data/bowtie2_dbs/MIDORI_UNIQ_GB241_CO1/MIDORI_UNIQ_GB241_CO1
-  name: MIDORI_UNIQ_GB241_CO1
-  taxa: data/CO1_fasta_and_taxonomy/CO1_taxonomy.txt
-  fasta: data/CO1_fasta_and_taxonomy/CO1_.fasta
+  #Taxa and fasta files must be unzipped
+  location_bowtie2: ./resources/bowtie2_dbs/MIDORI_UNIQ_GB246_CO1/MIDORI_UNIQ_GB246_CO1
+  name: MIDORI_UNIQ_GB246_CO1
+  taxa: /home/ubuntu/data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.taxon
+  fasta: /home/ubuntu/data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.fasta
 
 #Taxonomy
 TAXONOMY:
@@ -139,5 +140,22 @@ TAXONOMY:
   mismatch_penalty: -2.5
   gap_penalty: -2
   blca_identity_cutoff: 100
+
+#Blast against the ncbi nt database, if blast should be run remotely, add "-remote -db nt" to the database field
+#However Blast should not be run remotely unless there are few sequences (<50)
+#tax_db is the mapping of taxonomy information to the database
+#In most cases this would be ncbi-nt and mappings for this.
+#Instructions for downloading these can be found in the BASTA documentation
+BLAST:
+  include: True
+  database: -db /home/ubuntu/data/databases/ncbi/nt/20211125/nt #-remote -db nt #
+  database_date: 2021-11-25
+  tax_db: /home/ubuntu/data/databases/ncbi/taxonomy
+  portion_of_hits: 75 #portion of hits used for evaluation, default=100
+  percent_identity: 85 #default =80
+  e-value: 5e-13
+  alignment_length: 200
+  max_hits: 10 #all hits considered = 0
+  min_hits: 3
 
 #Darwin_core Formatting
