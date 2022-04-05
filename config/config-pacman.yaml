@@ -123,10 +123,10 @@ DADA2:
 DATABASE:
   #The location of the bowtie2 database must be with the basename of the index FILES
   #Taxa and fasta files must be unzipped
-  location_bowtie2: ./resources/bowtie2_dbs/MIDORI_UNIQ_GB246_CO1/MIDORI_UNIQ_GB246_CO1
+  location_bowtie2: resources/bowtie2_dbs/MIDORI_UNIQ_GB246_CO1/MIDORI_UNIQ_GB246_CO1
   name: MIDORI_UNIQ_GB246_CO1
-  taxa: /home/ubuntu/data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.taxon
-  fasta: /home/ubuntu/data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.fasta
+  taxa: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.taxon
+  fasta: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.fasta
 
 #Taxonomy
 TAXONOMY:
@@ -148,9 +148,9 @@ TAXONOMY:
 #Instructions for downloading these can be found in the BASTA documentation
 BLAST:
   include: True
-  database: -db /home/ubuntu/data/databases/ncbi/nt/20211125/nt #-remote -db nt #
+  database: -db data/databases/ncbi/nt/20211125/nt #-remote -db nt #
   database_date: 2021-11-25
-  tax_db: /home/ubuntu/data/databases/ncbi/taxonomy
+  tax_db: data/databases/ncbi/taxonomy
   portion_of_hits: 75 #portion of hits used for evaluation, default=100
   percent_identity: 85 #default =80
   e-value: 5e-13
