@@ -4,13 +4,14 @@ Authors: Saara Suominen,
 Last update: 03/12/2021
 """
 import pandas as pd
-import sys
+import os
 
-#Better to initiate the run with the configfile, so no need to change the snakefile each time it is run
-#configfile: "./config/config-pacman_Saara.yaml"
+# configfile defaults to config/config.yaml, but can be overridden using --configfile
 
-args = sys.argv
-config_path = args[args.index("--configfile") + 1]
+DEFAULT_CONFIG = "config/config.yaml"
+
+configfile: DEFAULT_CONFIG
+config_path = workflow.overwrite_configfiles[0] if workflow.overwrite_configfiles else os.path.abspath(DEFAULT_CONFIG)
 
 PROJECT = config["PROJECT"]
 RUN = config["RUN"]
