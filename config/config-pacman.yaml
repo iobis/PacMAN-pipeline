@@ -28,7 +28,7 @@ meta:
 #This needs to have three columns: sample-id,absolute-filepath,direction
 #Where absolute filepath points to each samples forward and reverse files separately
 #direction is either 'forward' or 'reverse'
-SAMPLE_SET: data/manifest_pe_4samples.csv
+SAMPLE_SET: config/manifest_pe_4samples.csv
 
 #TRIMMOMATIC
 trimmomatic:
