@@ -1,13 +1,13 @@
 
-#Name of the project
+# Name of the project
 PROJECT: ARMS
 
-#Name of the analysis run
+# Name of the analysis run
 RUN: Blast_trials3
 
-#Metadata for the sequencing run:
-#Here values can be added that are shared across all samples (can also be added to the sample data csv file if wanted).
-#Values that differ between samples should be added to the sample_data_template.csv file!
+# Metadata for the sequencing run:
+# Here values can be added that are shared across all samples (can also be added to the sample data csv file if wanted).
+# Values that differ between samples should be added to the sample_data_template.csv file!
 meta:
   sampling:
     sample_data_file: data/sample_data_template_4samples.csv
@@ -24,13 +24,13 @@ meta:
     sop: http://www.assembleplus.eu/sites/assembleplus.eu/files/public/ARMS/ARMS_MSOPs.pdf
     extra_fields: My_name:Saara,The_Project:PacMAN
 
-#Csv file of the samples that should be analysed.
-#This needs to have three columns: sample-id,file-path,direction
-#Where absolute filepath points to each samples forward and reverse files separately
-#direction is either 'forward' or 'reverse'
+# CSV file of the samples that should be analysed.
+# This needs to have three columns: sample-id, file-path, direction
+# Where file path points to each sample's forward and reverse files separately
+# direction is either 'forward' or 'reverse'
 SAMPLE_SET: config/manifest_pe_4samples.csv
 
-#TRIMMOMATIC
+# TRIMMOMATIC
 trimmomatic:
   ILLUMINACLIP: resources/adapters/NexteraPE-PE.fa:2:30:15
   LEADING: 10
@@ -38,7 +38,7 @@ trimmomatic:
   MAXINFO: 200\:0.3
   extra_params: ""
 
-#CutAdapt
+# CutAdapt
 cutadapt:
   forward_primer: GGWACWGGWTGAACWGTWTAYCCYCC
   reverse_primer: TANACYTCNGGRTGNCCRAARAAYCA
@@ -47,10 +47,10 @@ cutadapt:
   extra_params: ""
   se_extra_params: ""
 
-#dada2
-#We include here all available parameters, so that the user has full control
-#over the dada2 calculation. Most of these are populated by default values
-#Those that are most often changed are: Trunc_len, TruncQ, minLen, and maxEE
+# dada2
+# We include here all available parameters, so that the user has full control
+# over the dada2 calculation. Most of these are populated by default values
+# Those that are most often changed are: Trunc_len, TruncQ, minLen, and maxEE
 DADA2:
 
   filterAndTrim:
@@ -75,7 +75,7 @@ DADA2:
     OMP: TRUE
     verbose: FALSE
 
-#DADA2 analysis part2 ######################
+# DADA2 analysis part2 ######################
 
   learnERRORS:
     multithread: TRUE
@@ -104,9 +104,9 @@ DADA2:
     pool: FALSE
     priors: ""
 
-#In case the reads are not overlapping, but paired, there are two choices.
-#1. Skip the merging with include: FALSE, ASV's will be inferred from the forw and reverse reads separately
-#2. jusConcatenate, concantenates the reads with a number of NNNNs in between. This may complicate the taxonomic assignment step.
+# In case the reads are not overlapping, but paired, there are two choices.
+# 1. Skip the merging with include: FALSE, ASVs will be inferred from the forw and reverse reads separately
+# 2. justConcatenate, concantenates the reads with a number of NNNNs in between. This may complicate the taxonomic assignment step.
   mergePairs:
     include: TRUE
     minOverlap: 12
@@ -119,16 +119,16 @@ DADA2:
   removeBimeraDenovo:
     method: consensus
 
-#DATABASE
+# DATABASE
 DATABASE:
-  #The location of the bowtie2 database must be with the basename of the index FILES
-  #Taxa and fasta files must be unzipped
+  # The location of the bowtie2 database must be with the basename of the index FILES
+  # Taxa and fasta files must be unzipped
   location_bowtie2: resources/bowtie2_dbs/MIDORI_UNIQ_GB246_CO1/MIDORI_UNIQ_GB246_CO1
   name: MIDORI_UNIQ_GB246_CO1
   taxa: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.taxon
   fasta: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.fasta
 
-#Taxonomy
+# Taxonomy
 TAXONOMY:
   threads: 3
   distinct_alignments: 100
@@ -141,11 +141,11 @@ TAXONOMY:
   gap_penalty: -2
   blca_identity_cutoff: 100
 
-#Blast against the ncbi nt database, if blast should be run remotely, add "-remote -db nt" to the database field
-#However Blast should not be run remotely unless there are few sequences (<50)
-#tax_db is the mapping of taxonomy information to the database
-#In most cases this would be ncbi-nt and mappings for this.
-#Instructions for downloading these can be found in the BASTA documentation
+# Blast against the ncbi nt database, if blast should be run remotely, add "-remote -db nt" to the database field
+# However Blast should not be run remotely unless there are few sequences (<50)
+# tax_db is the mapping of taxonomy information to the database
+# In most cases this would be ncbi-nt and mappings for this.
+# Instructions for downloading these can be found in the BASTA documentation
 BLAST:
   include: True
   database: -db data/databases/ncbi/nt/20211125/nt #-remote -db nt #
@@ -158,4 +158,4 @@ BLAST:
   max_hits: 10 #all hits considered = 0
   min_hits: 3
 
-#Darwin_core Formatting
+# Darwin_core Formatting
