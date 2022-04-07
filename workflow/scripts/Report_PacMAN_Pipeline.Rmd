@@ -25,8 +25,6 @@ library(dplyr)
 library(stringr)
 
 config=read_yaml(params$config)
-#config=read_yaml("/Users/saara/Documents/OBIS_work/github/bioinformatics/PacMAN-pipeline/config/config-pacman.yaml")
-
 ```
 
 
