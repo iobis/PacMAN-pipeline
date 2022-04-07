@@ -40,23 +40,23 @@ Before running the pipeline, the user must modify the files found in the config 
 
 What is needed:
 
-  1. The information on the provided sequence files connected to the sample names
-     a. ***manifest_pe.csv***, contains the columns: `sample-id`, `file-path` and `direction` (forward or reverse).
-  2. The information on the samples and linked metadata.
-     a. Fill in ***sample_data_template.csv***: can contain all DwC data that should be added to the occurrence and dna-derived data tables
-     b. **Note!** control samples can be marked by adding `occurrenceStatus` as `absent`
-     --> The ASVs from these samples will be removed from all samples, before the occurrence table is made
-  3. Make sure you have the ***reference database*** of choice
-     a. The fasta file with all sequences,
-     b. And the taxa file where the fasta-ids are linked to the taxonomic information
-  4. Change the ***config.yaml*** file for the specific run.
-     a. PROJECT name: Usually a specific sample set
-     b. RUN name: the run with a specific combination of samples and/or parameters for the analysis
-     c. manifest-file: absolute filepath
-     d. sample-data file: absolute filepath
-     e. reference database: name of the database, fasta file and taxa file.
-     f. Primers used in both forward and reverse configuration
-     g. Chosen parameters for each step. (Template file configured for CO1 data using the Leray-Geller primer set).
+1. The information on the provided sequence files connected to the sample names
+   - ***manifest_pe.csv***, contains the columns: `sample-id`, `file-path` and `direction` (forward or reverse).
+2. The information on the samples and linked metadata.
+   - Fill in ***sample_data_template.csv***: can contain all DwC data that should be added to the occurrence and dna-derived data tables
+   - **Note!** control samples can be marked by adding `occurrenceStatus` as `absent`.  
+   --> The ASVs from these samples will be removed from all samples, before the occurrence table is made
+3. Make sure you have the ***reference database*** of choice
+   - The fasta file with all sequences,
+   - And the taxa file where the fasta-ids are linked to the taxonomic information
+4. Change the ***config.yaml*** file for the specific run.
+   - `PROJECT` name: Usually a specific sample set
+   - `RUN` name: the run with a specific combination of samples and/or parameters for the analysis
+   - `SAMPLE_SET`: manifest file path
+   - `sample-data-file`: manifest file path
+   - reference database: name of the database, fasta file and taxa file.
+   - Primers used in both forward and reverse configuration
+   - Chosen parameters for each step. (Template file configured for CO1 data using the Leray-Geller primer set).
 
 The config file is then given to the pipeline during initiation (can be located anywhere).
 
