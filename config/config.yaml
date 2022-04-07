@@ -25,7 +25,7 @@ meta:
     extra_fields: My_name:Saara,The_Project:PacMAN
 
 #Csv file of the samples that should be analysed.
-#This needs to have three columns: sample-id,absolute-filepath,direction
+#This needs to have three columns: sample-id,file-path,direction
 #Where absolute filepath points to each samples forward and reverse files separately
 #direction is either 'forward' or 'reverse'
 SAMPLE_SET: config/manifest_pe_4samples.csv

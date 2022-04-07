@@ -1,4 +1,4 @@
-sample-id,absolute-filepath,direction
+sample-id,file-path,direction
 ERR3460466,data/CO1_ARMS_4samples/ARMS-COI-14_S135_L001_R1_001.fastq.gz,forward
 ERR3460466,data/CO1_ARMS_4samples/ARMS-COI-14_S135_L001_R2_001.fastq.gz,reverse
 ERR3460467,data/CO1_ARMS_4samples/ARMS-COI-15_S152_L001_R1_001.fastq.gz,forward

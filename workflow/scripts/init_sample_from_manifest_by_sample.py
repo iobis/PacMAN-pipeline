@@ -5,7 +5,7 @@ import os
 
 if len(sys.argv) != 4:
     print("This program needs 3 arguments:")
-    print("- Project name\n- Manifest file with three columns: sample-id, absolute-filepath, direction\n- Sample name")
+    print("- Project name\n- Manifest file with three columns: sample-id, file-path, direction\n- Sample name")
     sys.exit()
 
 script_path, project_name, manifest_path, sample_name = sys.argv
