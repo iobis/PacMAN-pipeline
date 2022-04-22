@@ -10,7 +10,7 @@ RUN: Blast_trials3
 # Values that differ between samples should be added to the sample_data_template.csv file!
 meta:
   sampling:
-    sample_data_file: data/sample_data_template_4samples.csv
+    sample_data_file: config/sample_data_template_4samples.csv
   sequencing:
     target_gene: COI
     subfragment: 5P
