@@ -573,4 +573,4 @@ rule reporting:
   output:
     "results/{PROJECT}/runs/{RUN}/06-report/report.html"
   shell:
-    "Rscript -e \"rmarkdown::render('workflow/scripts/Report_PacMAN_Pipeline.Rmd', output_file = '../../results/{PROJECT}/runs/{RUN}/06-report/report.html', params=list(config='../."+config_path+"'))\""
+    "Rscript -e \"rmarkdown::render('workflow/scripts/Report_PacMAN_Pipeline.Rmd', output_file = '../../results/{PROJECT}/runs/{RUN}/06-report/report.html', params=list(config='"+config_path+"'))\""
