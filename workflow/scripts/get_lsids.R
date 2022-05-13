@@ -156,8 +156,8 @@ taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 
 # Write table of unknown names to make manual inspection easier:
 
-write.table(not_in_worms, paste0(outpath, "Taxa_not_in_worms.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
+write.table(not_in_worms, paste0(outpath, "Taxa_not_in_worms.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
 
 # Write tax table
 #taxmat <- apply(taxmat,2,as.character)
-write.table(taxmat, paste0(outpath, "Full_tax_table_with_lsids.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
+write.table(taxmat, paste0(outpath, "Full_tax_table_with_lsids.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
