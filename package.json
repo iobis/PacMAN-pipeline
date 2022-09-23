@@ -1,0 +1,6 @@
+{
+  "name": "pacman-pipeline",
+  "scripts": {
+    "pipeline": "snakemake --use-conda --configfile ./config/config.yaml --cores 4 --rerun-incomplete"
+  }
+}
