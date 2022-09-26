@@ -1,0 +1,161 @@
+
+# Name of the project
+PROJECT: rey
+
+# Name of the analysis run
+RUN: training
+
+# Metadata for the sequencing run:
+# Here values can be added that are shared across all samples (can also be added to the sample data csv file if wanted).
+# Values that differ between samples should be added to the sample_data_template.csv file!
+meta:
+  sampling:
+    sample_data_file: config/sample_data_template_rey.csv
+  sequencing:
+    target_gene: COI
+    subfragment: 5P
+    pcr_primer_forward: GGWACWGGWTGAACWGTWTAYCCYCC
+    pcr_primer_reverse: TAAACTTCAGGGTGACCAAARAAYCA
+    pcr_primer_name_forw: mlCOIintF
+    pcr_primer_name_reverse: dgHCO2198
+    pcr_primer_reference:  doi:10.1186/1742-9994-10-34
+    lib_layout: Paired
+    seq_meth: IlluminaMiseq
+    sop: https://onlinelibrary.wiley.com/doi/full/10.1002/ece3.6071
+    extra_fields: My_name:Pieter Provoost,The_Project:PacMAN
+
+# CSV file of the samples that should be analysed.
+# This needs to have three columns: sample-id, file-path, direction
+# Where file path points to each sample's forward and reverse files separately
+# direction is either 'forward' or 'reverse'
+SAMPLE_SET: config/manifest_rey.csv
+
+# TRIMMOMATIC
+trimmomatic:
+  ILLUMINACLIP: resources/adapters/NexteraPE-PE.fa:2:30:15
+  LEADING: 10
+  TRAILING: 15
+  MAXINFO: 200\:0.3
+  extra_params: ""
+
+# CutAdapt
+cutadapt:
+  forward_primer: GGWACWGGWTGAACWGTWTAYCCYCC
+  reverse_primer: TAAACTTCAGGGTGACCAAARAAYCA
+  rc_forward_primer: GGRGGRTAWACWGTTCAWCCWGTWCC
+  rc_reverse_primer: TGRTTYTTTGGTCACCCTGAAGTTTA
+  extra_params: ""
+  se_extra_params: ""
+
+# dada2
+# We include here all available parameters, so that the user has full control
+# over the dada2 calculation. Most of these are populated by default values
+# Those that are most often changed are: Trunc_len, TruncQ, minLen, and maxEE
+DADA2:
+
+  filterAndTrim:
+    Trunc_len_f: 200
+    Trunc_len_r: 150
+    TruncQ: 2
+    Trim_right: 0
+    Trim_left: 0
+    maxLen: Inf
+    minLen: 20
+    maxN: 0
+    minQ: 0
+    MaxEE: Inf
+    Rm.phix: TRUE
+    orient.fwd: NULL
+    matchIDs: FALSE
+    id.sep: \\s
+    id.field: NULL
+    compress: TRUE
+    multithread: TRUE
+    num: 100000
+    OMP: TRUE
+    verbose: FALSE
+
+# DADA2 analysis part2 ######################
+
+  learnERRORS:
+    multithread: TRUE
+    nbases: 1e8
+    #errorEstimationFunction: see dada
+    randomize: FALSE
+    MAX_CONSIST: 10
+    OMEGA_C: 0
+    verbose: FALSE
+
+  plotERRORS:
+    #nti/ntj depict the nucleotides that
+    nti: ACTG
+    ntj: ACTG
+    obs: TRUE
+    err_out: TRUE
+    err_in: FALSE
+    nominalQ: TRUE
+
+  derepFastq:
+    num: 1e6
+
+  dada:
+    errorEstimationFunction: loessErrfun
+    selfConsist: FALSE
+    pool: FALSE
+    priors: ""
+
+# In case the reads are not overlapping, but paired, there are two choices.
+# 1. Skip the merging with include: FALSE, ASVs will be inferred from the forw and reverse reads separately
+# 2. justConcatenate, concantenates the reads with a number of NNNNs in between. This may complicate the taxonomic assignment step.
+  mergePairs:
+    include: TRUE
+    minOverlap: 12
+    maxMismatch: 0
+    returnRejects: FALSE
+    propagateCol: NULL
+    justConcatenate: FALSE
+    trimOverhang: FALSE
+
+  removeBimeraDenovo:
+    method: consensus
+
+# DATABASE
+DATABASE:
+  # The location of the bowtie2 database must be with the basename of the index FILES
+  # Taxa and fasta files must be unzipped
+  location_bowtie2: #resources/bowtie2_dbs/MIDORI_UNIQ_GB246_CO1/MIDORI_UNIQ_GB246_CO1
+  name: MIDORI_UNIQ_GB246_CO1
+  taxa: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.taxon
+  fasta: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.fasta
+
+# Taxonomy
+TAXONOMY:
+  threads: 3
+  distinct_alignments: 100
+  min_identity: 0.8
+  min_length: 0.8
+  #muscle: /Users/saara/Documents/OBIS_work/github/bioinformatics/PacMAN-pipeline/scripts/muscle
+  bootstrap_no: 100
+  match_score: 1
+  mismatch_penalty: -2.5
+  gap_penalty: -2
+  blca_identity_cutoff: 100
+
+# Blast against the ncbi nt database, if blast should be run remotely, add "-remote -db nt" to the database field
+# However Blast should not be run remotely unless there are few sequences (<50)
+# tax_db is the mapping of taxonomy information to the database
+# In most cases this would be ncbi-nt and mappings for this.
+# Instructions for downloading these can be found in the BASTA documentation
+BLAST:
+  include: True
+  database: -db data/databases/ncbi/nt/20211125/nt #-remote -db nt #
+  database_date: 2021-11-25
+  tax_db: data/databases/ncbi/taxonomy
+  portion_of_hits: 75 #portion of hits used for evaluation, default=100
+  percent_identity: 85 #default =80
+  e-value: 5e-13
+  alignment_length: 200
+  max_hits: 10 #all hits considered = 0
+  min_hits: 3
+
+# Darwin_core Formatting

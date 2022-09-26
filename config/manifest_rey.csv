@@ -1,0 +1,5 @@
+sample-id,file-path,direction
+SAMN10847335,data/rey/SRR8760009_1.fastq.gz,forward
+SAMN10847335,data/rey/SRR8760009_2.fastq.gz,reverse
+SAMN10847336,data/rey/SRR8760010_1.fastq.gz,forward
+SAMN10847336,data/rey/SRR8760010_2.fastq.gz,reverse

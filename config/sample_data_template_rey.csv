@@ -1,0 +1,3 @@
+sample-id;BasisOfRecord;eventDate;occurrenceStatus;eventID;recordedBy;materialSampleID;decimalLatitude;decimalLongitude;associatedSequences;IdentificationRemarks;IdentificationReferences;samplingProtocol;minimumDepthInMeters;maximumDepthInMeters;Country
+SAMN10847335;MaterialSample;;present;;;;;;;;https://github.com/iobis/tagseq-qiime2-snakemake;;;;
+SAMN10847336;MaterialSample;;present;;;;;;;;https://github.com/iobis/tagseq-qiime2-snakemake;;;;
