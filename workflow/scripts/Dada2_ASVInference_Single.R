@@ -93,13 +93,19 @@ if (any(file.exists(allfiles[[i]]))) {
                             config$DADA2$learnERRORS$verbose)
 
   message("Running dada on reads")
-  dadas[[i]] <- dada(dereps[[i]],
+  dada_result <- dada(dereps[[i]],
                      errs[[i]],
                      selfConsist = config$DADA2$dada$selfConsist,
                      pool = config$DADA2$dada$pool,
                      priors = config$DADA2$dada$priors,
                      multithread = config$DADA2$learnERRORS$multithread,
                      verbose = config$DADA2$learnERRORS$verbose)
+  
+  if (is(dada_result, "dada")) {
+    dadas[[i]] <- setNames(list(dada_result), sample.names)
+  } else {
+    dadas[[i]] <- dada_result
+  }
 
 #If no files found for the paired reads (should not be the case!)
 } else if (!grepl("single", names(allfiles)[i])) {
@@ -134,7 +140,7 @@ merge_format_seqtab=function(seqtab1, seqtab2){
 
 if (config$DADA2$mergePairs$include) {
   message("merging pairs")
-  mergers <- mergePairs(dadas[[1]],
+  merge_result <- mergePairs(dadas[[1]],
                         dereps[[1]],
                         dadas[[2]],
                         dereps[[2]],
@@ -145,8 +151,14 @@ if (config$DADA2$mergePairs$include) {
                         justConcatenate = config$DADA2$mergePairs$justConcatenate,
                         trimOverhang = config$DADA2$mergePairs$trimOverhang,
                         verbose = config$DADA2$learnERRORS$verbose)
+  
+  if (is(merge_result, "data.frame")) {
+    mergers <- setNames(list(dada_result), sample.names)
+  } else {
+    mergers <- merge_result
+  }
 
-seqtab <- makeSequenceTable(mergers)
+  seqtab <- makeSequenceTable(mergers)
 
   #When merging is done with returnRejects=TRUE, the abundance of the rejected merges is returned, but not the sequence
   #We want to collect also these single sequences and add them to the seqtab (to avoid loosing ANY data)
@@ -228,6 +240,7 @@ print(dim(seqtab.nochim))
 # ASVs denominated by the actual sequence, we want to simplify the names.
 new.names <- c(paste("asv.", 1:length(colnames(seqtab.nochim)), sep = ""))
 message(head(new.names))
+
 
 # Save fasta, before changing names in the seqtab table
 message("Making fasta table")
