@@ -82,7 +82,7 @@ docker run -v $(pwd):/code snakemake /bin/bash \
 
 ## Steps
 
-The pipeline will run the following steps:
+The pipeline will run the following steps (also see [diagram](documentation/diagram.png)):
 
 ### 1. Initiate file structure
 
