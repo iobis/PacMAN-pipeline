@@ -272,10 +272,11 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
             #o1 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN),
             #o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN),
             #o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
-            o2 = "results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt",
-            o3 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
+            o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+            o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
+            o4 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/mapping/{samples}/{samples}_mapping.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
         log:
-            o1 = "results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt",
+            o1 = expand("results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
         conda:
             "envs/dada2.yaml"
         shell:

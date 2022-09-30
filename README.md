@@ -63,7 +63,7 @@ The config file is then given to the pipeline during initiation (can be located 
 Once this information is added, and the config file is filled in, a dry-run of the pipeline can be performed for testing with:
 
 ```
-snakemake --use-conda --configfile ./config/config.yaml --cores 1 -np
+snakemake --use-conda --configfile ./config/config.yaml --rerun-incomplete --printshellcmds --cores 1 -np
 ```
 
 Removing the `-np` flag will initiate the run.
