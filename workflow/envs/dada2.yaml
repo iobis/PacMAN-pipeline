@@ -10,3 +10,7 @@ dependencies:
  - r-ggplot2=3.3.3
  - r-yaml=2.2.1
  - r-dplyr=1.0.7
+ - r-microseq
+ - r-tidyr
+ - r-tibble
+ - r-r.utils
