@@ -18,7 +18,7 @@ tax_file <- read.csv(args[2], sep = "\t", header = T)
 rep_seqs <- Biostrings::readDNAStringSet(args[3])
 
 #If blast was performed on the unknown sequences:
-if (!is.na(args[4])) {
+if (length(args) == 5) {
   message("0. Results of Blast annotation read")
   basta_file <- read.csv(args[4], sep = "\t", header = F)
 }
@@ -67,7 +67,7 @@ result <- regmatches(args[2], regexec(pattern, args[2]))
 taxmat$otu_db <- result[[1]][2]
 
 # If Blast was performed on unknown sequences
-if (!is.na(args[4])) {
+if (length(args) == 5) {
   message("1.1 Adding Blast results to taxonomic table")
   colnames(basta_file) <- c("rowname", "sum.taxonomy")
   taxmat2 <- separate(basta_file, "sum.taxonomy", into = c("kingdom", "phylum", "class", "order", "family", "genus", "species"), sep = ";")
