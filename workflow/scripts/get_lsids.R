@@ -124,7 +124,7 @@ taxmat$specificEpithet <- sapply(taxmat$lastvalue, function(name) {
 # Add Biota LSID in case there is no last value
 
 taxmat$lsid[is.na(taxmat$lastvalue)] <- "urn:lsid:marinespecies.org:taxname:1"
-taxmat$taxonRank[is.na(taxmat$lastvalue)] <- "Superdomain"
+taxmat$taxonRank[is.na(taxmat$lastvalue)] <- "superdomain"
 
 # Names not in WoRMS
 
