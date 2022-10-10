@@ -129,13 +129,15 @@ message("Attempting merge")
 
 # Define function for merging and formatting seqtabs: next steps require an integer matrix
 merge_format_seqtab <- function(seqtab1, seqtab2) {
-  seqtab_new <- merge(seqtab1, seqtab2, by = 0, all = TRUE)
-  rownames(seqtab_new) <- seqtab_new$Row.names
-  seqtab_new <- subset(seqtab_new, select = -Row.names)
-  seqtab_new[is.na(seqtab_new)] <- 0
-  seqtab_new <- data.matrix(seqtab_new)
-  mode(seqtab_new) <- "integer"
-  return(seqtab_new)
+  df1 <- reshape2::melt(seqtab1, varnames = c("sample", "sequence"))
+  df2 <- reshape2::melt(seqtab2, varnames = c("sample", "sequence"))
+  df <- bind_rows(df1, df2) %>%
+    group_by(sample, sequence) %>%
+    summarize(value = sum(value)) %>%
+    ungroup()
+  m <- reshape2::acast(df, sample ~ sequence, value.var = "value")
+  mode(m) <- "integer"
+  return(m)
 }
 
 if (config$DADA2$mergePairs$include) {
