@@ -1,3 +1,23 @@
-sample-id;BasisOfRecord;eventDate;occurrenceStatus;eventID;recordedBy;materialSampleID;decimalLatitude;decimalLongitude;associatedSequences;IdentificationRemarks;IdentificationReferences;samplingProtocol;minimumDepthInMeters;maximumDepthInMeters;Country
-SAMN10847335;MaterialSample;;present;;;;;;;;https://github.com/iobis/tagseq-qiime2-snakemake;;;;
-SAMN10847336;MaterialSample;;present;;;;;;;;https://github.com/iobis/tagseq-qiime2-snakemake;;;;
+sample-id;eventID;materialSampleID;eventRemarks;verbatimCoordinates;locality;verbatimDepth;eventDate;occurrenceStatus
+SAMN10847231;SAMN10847231;SAMN10847231;filtered water;43.37 N 3.10 W;Spain: Bilbao;surface;2017-09-05;present
+SAMN10847229;SAMN10847229;SAMN10847229;filtered water;43.37 N 3.10 W;Spain: Bilbao;surface;2017-05-31;present
+SAMN10847336;SAMN10847336;SAMN10847336;settlement plates;43.37 N 3.10 W;Spain: Bilbao;7m;2017-10-06;present
+SAMN10847333;SAMN10847333;SAMN10847333;settlement plates;43.37 N 3.10 W;Spain: Bilbao;7m;2017-06-27;present
+SAMN10847228;SAMN10847228;SAMN10847228;filtered water;43.37 N 3.10 W;Spain: Bilbao;surface;2016-11-22;present
+SAMN10847219;SAMN10847219;SAMN10847219;filtered water;43.37 N 8.40 W;Spain: A Coruna;surface;2017-03-22;present
+SAMN10847226;SAMN10847226;SAMN10847226;filtered water;43.37 N 3.10 W;Spain: Bilbao;surface;2017-02-03;present
+SAMN10847223;SAMN10847223;SAMN10847223;filtered water;43.36 N 8.39 W;Spain: A Coruna;surface;2017-03-22;present
+SAMN10847264;SAMN10847264;SAMN10847264;filtered water;43.28 N 2.97 W;Spain: Bilbao;surface;2016-11-22;present
+SAMN10847266;SAMN10847266;SAMN10847266;filtered water;43.28 N 2.97 W;Spain: Bilbao;surface;2017-05-31;present
+SAMN10847265;SAMN10847265;SAMN10847265;filtered water;43.28 N 2.97 W;Spain: Bilbao;surface;2017-02-03;present
+SAMN10847267;SAMN10847267;SAMN10847267;filtered water;43.28 N 2.97 W;Spain: Bilbao;surface;2017-09-05;present
+SAMN10847359;SAMN10847359;SAMN10847359;settlement plates;43.28 N 2.97 W;Spain: Bilbao;7m;2017-10-11;present
+SAMN10847276;SAMN10847276;SAMN10847276;filtered water;42.25 N 8.71 W;Spain: Vigo;surface;2017-03-13;present
+SAMN10847272;SAMN10847272;SAMN10847272;filtered water;42.24 N 8.72 W;Spain: Vigo;surface;2017-03-13;present
+SAMN10847357;SAMN10847357;SAMN10847357;settlement plates;43.28 N 2.97 W;Spain: Bilbao;7m;2017-06-27;present
+SAMN10847253;SAMN10847253;SAMN10847253;filtered water;43.34 N 3.04 W;Spain: Bilbao;surface;2017-05-31;present
+SAMN10847255;SAMN10847255;SAMN10847255;filtered water;43.34 N 3.04 W;Spain: Bilbao;surface;2017-09-05;present
+SAMN10847249;SAMN10847249;SAMN10847249;filtered water;43.34 N 3.04 W;Spain: Bilbao;surface;2016-11-22;present
+SAMN10847251;SAMN10847251;SAMN10847251;filtered water;43.34 N 3.04 W;Spain: Bilbao;surface;2017-02-03;present
+SAMN10847348;SAMN10847348;SAMN10847348;settlement plates;43.34 N 3.04 W;Spain: Bilbao;7m;2017-10-09;present
+SAMN10847345;SAMN10847345;SAMN10847345;settlement plates;43.34 N 3.04 W;Spain: Bilbao;7m;2017-06-27;present
