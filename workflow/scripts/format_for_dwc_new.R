@@ -56,12 +56,12 @@ if (args[16] != "None") {
 
 ########################### 3. Collect all values to phyloseq object ######################################
 
-tax_table <- tax_table(as(tax_file, "matrix"))
-otu_table <- otu_table(otu_file, taxa_are_rows = T)
-sample_data <- sample_data(sample_file)
+tax_table <- phyloseq::tax_table(as(tax_file, "matrix"))
+otu_table <- phyloseq::otu_table(otu_file, taxa_are_rows = T)
+sample_data <- phyloseq::sample_data(sample_file)
 
 # Here I make a phyloseq object with the three files
-phydata <- phyloseq(otu_table, tax_table, sample_data)
+phydata <- phyloseq::phyloseq(otu_table, tax_table, sample_data)
 # Print the amount of information stored:
 phydata
 
