@@ -1,12 +1,4 @@
 sample-id,file-path,direction
-SAMN10847219,data/rey/SRR8760074_1.fastq.gz,forward
-SAMN10847219,data/rey/SRR8760074_2.fastq.gz,reverse
-SAMN10847223,data/rey/SRR8760078_1.fastq.gz,forward
-SAMN10847223,data/rey/SRR8760078_2.fastq.gz,reverse
-SAMN10847226,data/rey/SRR8760077_1.fastq.gz,forward
-SAMN10847226,data/rey/SRR8760077_2.fastq.gz,reverse
-SAMN10847228,data/rey/SRR8760071_1.fastq.gz,forward
-SAMN10847228,data/rey/SRR8760071_2.fastq.gz,reverse
 SAMN10847229,data/rey/SRR8759981_1.fastq.gz,forward
 SAMN10847229,data/rey/SRR8759981_2.fastq.gz,reverse
 SAMN10847231,data/rey/SRR8759979_1.fastq.gz,forward

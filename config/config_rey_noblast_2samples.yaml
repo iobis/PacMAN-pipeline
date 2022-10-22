@@ -1,6 +1,6 @@
 
 # Name of the project
-PROJECT: rey_subset_noblast
+PROJECT: rey_noblast_2samples
 
 # Name of the analysis run
 RUN: training
@@ -10,7 +10,7 @@ RUN: training
 # Values that differ between samples should be added to the sample_data_template.csv file!
 meta:
   sampling:
-    sample_data_file: config/sample_data_template_rey.csv
+    sample_data_file: config/sample_data_template_rey_2samples.csv
   sequencing:
     target_gene: COI
     subfragment: 5P
@@ -28,7 +28,7 @@ meta:
 # This needs to have three columns: sample-id, file-path, direction
 # Where file path points to each sample's forward and reverse files separately
 # direction is either 'forward' or 'reverse'
-SAMPLE_SET: config/manifest_rey_subset.csv
+SAMPLE_SET: config/manifest_rey_2samples.csv
 
 # TRIMMOMATIC
 trimmomatic:
