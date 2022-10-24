@@ -10,10 +10,8 @@ params:
   config: ""
 ---
 
-<br>
-
 # PacMAN pipeline report
-<br>
+
 Congratulations! You have finished running the PacMAN pipeline. In this report you will find the information of all the main steps run with your sequences, and the statistics related to how it went.
 
 ```{r, include=FALSE}
@@ -27,20 +25,21 @@ library(stringr)
 config <- read_yaml(params$config)
 ```
 
-
 ```{r, echo=FALSE, results='asis'}
-cat("Specifically, this is the report for the project: ", config$PROJECT, "  \nAnd the pipeline run: ", config$RUN, ".  \n", sep = "")
+cat("Specifically, this is the report for the project: `", config$PROJECT, "`    And the pipeline run: `", config$RUN, "`.    ", sep = "")
 
 sample_data <- read.table(paste0("../../", config$meta$sampling$sample_data_file), sep = ";", header = TRUE)
 sample_ids <- unique(sample_data$sample.id)
 
-cat("And the samples that were run in this analysis are:\n", unique(sample_data$sample.id), sep = "  \n")
+cat("And the samples that were run in this analysis are:\n\n")
+for (id in unique(sample_data$sample.id)) {
+  cat("- ", id, "\n")
+}
 ```
 
 ## Quality control
-<br>
+
 Quality control of the raw samples was done so that any issues in the final analysis can possibly be traced back to issues in the original data.
-<br>
 
 ```{r, echo=F, results='asis'}
 cat("Visual representation of the results of the QC on the raw data can be found in an html report in:  \n results/", config$PROJECT, "/samples/multiqc_", config$RUN, ".html  \n", sep = "")
@@ -58,24 +57,20 @@ kable(raw_stats)
 ```
 
 ## Sequence trimming
-<br>
+
 As you can most likely see, there are several issues with the raw sequences. Therefore, the sequences were trimmed and cleaned-up prior to the analysis of sequence variants and the taxonomic composition of the samples.
-<br>
+
 The first step of the process was to trim the samples using [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic) (Bolger et al. 2014).
-<br>
+
 The command that was used was:
-<br>
 
 ```{r, echo=F}
-
 trim_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/trimmomatic/", sample_ids[1], "_log.txt")
 
 readLines(trim_report, n = 2)
-
 ```
-<br>
+
 And the results for each sample in reads, and in percentages of original reads:
-<br>
 
 ```{r, echo=F, warning=F}
 #Loop across all sample_ids and collect results to table
@@ -100,16 +95,13 @@ kable(trimResults)
 
 TrimResults_Percentage <- round(trimResults[,c(2:5)] / trimResults[,c(1)] * 100, digits = 2)
 kable(TrimResults_Percentage)
-
 ```
 
 ## Cutadapt
 
-<br>
 The next step in the process ran cutadapt on all samples (paired and unpaired results).
-<br>
+
 The command that was used was:
-<br>
 
 ```{r, echo=F}
 #cut_report <- capture.output(cat("../PacMAN-pipeline-backup/results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt", sep = ""))
@@ -122,7 +114,6 @@ readLines(cut_report, n = 2)
 ### Paired reads
 
 The results for all paired samples were:
-<br>
 
 ```{r, echo=F, warning=F}
 cutResults <- data.frame(TotalReadPairsProcessed = NA, Read1withPrimer = NA, Read2withPrimer = NA, PairsTooShort = NA, PairsWritten = NA, BasePairsProcessed = NA, Read1BpProcessed = NA, Read2BpProcessed = NA, BasePairsWritten = NA, Read1BpWritten = NA, Read2BpWritten = NA)
@@ -180,9 +171,7 @@ cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cu
 kable(cutResults_Percentage)
 ```
 
-<br>
 And for reverse unpaired reads they were:
-<br><br>
 
 ```{r, echo=F, warning=F}
 cutResults <- data.frame(TotalReadPairsProcessed = NA, ReadwithPrimer = NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
@@ -215,8 +204,6 @@ cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cu
 kable(cutResults_Percentage)
 ```
 
-<br>
-
 ## ASV inference with dada2
 
 Next the reads without adapters and primers, were analysed using the dada2 pipeline. This pipeline evaluates the error rates in reads, and based on the results defines amplicon sequence variants (ASVs).
@@ -228,7 +215,6 @@ Next the reads without adapters and primers, were analysed using the dada2 pipel
 The first step of the dada2 pipeline is to perform more filtering and trimming based on sequence quality.
 
 The parameters used in this run were:
-<br><br>
 
 ```{r, echo=F}
 cat("filterAndTrim(filesForw, filtFs, filesRev, filtRs,
@@ -243,18 +229,14 @@ cat("filterAndTrim(filesForw, filtFs, filesRev, filtRs,
   verbose = ",config$DADA2$filterAndTrim$verbose,"
 )", sep="")
 ```
-<br><br>
 
 The quality profile of all analysed paired reads before trimming (Forward reads in left panel, while reverse reads are in right panel):
-<br><br>
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%", fig.cap="caption", fig.show='hold', fig.align='center'}
 knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesForw.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesRev.png")))
 ```
 
-<br><br>
 And after trimming it was:
-<br><br>
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%", fig.cap="caption", fig.show='hold', fig.align='center'}
 knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png")))
@@ -272,7 +254,7 @@ message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-repo
 ### Asv inference
 
 The following step of the dada2 pipeline was define the ASVs from these trimmed reads.
-<br>
+
 First error rates were learned for both forward and reverse paired reads separately as well as any unpaired remaining reads which survived filtering, with the following command:
 
 ```{r, echo=F}
@@ -282,9 +264,7 @@ cat("learnErrors(filtFs, multithread = ", config$DADA2$learnERRORS$multithread, 
 The forward and reverse error profiles were the following (in absolute numbers and in percentage of analysed reads):
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
-
 knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_filtFs.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/dada2/error_profile_filtRs.png")))
-
 ```
 
 Next the reads were dereplicated with the following command:
@@ -309,8 +289,11 @@ cat("mergePairs(dadaFs, derepFs, dadaRs, derepRs,
 ```
 
 If returnRejects was selected, also the returned unpaired sequences were kept in the final tables.
+
 Otherwise, the dereplicated sequences were kept without merging.
+
 Also any sequences unpaired forward or reverse sequences were added to the sequence tables at this stage.
+
 All single reverse sequences (unpaired either in trimmomatic or here, or if pairs were not merged), were reverse complemented for the bowtie2 algorithm.
 
 And finally, chimeras were removed with:
@@ -357,7 +340,7 @@ cat("python ./workflow/scripts/reformat_summary_for_r.py blca.output tax.table  
 A phyloseq object was built with this information, and can be found here:
 
 ```{r, echo=F, results='asis'}
-cat("./results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/phyloseq_object.rds\n", sep = "")
+cat("`./results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/phyloseq_object.rds`", sep = "")
 ```
 
 The total information stored in the phyloseq object is:
@@ -370,7 +353,6 @@ pseq
 
 Note also that the sequences of the ASVs are stored in the tax_table of the phyloseq object.
 
-<br><br>
 The total number of taxa assigned at each taxonomic level:
 
 ```{r, echo=F}
@@ -427,8 +409,8 @@ In addition, if there was a control sample which was labelled in the original sa
 The final tables can be found at:
 
 ```{r, echo=F, results='asis'}
-cat("results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/Occurrence_table.csv  \n", sep = "")
-cat("results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/DNA_extension_table.csv  \n  \n", sep = "")
+cat("- results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/Occurrence_table.csv  \n", sep = "")
+cat("- results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/DNA_extension_table.csv  \n  \n", sep = "")
 ```
 
 From this analysis run there were
@@ -443,5 +425,5 @@ cat("Of which", sum(occ_table$scientificName!="Biota"), "were known, and therefo
 notinworms_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Taxa_not_in_worms.csv")
 notinworms_table <- read.table(notinworms_path, header=TRUE, sep = "\t")
 
-cat("The number of names not found in the marine records of WoRMS was", nrow(notinworms_table))
+cat("The number of names not found in the marine records of WoRMS was", nrow(notinworms_table), ".")
 ```
