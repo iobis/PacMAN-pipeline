@@ -24,17 +24,17 @@ library(ggplot2)
 library(dplyr)
 library(stringr)
 
-config=read_yaml(params$config)
+config <- read_yaml(params$config)
 ```
 
 
 ```{r, echo=FALSE, results='asis'}
-cat("Specifically, this is the report for the project: ", config$PROJECT  , "  \nAnd the pipeline run: ", config$RUN, ".  \n", sep="")
+cat("Specifically, this is the report for the project: ", config$PROJECT, "  \nAnd the pipeline run: ", config$RUN, ".  \n", sep = "")
 
-sample_data=read.table(paste0("../../",config$meta$sampling$sample_data_file), sep=";", header=TRUE)
-sample_ids=unique(sample_data$sample.id)
+sample_data <- read.table(paste0("../../", config$meta$sampling$sample_data_file), sep = ";", header = TRUE)
+sample_ids <- unique(sample_data$sample.id)
 
-cat("And the samples that were run in this analysis are:\n", unique(sample_data$sample.id), sep="  \n")
+cat("And the samples that were run in this analysis are:\n", unique(sample_data$sample.id), sep = "  \n")
 ```
 
 ## Quality control
@@ -43,17 +43,16 @@ Quality control of the raw samples was done so that any issues in the final anal
 <br>
 
 ```{r, echo=F, results='asis'}
-cat("Visual representation of the results of the QC on the raw data can be found in an html report in:  \n results/", config$PROJECT, "/samples/multiqc_", config$RUN,".html  \n", sep="")
-
+cat("Visual representation of the results of the QC on the raw data can be found in an html report in:  \n results/", config$PROJECT, "/samples/multiqc_", config$RUN, ".html  \n", sep = "")
 
 cat("Generally, the sequences in the samples had the following composition:  \n  \n")
 
-raw_stats_path=paste0("../../results/", config$PROJECT, "/samples/multiqc_", config$RUN,"_data/multiqc_general_stats.txt")
+raw_stats_path <- paste0("../../results/", config$PROJECT, "/samples/multiqc_", config$RUN, "_data/multiqc_general_stats.txt")
 
-raw_stats=read.table(raw_stats_path, header=TRUE, sep="\t")
-colnames(raw_stats)=gsub("FastQC_mqc.generalstats.fastqc.","",colnames(raw_stats))
-colnames(raw_stats)=gsub("_"," ",colnames(raw_stats))
-raw_stats[,c(2,5)]=round(raw_stats[,c(2,5)], digits=1)
+raw_stats <- read.table(raw_stats_path, header = TRUE, sep = "\t")
+colnames(raw_stats) <- gsub("FastQC_mqc.generalstats.fastqc.", "", colnames(raw_stats))
+colnames(raw_stats) <- gsub("_", " ", colnames(raw_stats))
+raw_stats[,c(2,5)] <- round(raw_stats[,c(2,5)], digits = 1)
 
 kable(raw_stats)
 ```
@@ -66,44 +65,46 @@ The first step of the process was to trim the samples using [Trimmomatic](http:/
 <br>
 The command that was used was:
 <br>
+
 ```{r, echo=F}
 
-trim_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/trimmomatic/", sample_ids[1], "_log.txt")
+trim_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/trimmomatic/", sample_ids[1], "_log.txt")
 
-readLines(trim_report, n=2)
+readLines(trim_report, n = 2)
 
 ```
 <br>
 And the results for each sample in reads, and in percentages of original reads:
 <br>
+
 ```{r, echo=F, warning=F}
 #Loop across all sample_ids and collect results to table
-trimResults=data.frame(InputReadPairs=NA, BothSurviving=NA, ForwardOnlySurviving=NA, ReverseOnlySurviving=NA, Dropped=NA)
+trimResults <- data.frame(InputReadPairs = NA, BothSurviving = NA, ForwardOnlySurviving = NA, ReverseOnlySurviving = NA, Dropped = NA)
 
 for (i in 1:length(sample_ids)) {
-trim_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/trimmomatic/", sample_ids[i], "_log.txt")
+  trim_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/trimmomatic/", sample_ids[i], "_log.txt")
 
-#sample=scan(trim_report,sep="\n",what="char(0)",skip=7, nlines=1)
-file=file(trim_report, "r")
-line <- readLines(file, 1)
-while(!grepl("Input Read Pairs", line)) {
+  #sample=scan(trim_report,sep="\n",what="char(0)",skip=7, nlines=1)
+  file <- file(trim_report, "r")
   line <- readLines(file, 1)
-}
+  while (!grepl("Input Read Pairs", line)) {
+    line <- readLines(file, 1)
+  }
 
-results = line %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% as.numeric
-trimResults[i,]=results[!is.na(results)]
-rownames(trimResults)[i]=sample_ids[i]
-
+  results <- line %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% as.numeric
+  trimResults[i,] <- results[!is.na(results)]
+  rownames(trimResults)[i] <- sample_ids[i]
 }
 
 kable(trimResults)
 
-TrimResults_Percentage=round(trimResults[,c(2:5)]/trimResults[,c(1)]*100, digits=2)
+TrimResults_Percentage <- round(trimResults[,c(2:5)] / trimResults[,c(1)] * 100, digits = 2)
 kable(TrimResults_Percentage)
 
 ```
 
 ## Cutadapt
+
 <br>
 The next step in the process ran cutadapt on all samples (paired and unpaired results).
 <br>
@@ -111,115 +112,109 @@ The command that was used was:
 <br>
 
 ```{r, echo=F}
-#cut_report=capture.output(cat("../PacMAN-pipeline-backup/results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[1], "_log.txt", sep=""))
+#cut_report <- capture.output(cat("../PacMAN-pipeline-backup/results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt", sep = ""))
 
-cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[1], "_log.txt")
+cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt")
 
-readLines(cut_report, n=2)
+readLines(cut_report, n = 2)
 ```
 
-
 ### Paired reads
-
 
 The results for all paired samples were:
 <br>
 
 ```{r, echo=F, warning=F}
-cutResults=data.frame(TotalReadPairsProcessed=NA, Read1withPrimer=NA, Read2withPrimer=NA, PairsTooShort=NA, PairsWritten=NA, BasePairsProcessed=NA, Read1BpProcessed=NA, Read2BpProcessed=NA, BasePairsWritten=NA, Read1BpWritten=NA, Read2BpWritten=NA)
+cutResults <- data.frame(TotalReadPairsProcessed = NA, Read1withPrimer = NA, Read2withPrimer = NA, PairsTooShort = NA, PairsWritten = NA, BasePairsProcessed = NA, Read1BpProcessed = NA, Read2BpProcessed = NA, BasePairsWritten = NA, Read1BpWritten = NA, Read2BpWritten = NA)
 
 for (i in 1:length(sample_ids)) {
-cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[i], "_log.txt")
-text <- readLines(cut_report)
-rows <- grep("^===", text)
-report=text[c((rows[1]+2):(rows[2]-2))]
-sample = report %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
-cutResults[i,]=sample[c(1,3,6,8,10,12,14,16,17,20,22)]
-#Collect only meaningful numbers (should always be in the same order for paired reads from cutadapt)
-rownames(cutResults)[i]=sample_ids[i]
-
+  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_log.txt")
+  text <- readLines(cut_report)
+  rows <- grep("^===", text)
+  report <- text[c((rows[1]+2):(rows[2]-2))]
+  sample <- report %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+  cutResults[i,] <- sample[c(1,3,6,8,10,12,14,16,17,20,22)]
+  #Collect only meaningful numbers (should always be in the same order for paired reads from cutadapt)
+  rownames(cutResults)[i] <- sample_ids[i]
 }
 
 kable(cutResults)
 
-cutResults_Percentage=round(cutResults[,c(2:5)]/cutResults[,c(1)]*100, digits=2)
-cutResults_Percentage$BasePairsWritten=round(cutResults[,7]/cutResults[,6]*100, digits=2)
+cutResults_Percentage <- round(cutResults[,c(2:5)] / cutResults[,c(1)] * 100, digits = 2)
+cutResults_Percentage$BasePairsWritten <- round(cutResults[,7] / cutResults[,6] * 100, digits = 2)
 kable(cutResults_Percentage)
-
-
-
 ```
 
 ### Unpaired reads
 
 While for forward unpaired reads they were:
 
-
 ```{r, echo=F, warning=F}
-cutResults=data.frame(TotalReadPairsProcessed=NA, ReadwithPrimer=NA, ReadsTooShort=NA, ReadsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
+cutResults <- data.frame(TotalReadPairsProcessed = NA, ReadwithPrimer = NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
-cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[i], "_unpaired1_log.txt")
-text <- readLines(cut_report)
+  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_unpaired1_log.txt")
+  text <- readLines(cut_report)
 
-if (any(grepl("^===", text))) {
-rows <- grep("^===", text)
-report=text[c((rows[1]+2):(rows[2]-2))]
-sample = report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+  if (any(grepl("^===", text))) {
+    rows <- grep("^===", text)
+    report <- text[c((rows[1]+2):(rows[2]-2))]
+    sample <- report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
 
-#Not all of the reports list ReadsTooShort, so add for those that don't a 0
-if (any(!grepl("short", report))) {
-  sample=append(sample, 0, after=2)
-}
-cutResults[i,]=sample[!is.na(sample)]
-rownames(cutResults)[i]=sample_ids[i]
-} else {
-cutResults[i,]=rep(0,6)
-rownames(cutResults)[i]=sample_ids[i]
-}
+    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
+    if (any(!grepl("short", report))) {
+      sample <- append(sample, 0, after = 2)
+    }
+    cutResults[i,] <- sample[!is.na(sample)]
+    rownames(cutResults)[i] <- sample_ids[i]
+  } else {
+    cutResults[i,] <- rep(0,6)
+    rownames(cutResults)[i] <- sample_ids[i]
+  }
 }
 
 kable(cutResults)
 
-cutResults_Percentage=round(cutResults[,c("ReadwithPrimer","ReadsWritten")]/cutResults$TotalReadPairsProcessed*100, digits=2)
-cutResults_Percentage$BasePairsWritten=round(cutResults$BasePairsWritten/cutResults$BasePairsProcessed*100, digits=2)
+cutResults_Percentage <- round(cutResults[,c("ReadwithPrimer", "ReadsWritten")] / cutResults$TotalReadPairsProcessed * 100, digits = 2)
+cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cutResults$BasePairsProcessed * 100, digits = 2)
 kable(cutResults_Percentage)
 ```
+
 <br>
 And for reverse unpaired reads they were:
 <br><br>
 
 ```{r, echo=F, warning=F}
-cutResults=data.frame(TotalReadPairsProcessed=NA, ReadwithPrimer=NA, ReadsTooShort=NA, ReadsWritten=NA, BasePairsProcessed=NA, BasePairsWritten=NA)
+cutResults <- data.frame(TotalReadPairsProcessed = NA, ReadwithPrimer = NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
-cut_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/cutadapt/", sample_ids[i], "_unpaired2_log.txt")
-text <- readLines(cut_report)
+  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_unpaired2_log.txt")
+  text <- readLines(cut_report)
 
-if (any(grepl("^===", text))) {
-rows <- grep("^===", text)
-report=text[c((rows[1]+2):(rows[2]-2))]
-sample = report %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+  if (any(grepl("^===", text))) {
+    rows <- grep("^===", text)
+    report <- text[c((rows[1]+2):(rows[2]-2))]
+    sample <- report %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% {gsub(',', '', .)} %>% as.numeric
 
-#Not all of the reports list ReadsTooShort, so add for those that don't a 0
-if (any(!grepl("short", report))) {
-  sample=append(sample, 0, after=2)
-}
-cutResults[i,]=sample[!is.na(sample)]
-rownames(cutResults)[i]=sample_ids[i]
-} else {
-cutResults[i,]=rep(0,6)
-rownames(cutResults)[i]=sample_ids[i]
-}
+    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
+    if (any(!grepl("short", report))) {
+      sample <- append(sample, 0, after = 2)
+    }
+    cutResults[i,] <- sample[!is.na(sample)]
+    rownames(cutResults)[i] <- sample_ids[i]
+  } else {
+    cutResults[i,] <- rep(0, 6)
+    rownames(cutResults)[i] <- sample_ids[i]
+  }
 }
 
 kable(cutResults)
 
-cutResults_Percentage=round(cutResults[,c("ReadwithPrimer","ReadsWritten")]/cutResults$TotalReadPairsProcessed*100, digits=2)
-cutResults_Percentage$BasePairsWritten=round(cutResults$BasePairsWritten/cutResults$BasePairsProcessed*100, digits=2)
+cutResults_Percentage <- round(cutResults[,c("ReadwithPrimer","ReadsWritten")] / cutResults$TotalReadPairsProcessed * 100, digits = 2)
+cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cutResults$BasePairsProcessed * 100, digits = 2)
 kable(cutResults_Percentage)
-
 ```
+
 <br>
 
 ## ASV inference with dada2
@@ -234,6 +229,7 @@ The first step of the dada2 pipeline is to perform more filtering and trimming b
 
 The parameters used in this run were:
 <br><br>
+
 ```{r, echo=F}
 cat("filterAndTrim(filesForw, filtFs, filesRev, filtRs,
   truncLen = c(" ,config$DADA2$filterAndTrim$Trunc_len_f,", " ,config$DADA2$filterAndTrim$Trunc_len_r,"),truncQ=" ,config$DADA2$filterAndTrim$TruncQ,",
@@ -246,36 +242,31 @@ cat("filterAndTrim(filesForw, filtFs, filesRev, filtRs,
   n = ",config$DADA2$filterAndTrim$n,", OMP = ",config$DADA2$filterAndTrim$OMP,",
   verbose = ",config$DADA2$filterAndTrim$verbose,"
 )", sep="")
-
 ```
 <br><br>
 
 The quality profile of all analysed paired reads before trimming (Forward reads in left panel, while reverse reads are in right panel):
 <br><br>
 
-```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
-
+```{r, echo=FALSE, out.width="49%", out.height="20%", fig.cap="caption", fig.show='hold', fig.align='center'}
 knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesForw.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesRev.png")))
-
 ```
+
 <br><br>
 And after trimming it was:
 <br><br>
-```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
 
+```{r, echo=FALSE, out.width="49%", out.height="20%", fig.cap="caption", fig.show='hold', fig.align='center'}
 knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png")))
-
 ```
 
 In case unpaired reads were kept after trimming and primer removal, quality profiles for unpaired reads can also be found in:
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
-
-message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesForw_single.png"))
-message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesRev_single.png"))
-message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filtered_unpaired_forward.png"))
-message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_fitlered_unpaired_reverse.png"))
-
+message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/dada2/aggregate_quality_profiles_filesForw_single.png"))
+message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/dada2/aggregate_quality_profiles_filesRev_single.png"))
+message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/dada2/aggregate_quality_profiles_filtered_unpaired_forward.png"))
+message(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/dada2/aggregate_quality_profiles_fitlered_unpaired_reverse.png"))
 ```
 
 ### Asv inference
@@ -285,38 +276,38 @@ The following step of the dada2 pipeline was define the ASVs from these trimmed 
 First error rates were learned for both forward and reverse paired reads separately as well as any unpaired remaining reads which survived filtering, with the following command:
 
 ```{r, echo=F}
-cat("learnErrors(filtFs, multithread = ",config$DADA2$learnERRORS$multithread,", nbases = ",config$DADA2$learnERRORS$nbases,", randomize = ",config$DADA2$learnERRORS$randomize,",MAX_CONSIST = ",config$DADA2$learnERRORS$MAX_CONSIST,", OMEGA_C = ",config$DADA2$learnERRORS$OMEGA_C,", verbose = ",config$DADA2$learnERRORS$verbose,")", sep="")
+cat("learnErrors(filtFs, multithread = ", config$DADA2$learnERRORS$multithread, ", nbases = ", config$DADA2$learnERRORS$nbases, ", randomize = ", config$DADA2$learnERRORS$randomize, ",MAX_CONSIST = ", config$DADA2$learnERRORS$MAX_CONSIST,", OMEGA_C = ", config$DADA2$learnERRORS$OMEGA_C, ", verbose = ", config$DADA2$learnERRORS$verbose, ")", sep = "")
 ```
 
 The forward and reverse error profiles were the following (in absolute numbers and in percentage of analysed reads):
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
 
-knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_filtFs.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_filtRs.png")))
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_filtFs.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/dada2/error_profile_filtRs.png")))
 
 ```
 
 Next the reads were dereplicated with the following command:
 
 ```{r, echo=F}
-cat("derepFastq(filtFs, n = ",config$DADA2$derepFastq$n,")", sep="")
+cat("derepFastq(filtFs, n = ", config$DADA2$derepFastq$n, ")", sep = "")
 ```
 
 The error rates were then used to infer ASVs from the dereplicated sequences using the following command for both forward and reverse reads separately:
 
 ```{r, echo=F}
-cat("dada(derepFs, err = errF, selfConsist = ",config$DADA2$dada$selfConsist,", pool = ",config$DADA2$dada$pool,", priors = ",config$DADA2$dada$priors,",
-  multithread = ",config$DADA2$learnERRORS$multithread,")", sep="")
+cat("dada(derepFs, err = errF, selfConsist = ", config$DADA2$dada$selfConsist,", pool = ", config$DADA2$dada$pool, ", priors = ", config$DADA2$dada$priors, ",
+  multithread = ", config$DADA2$learnERRORS$multithread,")", sep = "")
 ```
 
 In case reads were overlapping (include merge in the config file), sequence pairs were combined using:
 
 ```{r, echo=F}
 cat("mergePairs(dadaFs, derepFs, dadaRs, derepRs,
-  minOverlap = ",config$DADA2$mergePairs$minOverlap,", maxMismatch = ",config$DADA2$mergePairs$maxMismatch,", returnRejects = ",config$DADA2$mergePairs$returnRejects,",
-  propagateCol = ",config$DADA2$mergePairs$propagateCol,", justConcatenate = ",config$DADA2$mergePairs$justConcatenate,", trimOverhang = ",config$DADA2$mergePairs$trimOverhang,")", sep="")
-
+  minOverlap = ", config$DADA2$mergePairs$minOverlap,", maxMismatch = ", config$DADA2$mergePairs$maxMismatch, ", returnRejects = ", config$DADA2$mergePairs$returnRejects, ",
+  propagateCol = ", config$DADA2$mergePairs$propagateCol,", justConcatenate = ", config$DADA2$mergePairs$justConcatenate, ", trimOverhang = ", config$DADA2$mergePairs$trimOverhang, ")", sep = "")
 ```
+
 If returnRejects was selected, also the returned unpaired sequences were kept in the final tables.
 Otherwise, the dereplicated sequences were kept without merging.
 Also any sequences unpaired forward or reverse sequences were added to the sequence tables at this stage.
@@ -325,17 +316,15 @@ All single reverse sequences (unpaired either in trimmomatic or here, or if pair
 And finally, chimeras were removed with:
 
 ```{r, echo=F}
-cat("removeBimeraDenovo(seqtab, method = ",config$DADA2$removeBimeraDenovo$method,", multithread = ",config$DADA2$learnERRORS$multithread,")", sep="")
-
+cat("removeBimeraDenovo(seqtab, method = ", config$DADA2$removeBimeraDenovo$method, ", multithread = ", config$DADA2$learnERRORS$multithread, ")", sep="")
 ```
 
 The amount of reads analysed in each step and remaining at the end of the pipeline were:
 
 ```{r, echo=F}
+dada2_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/dada2/dada2_stats.txt")
 
-dada2_report=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/dada2_stats.txt")
-
-dada2_stats=read.table(dada2_report, header=TRUE)
+dada2_stats <- read.table(dada2_report, header = TRUE)
 kable(dada2_stats)
 ```
 
@@ -347,8 +336,8 @@ The command used for the alignment was the following:
 
 ```{r, echo=F}
 cat("bowtie2 -x bowtie2-database -f -U representative_seqs -S alignment.sam --no-hd --no-sq --very-sensitive --local --no-unal -p ",config$TAXONOMY$threads," -k " ,config$TAXONOMY$distinct_alignments," --un rejects.fasta", sep="")
-
 ```
+
 The best distinct alignments (parameter -k), were then used to infer the taxonomy based on a bayesian least common ancestor method. In this method, a higher taxonomy is assigned, if it shared enough times in the alignments made in the first step.
 
 For this step the user defines the cutoff value used for accepting a taxonomic assignment (what is the likelihood that it is correct based on the 100 alignments made).
@@ -356,78 +345,73 @@ For this step the user defines the cutoff value used for accepting a taxonomic a
 The used command was the following:
 
 ```{r, echo=F}
-cat("python ./workflow/scripts/blca_from_bowtie.py  -i alignment.sam  -r ",config$DATABASE$taxa,"  -q ",config$DATABASE$fasta," -b ",config$TAXONOMY$min_identity," -l ",config$TAXONOMY$min_length,"  -n ",config$TAXONOMY$bootstrap_no,"  -m ",config$TAXONOM$match_score," -f ",config$TAXONOMY$mismatch_penalty,"  -g ",config$TAXONOMY$gap_penalty," -o blca.output", sep="")
+cat("python ./workflow/scripts/blca_from_bowtie.py  -i alignment.sam  -r ", config$DATABASE$taxa,"  -q ", config$DATABASE$fasta," -b ", config$TAXONOMY$min_identity, " -l ", config$TAXONOMY$min_length, "  -n ", config$TAXONOMY$bootstrap_no, "  -m ", config$TAXONOM$match_score, " -f ", config$TAXONOMY$mismatch_penalty, "  -g ", config$TAXONOMY$gap_penalty, " -o blca.output", sep = "")
 ```
 
-The provided **cutoff** was then used to filter the blca output for reliable taxonomic assignments:
+The provided `cutoff` was then used to filter the blca output for reliable taxonomic assignments:
 
 ```{r, echo=F}
-cat("python ./workflow/scripts/reformat_summary_for_r.py blca.output tax.table   ",config$TAXONOMY$blca_identity_cutoff, sep="")
-
+cat("python ./workflow/scripts/reformat_summary_for_r.py blca.output tax.table   ", config$TAXONOMY$blca_identity_cutoff, sep = "")
 ```
 
 A phyloseq object was built with this information, and can be found here:
 
 ```{r, echo=F, results='asis'}
-cat("./results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/phyloseq_object.rds\n", sep="")
+cat("./results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/phyloseq_object.rds\n", sep = "")
 ```
-
 
 The total information stored in the phyloseq object is:
 
 ```{r, echo=F}
-pseq=readRDS(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/phyloseq_object.rds"))
+pseq <- readRDS(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/phyloseq_object.rds"))
 
 pseq
 ```
+
 Note also that the sequences of the ASVs are stored in the tax_table of the phyloseq object.
+
 <br><br>
 The total number of taxa assigned at each taxonomic level:
 
 ```{r, echo=F}
 colSums(!is.na(tax_table(pseq)[,c(1:7)]))
-
 ```
 
 In relative abundance (see total number of reads in the dada2 output), the most abundant taxa at phylumn level and at species level are shown in the following images.
 
 ```{r}
+pseq_rel <- transform_sample_counts(pseq, function(x) x / sum(x) )
+pmelt <- psmelt(pseq_rel)
 
-pseq_rel<- transform_sample_counts(pseq, function(x) x / sum(x) )
-pmelt<- psmelt(pseq_rel)
-
-pmelt%>%
+pmelt %>%
   group_by(phylum) %>%
   filter(Abundance > 0.01) %>%
-  ggplot(aes(phylum, y=Abundance, fill=phylum))+
-  geom_bar(stat='identity')+
-  theme_classic()+
-  theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none')+
-  facet_grid(~Sample)
+  ggplot(aes(phylum, y = Abundance, fill = phylum)) +
+    geom_bar(stat = 'identity') +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none') +
+    facet_grid(~Sample)
 
 pmelt %>%
   group_by(species) %>%
   filter(Abundance > 0.01) %>%
-  ggplot(aes(species, y=Abundance, fill=phylum))+
-  geom_bar(stat='identity')+
-  theme_classic()+
-  theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none')+
-  facet_grid(~Sample, scales='free_x')
-
+  ggplot(aes(species, y = Abundance, fill = phylum)) +
+    geom_bar(stat = 'identity')+
+    theme_classic()+
+    theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none')+
+    facet_grid(~Sample, scales = 'free_x')
 ```
 
 The relationship of the biodiversity between the samples is shown in the following ordination. The closer together the samples are depicted, the more similar the biodiversity measured in each of the samples was.
 
 ```{r, echo=F}
-
 pseq.ord <- ordinate(pseq_rel, "PCoA", "bray")
-sample_data(pseq_rel)$sample_id=sample_names(pseq_rel)
+sample_data(pseq_rel)$sample_id <- sample_names(pseq_rel)
 
-plot_ordination(pseq_rel, pseq.ord)+
-geom_point(size = 4, fill='white', shape=21) +
-geom_text(aes(label = sample_id), size = 4, vjust = 'inward', hjust ='inward') +
-theme_bw()
-
+plot_ordination(pseq_rel, pseq.ord) +
+  geom_point(size = 4, fill = 'white', shape = 21) +
+  geom_text(aes(label = sample_id), size = 4, vjust = 'inward', hjust ='inward') +
+  theme_bw()
 ```
 
 ## Darwin core archive tables
@@ -443,22 +427,21 @@ In addition, if there was a control sample which was labelled in the original sa
 The final tables can be found at:
 
 ```{r, echo=F, results='asis'}
-cat("results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurrence_table.csv  \n", sep="")
-cat("results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/DNA_extension_table.csv  \n  \n", sep="")
-
+cat("results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/Occurrence_table.csv  \n", sep = "")
+cat("results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/DNA_extension_table.csv  \n  \n", sep = "")
 ```
+
 From this analysis run there were
 
 ```{r, echo=F, results='asis'}
-occ_path=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurence_table.csv")
-occ_table=read.table(occ_path, header=TRUE, sep="\t")
+occ_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurence_table.csv")
+occ_table <- read.table(occ_path, header = TRUE, sep = "\t")
 
 cat("The total number of occurrences was", nrow(occ_table), ".  \n")
-cat("Of which", sum(occ_table$scientificName!="Biota"), "were known, and therefore", sum(occ_table$scientificName=="Biota"), "or", sum(occ_table$scientificName=="Biota")/nrow(occ_table)*100, "% remained unknown.  \n  \nThe sequences of these occurrences can nevertheless be added to the database, and it is possible that their taxonomy will be defined when reference databases develop.  \n  \n")
+cat("Of which", sum(occ_table$scientificName!="Biota"), "were known, and therefore", sum(occ_table$scientificName=="Biota"), "or", sum(occ_table$scientificName=="Biota") / nrow(occ_table) * 100, "% remained unknown.  \n  \nThe sequences of these occurrences can nevertheless be added to the database, and it is possible that their taxonomy will be defined when reference databases develop.  \n  \n")
 
-notinworms_path=paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Taxa_not_in_worms.csv")
-notinworms_table=read.table(notinworms_path, header=TRUE, sep="\t")
+notinworms_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Taxa_not_in_worms.csv")
+notinworms_table <- read.table(notinworms_path, header=TRUE, sep = "\t")
 
 cat("The number of names not found in the marine records of WoRMS was", nrow(notinworms_table))
-
 ```
