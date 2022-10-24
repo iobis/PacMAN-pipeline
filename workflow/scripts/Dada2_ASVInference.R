@@ -11,20 +11,15 @@ library(dada2)
 library(Biostrings)
 library(ggplot2)
 
-
 args <- commandArgs(trailingOnly = T)
-#print(args)
-config=read_yaml(args[2])
+config <- read_yaml(args[2])
 
 # Set the different paths for all the supplied libraries
 #NOTICE: only forward files given as input
 filtFs <- args[3:length(args)]
-#print(filtFs)
 filtRs <- gsub("_1P", "_2P", filtFs)
-#print(filtRs)
 
 outpath <- args[1]
-#print(outpath)
 
 # Get sample names
 sample.names <- gsub("_1P.fastq.gz", "", basename(filtFs))
@@ -86,25 +81,25 @@ dadaRs <- dada(derepRs, errR, selfConsist = config$DADA2$dada$selfConsist, pool 
   verbose = config$DADA2$learnERRORS$verbose)
 print(names(dadaFs)); print(names(dadaRs))
 
-message("attempting merge")
-if (config$meta$sequencing$lib_layout=="Paired"|config$meta$sequencing$lib_layout=="paired"|config$meta$sequencing$lib_layout=="PAIRED") {
-message("merging pairs")
-mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs,
-  minOverlap = as.numeric(config$DADA2$mergePairs$minOverlap), maxMismatch = as.numeric(config$DADA2$mergePairs$maxMismatch),
-  returnRejects = config$DADA2$mergePairs$returnRejects, propagateCol = config$DADA2$mergePairs$propagateCol,
-  justConcatenate = config$DADA2$mergePairs$justConcatenate, trimOverhang = config$DADA2$mergePairs$trimOverhang,
-  verbose = config$DADA2$learnERRORS$verbose)
+message("Attempting merge")
+if (tolower(config$meta$sequencing$lib_layout) == "paired") {
+    message("Merging pairs")
+    mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs,
+      minOverlap = as.numeric(config$DADA2$mergePairs$minOverlap), maxMismatch = as.numeric(config$DADA2$mergePairs$maxMismatch),
+      returnRejects = config$DADA2$mergePairs$returnRejects, propagateCol = config$DADA2$mergePairs$propagateCol,
+      justConcatenate = config$DADA2$mergePairs$justConcatenate, trimOverhang = config$DADA2$mergePairs$trimOverhang,
+      verbose = config$DADA2$learnERRORS$verbose)
 
-seqtab <- makeSequenceTable(mergers)
+    seqtab <- makeSequenceTable(mergers)
 
 } else {
-message("no merging")
-seqtab1 <- makeSequenceTable(dadaFs)
-seqtab2 <- makeSequenceTable(dadaRs)
-seqtab <- cbind(seqtab1, seqtab2)
+  message("No merging")
+  seqtab1 <- makeSequenceTable(dadaFs)
+  seqtab2 <- makeSequenceTable(dadaRs)
+  seqtab <- cbind(seqtab1, seqtab2)
 }
 
-message("removing chimeras")
+message("Removing chimeras")
 seqtab.nochim <- removeBimeraDenovo(seqtab, method = config$DADA2$removeBimeraDenovo$method,
   multithread = config$DADA2$learnERRORS$multithread, verbose = config$DADA2$learnERRORS$verbose)
 
@@ -132,8 +127,8 @@ getN <- function(x) sum(getUniques(x))
 #colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim","ASVs")
 #rownames(track) <- sample.names
 if (config$meta$sequencing$lib_layout=="Paired"|config$meta$sequencing$lib_layout=="paired"|config$meta$sequencing$lib_layout=="PAIRED") {
-track <- cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
-colnames(track) <- c("denoisedF", "denoisedR", "merged", "nonchim", "ASVs")
+  track <- cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
+  colnames(track) <- c("denoisedF", "denoisedR", "merged", "nonchim", "ASVs")
 } else {
   track <- cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
   colnames(track) <- c("denoisedF", "denoisedR", "nonchim", "ASVs")

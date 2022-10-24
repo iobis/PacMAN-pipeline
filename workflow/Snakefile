@@ -6,7 +6,7 @@ Last update: 03/12/2021
 import pandas as pd
 import os
 
-# configfile defaults to config/config.yaml, but can be overridden using --configfile
+# Config file defaults to config/config.yaml, but can be overridden using --configfile
 
 DEFAULT_CONFIG = "config/config.yaml"
 
@@ -24,11 +24,11 @@ print("Analysing samples:")
 for iteration, item in enumerate(samples):
   print(iteration+1, ". ", item, sep='')
 
-#Here first define any new/needed commands
-#if no target is given at the command line, (rule or target ((output) file)
-#Snakemake will define the first rule of the Snakefile as the target.
-#Hence, it is best practice to have a rule all at the top of the workflow
-#which has all typically desired target files as input files.
+# Here first define any new/needed commands
+# If no target is given at the command line, (rule or target ((output) file)
+# Snakemake will define the first rule of the Snakefile as the target.
+# Hence, it is best practice to have a rule all at the top of the workflow
+# which has all typically desired target files as input files.
 
 rule all:
     input:
@@ -82,9 +82,8 @@ rule all:
 
 # RULES: INITIATE STRUCTURE ----------------------------------------------------------------
 
-#For future expansions of the pipeline, use if statements. Now we are using library (input folder), and paired end reads with no demultiplexing
+# For future expansions of the pipeline, use if statements. Now we are using library (input folder), and paired end reads with no demultiplexing
 #if len(config["LIBRARY"])==1 and config["demultiplexing"]["demultiplex"] == "T" and len(config["input_files"])<2 and config["LIBRARY_LAYOUT"] != "SE":
-
 
 rule init_structure:
     input:
@@ -98,11 +97,11 @@ rule init_structure:
         "python workflow/scripts/init_sample_from_manifest_by_sample.py " + \
           config["PROJECT"]+" {input} {wildcards.samples} "
 
-#{sample} should be read from the manifest file, {PROJECT} should be read from the configfile
+# {sample} should be read from the manifest file, {PROJECT} should be read from the configfile
 
 # RULES: QUALITY CONTROL----------------------------------------------------------------
 
-#This section contains all quality control
+# This section contains all quality control
 
 rule fast_qc:
     """
@@ -122,9 +121,9 @@ rule fast_qc:
         "fastqc {input.r1} {input.r2} -o results/{wildcards.PROJECT}/samples/{wildcards.samples}/qc/"
 
 
-#MULTIQC creates a report of all generated fastqc files, that can be found in: multiqc_data/multiqc_general_stats
-#Also can be viewed in html
-#Later check if this can be somehow linked to the report.
+# MULTIQC creates a report of all generated fastqc files, that can be found in: multiqc_data/multiqc_general_stats
+# Also can be viewed in html
+# Later check if this can be somehow linked to the report.
 
 rule multiqc:
   input:
@@ -140,12 +139,12 @@ rule multiqc:
   shell:
     "multiqc -dd 2 -n {output.raw_multi_html} {input.raw_qc_fw} {input.raw_qc_rv}"
     #"multiqc -dd 2 --pdf -n {output.raw_multi_pdf} {input.raw_qc_fw} {input.raw_qc_rv}"
-#Note: there is an automatic pdf report, but this requires the installation of latex
+# Note: there is an automatic pdf report, but this requires the installation of latex
 
 # RULES: SEQUENCE TRIMMING ----------------------------------------------------------------
 
-#Apparently when running trimmomatic like this, it searches only in the current folder.
-#adapters manually added to the project folders
+# Apparently when running trimmomatic like this, it searches only in the current folder.
+# adapters manually added to the project folders
 
 rule trimmomatic_pe:
   input:
@@ -172,7 +171,7 @@ rule trimmomatic_pe:
     {config[trimmomatic][extra_params]} \
     2> {log.f1}"
 
-#Repeat quality control here also?
+# Repeat quality control here also?
 # Reverse complement primers (MBARI-BOG)
 # Somehow reverse complements added as input!
 #PRIMER1RC=$( echo ${PRIMER1} | tr "[ABCDGHMNRSTUVWXYabcdghmnrstuvwxy]" "[TVGHCDKNYSAABWXRtvghcdknysaabwxr]" | rev )
@@ -232,13 +231,13 @@ rule cutadapt_unpaired:
         --minimum-length 1 {config[cutadapt][se_extra_params]} \
         1> {log.f2}"
 
-#Repeat quality control
-#Then we may want to have a rule that checks the results of the multiqc for any big problems.
-#dada2 has its own quality control steps, maybe I can use those?
+# Repeat quality control
+# Then we may want to have a rule that checks the results of the multiqc for any big problems.
+# dada2 has its own quality control steps, maybe I can use those?
 
 # RULES: ASV INFERENCE WITH DADA2----------------------------------------------------------------
 
-#In this section we run the dada2 pipeline, both paired and single reads are analysed and added to the final tables.
+# In this section we run the dada2 pipeline, both paired and single reads are analysed and added to the final tables.
 
 if config["meta"]["sequencing"]["lib_layout"] == "Paired":
     rule dada2_filter:
@@ -272,10 +271,11 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
             #o1 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN),
             #o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN),
             #o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
-            o2 = "results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt",
-            o3 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
+            o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+            o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
+            o4 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/mapping/{samples}/{samples}_mapping.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
         log:
-            o1 = "results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt",
+            o1 = expand("results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
         conda:
             "envs/dada2.yaml"
         shell:
@@ -287,10 +287,10 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
 
 # RULES: TAXONOMIC ASSIGNMENT ----------------------------------------------------------------
 
-#In this part we will perform the taxonomic assignment of the reads with bowtie2 and blca
-#Following the strategy of the ANACAPA pipeline
+# In this part we will perform the taxonomic assignment of the reads with bowtie2 and blca
+# Following the strategy of the ANACAPA pipeline
 
-#First we will build the bowtie2 database if it is not given in the configfile:
+# First we will build the bowtie2 database if it is not given in the configfile:
 if config["DATABASE"]["location_bowtie2"] == None:
     rule bowtie2_build:
         input:
@@ -311,7 +311,7 @@ if config["DATABASE"]["location_bowtie2"] == None:
             config["DATABASE"]["name"]+"/"+config["DATABASE"]["name"]
 
 
-#Input for bowtie2 depends on if the mapping was given or not: now if statement, could be changed to something else?
+# Input for bowtie2 depends on if the mapping was given or not: now if statement, could be changed to something else?
 
 if config["DATABASE"]["location_bowtie2"] != None:
     rule bowtie2:
@@ -407,7 +407,7 @@ rule filter_taxa:
     {config[TAXONOMY][blca_identity_cutoff]}"
 
 
-#The remaining unknown sequences from blca are blasted against nt, so that all possible public information is checked.
+# The remaining unknown sequences from blca are blasted against nt, so that all possible public information is checked.
 if config["BLAST"]["include"] == True:
     rule blast_unknown:
         input:
@@ -433,8 +433,8 @@ if config["BLAST"]["include"] == True:
             {config[BLAST][database]}"
             # removed this as can be filtered later: -evalue 5e-13 \
 
-#Here we add those that were completely unclassified (no matches in the provided reference database),
-#As well as those that did not have a good match in the database (lower confidence tha the cutoff value at Kingdom)
+# Here we add those that were completely unclassified (no matches in the provided reference database),
+# As well as those that did not have a good match in the database (lower confidence tha the cutoff value at Kingdom)
 
     if config["BLAST"]["tax_db"] != None:
         rule lca_blast:
@@ -478,7 +478,7 @@ if config["BLAST"]["include"] == True:
 
 
 rule classified_taxa:
-  #This rule is just to print a simple table where the amount of taxa that are classified in the previous step are recorded:
+  # This rule is just to print a simple table where the amount of taxa that are classified in the previous step are recorded:
   input:
     "results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
   output:
@@ -492,15 +492,15 @@ rule classified_taxa:
 
 # RULES: DATA PACKAGING? ----------------------------------------------------------------
 
-#Package files into a darwin core archive (but optional, should be possible to run the pipeline without it.)
-#Occurrence core: csv
-#DNA-derived data extension: csv
+# Package files into a darwin core archive (but optional, should be possible to run the pipeline without it.)
+# Occurrence core: csv
+# DNA-derived data extension: csv
 
-#Add required metadata through the config file? e.g. submitter name, sequencing platform, long-lat
+# Add required metadata through the config file? e.g. submitter name, sequencing platform, long-lat
 
-#Taxa file: "{PROJECT}/{RUN}/taxonomy/identity_filtered/{DATABASE}_blca_tax_table_100.txt" = taxonomy
-#Reference sequences: "{PROJECT}/{RUN}/dada2/rep-seqs.fna" = sequence
-#ASV table: "{PROJECT}/{RUN}/dada2/seqtab-nochim.txt" = abundance
+# Taxa file: "{PROJECT}/{RUN}/taxonomy/identity_filtered/{DATABASE}_blca_tax_table_100.txt" = taxonomy
+# Reference sequences: "{PROJECT}/{RUN}/dada2/rep-seqs.fna" = sequence
+# ASV table: "{PROJECT}/{RUN}/dada2/seqtab-nochim.txt" = abundance
 
 print("\n-------------    There are three main output files of this run:     -------------\n")
 print("1. The otu table at: ", PROJECT, "/runs/",
@@ -511,7 +511,7 @@ print("3. The reference sequences at: ", PROJECT,
       "/runs/", RUN, "/dada2/rep-seqs.fna\n", sep='')
 
 
-#Retrieve LSIDs using R. Append LSIDs and the linked DNA sequences to the tax table:
+# Retrieve LSIDs using R. Append LSIDs and the linked DNA sequences to the tax table:
 
 rule get_lsids:
   input:
@@ -562,7 +562,7 @@ rule make_dwca:
     {config[DATABASE][name]} \
     {config[meta][sequencing][extra_fields]}"
 
-#Make here also a simple overview image to be added to the report?
+# Make here also a simple overview image to be added to the report?
 
 
 rule reporting:
