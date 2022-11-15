@@ -57,8 +57,9 @@ for (i in 1:4) {
 
   for (j in 1:length(allfiles[[i]])) {
     info <- file.info(allfiles[[i]][j])
-    notempty <- rownames(info[info$size > 20, ]) #20 is the size of an empty .gz file
-    files_loop <- c(files_loop, notempty)
+    if (!is.na(info$size) & info$size > 20) { # 20 is the size of an empty .gz file
+      files_loop <- c(files_loop, allfiles[[i]][j])
+    }
   }
 
   files_exist[[i]] <- files_loop
