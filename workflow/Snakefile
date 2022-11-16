@@ -46,7 +46,6 @@ rule all:
                PROJECT=PROJECT, samples=samples),
         expand("results/{PROJECT}/samples/multiqc_{RUN}.html",
                PROJECT=PROJECT, RUN=RUN),
-        #expand("{PROJECT}/{RUN}/trimmed/{samples}/{samples}_1P.fastq.gz",  PROJECT=PROJECT, RUN=RUN, samples=samples)
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
                PROJECT=PROJECT, RUN=RUN, samples=samples),
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
@@ -55,9 +54,6 @@ rule all:
                PROJECT=PROJECT, RUN=RUN, samples=samples),
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
                PROJECT=PROJECT, RUN=RUN, samples=samples),
-        #expand("{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/", PROJECT=PROJECT, RUN=RUN, samples=samples),
-        #expand("{PROJECT}/runs/{RUN}/dada2/filtered/{samples}/{samples}_1P.fastq.gz", PROJECT=PROJECT, RUN=RUN, samples=samples),
-        #expand("{PROJECT}/runs/{RUN}/dada2/filtered/{samples}/{samples}_2P.fastq.gz", PROJECT=PROJECT, RUN=RUN, samples=samples),
         expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
                PROJECT=PROJECT, RUN=RUN),
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_local.sam",
@@ -132,7 +128,6 @@ rule multiqc:
     raw_qc_rv = expand(
       "results/{{PROJECT}}/samples/{samples}/qc/rv_fastqc.zip", samples=samples),
   output:
-    #raw_multi_html = "{PROJECT}/samples/multiqc.html",
     raw_multi_html = "results/{PROJECT}/samples/multiqc_{RUN}.html"
   conda:
     "envs/qc.yaml"
@@ -151,7 +146,6 @@ rule trimmomatic_pe:
     r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
     r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz"
   output:
-    #out = directory("{PROJECT}/{RUN}/trimmed/{samples}")
     p1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1P.fastq.gz",
     u1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1U.fastq.gz",
     p2 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_2P.fastq.gz",
@@ -268,9 +262,6 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
             FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
                            PROJECT=PROJECT, RUN=RUN, samples=samples),
         output:
-            #o1 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN),
-            #o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN),
-            #o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
             o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
             o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
             o4 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/mapping/{samples}/{samples}_mapping.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
@@ -290,7 +281,7 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
 # In this part we will perform the taxonomic assignment of the reads with bowtie2 and blca
 # Following the strategy of the ANACAPA pipeline
 
-# First we will build the bowtie2 database if it is not given in the configfile:
+# First we will build the bowtie2 database if it is not given in the config file:
 if config["DATABASE"]["location_bowtie2"] == None:
     rule bowtie2_build:
         input:
@@ -524,8 +515,8 @@ rule get_lsids:
     o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Taxa_not_in_worms.csv",
     o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/Full_tax_table_with_lsids.csv"
   conda:
-    "envs/worrms.yaml"
-  shell: #Add here if statement for the
+    "envs/r.yaml"
+  shell:
     "Rscript ./workflow/scripts/get_lsids.R \
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
     {input.f1} \
@@ -542,7 +533,7 @@ rule make_dwca:
     o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.csv",
     o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/DNA_extension_table.csv",
   conda:
-    "envs/dwca.yaml"
+    "envs/r.yaml"
   shell:
     "Rscript ./workflow/scripts/format_for_dwc_new.R \
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
@@ -569,7 +560,7 @@ rule reporting:
   input:
     "results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.csv",
   conda:
-    "envs/rmd.yaml"
+    "envs/r.yaml"
   output:
     "results/{PROJECT}/runs/{RUN}/06-report/report.html"
   shell:
