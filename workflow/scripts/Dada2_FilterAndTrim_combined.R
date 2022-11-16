@@ -62,7 +62,11 @@ for (i in 1:4) {
     }
   }
 
-  files_exist[[i]] <- files_loop
+  if (is.null(files_loop)) {
+    files_exist[i] <- list(NULL)
+  } else {
+    files_exist[[i]] <- files_loop
+  }
 
   if (length(files_exist[[i]] != 0)) {
     message(paste("making quality plots of raw reads:", i, ": (1) forward paired (2) reverse paired (3) forward single and (4) reverse single " , sep = " "))
