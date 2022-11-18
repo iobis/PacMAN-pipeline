@@ -239,7 +239,8 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
             #files = expand("{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/", PROJECT=PROJECT, RUN=RUN, samples=samples),
             f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
                         PROJECT=PROJECT, RUN=RUN, samples=samples),
-            f2 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz", PROJECT=PROJECT, RUN=RUN, samples=samples),
+            f2 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
+                        PROJECT=PROJECT, RUN=RUN, samples=samples),
         output:
             FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
                            PROJECT=PROJECT, RUN=RUN, samples=samples),
