@@ -55,6 +55,9 @@ if (grepl("MIDORI_UNIQ", args[2], fixed = TRUE, ignore.case = TRUE)) {
 
 }
 
+taxmat <- taxmat %>%
+  select(kingdom, phylum, class, order, family, genus, species)
+
 # Collect the highest known taxonomic value to the last column
 taxmat$lastvalue <- as.matrix(taxmat)[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "last"))]
 
