@@ -356,7 +356,7 @@ Note also that the sequences of the ASVs are stored in the tax_table of the phyl
 The total number of taxa assigned at each taxonomic level:
 
 ```{r, echo=F}
-colSums(!is.na(tax_table(pseq)[,c(1:7)]))
+colSums(tax_table(pseq)[,c(1:7)]!="")
 ```
 
 In relative abundance (see total number of reads in the dada2 output), the most abundant taxa at phylumn level and at species level are shown in the following images.
