@@ -356,7 +356,11 @@ Note also that the sequences of the ASVs are stored in the tax_table of the phyl
 The total number of taxa assigned at each taxonomic level:
 
 ```{r, echo=F}
-colSums(tax_table(pseq)[,c(1:7)]!="")
+if (colSums(is.na(tax_table(pseq)[,c(7)]))==0) {
+colSums(tax_table(pseq)[,c(1:7)]!="") 
+} else {
+colSums(!is.na(tax_table(pseq)[,c(1:7)]))
+}
 ```
 
 In relative abundance (see total number of reads in the dada2 output), the most abundant taxa at phylumn level and at species level are shown in the following images.
@@ -385,6 +389,7 @@ pmelt %>%
 ```
 
 The relationship of the biodiversity between the samples is shown in the following ordination. The closer together the samples are depicted, the more similar the biodiversity measured in each of the samples was.
+(Works only if more than 2 samples are analysed in a run.)
 
 ```{r, echo=F}
 pseq.ord <- ordinate(pseq_rel, "PCoA", "bray")
