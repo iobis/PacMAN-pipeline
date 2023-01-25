@@ -6,6 +6,7 @@ library("stringr")
 library("phyloseq")
 library("dplyr")
 library("xml2")
+library("yaml")
 
 args <- commandArgs(trailingOnly = T)
 
@@ -15,8 +16,9 @@ outpath <- args[1]
 
 tax_file <- read.csv(args[3], sep = "\t", header = T, row.names = 1)
 otu_file <- read.csv(args[2], sep = "\t", header = T, row.names = 1)
-#Rep_seqs=Biostrings::readDNAStringSet(args[4])
-sample_file <- read.csv(args[4], sep = ";", header = T, row.names = 1)
+Rep_seqs <- Biostrings::readDNAStringSet(args[4])
+sample_file <- read.csv(args[5], sep = ";", header = T, row.names = 1)
+config <- read_yaml(args[6])
 
 # Add checks!
 # 1. Make sure that the values are given
@@ -27,25 +29,26 @@ sample_file <- read.csv(args[4], sep = ";", header = T, row.names = 1)
 ########################### 2. Add user provided fields to sample data ############################################################################################
 
 # First change empty values to NA
-args[args[5:15] == "None"] <- NA
+#args[args[5:15] == "None"] <- NA
 
-sample_file$target_gene <- args[5]
-sample_file$subfragment <- args[6]
-sample_file$pcr_primer_forward <- args[7]
-sample_file$pcr_primer_reverse <- args[8]
-sample_file$pcr_primer_name_forw <- args[9]
-sample_file$pcr_primer_name_reverse <- args[10]
-sample_file$pcr_primer_reference <- args[11]
-sample_file$lib_layout <- args[12]
-sample_file$seq_meth <- args[13]
-sample_file$sop <- args[14]
-sample_file$votu_db <- args[15]
+sample_file$target_gene <- config$meta$sequencing$target_gene
+sample_file$subfragment <- config$meta$sequencing$subfragment 
+sample_file$pcr_primer_forward <- config$meta$sequencing$pcr_primer_forward 
+sample_file$pcr_primer_reverse <- config$meta$sequencing$pcr_primer_reverse 
+sample_file$pcr_primer_name_forward <- config$meta$sequencing$pcr_primer_name_forw 
+sample_file$pcr_primer_name_reverse <- config$meta$sequencing$pcr_primer_name_reverse 
+sample_file$pcr_primer_reference <- config$meta$sequencing$pcr_primer_reference 
+sample_file$lib_layout <- config$meta$sequencing$lib_layout
+sample_file$seq_meth <- config$meta$sequencing$seq_meth 
+sample_file$sop <- config$meta$sequencing$sop 
+sample_file$votu_db <- config$DATABASE$name 
 
 # Addition of possible extra fields:
+extra_fields <- config$meta$sequencing$extra_fields
 args_name_value <- data.frame(command = 1, value = 1)
 
-if (args[16] != "None") {
-  extra_args <- str_split(args[16], ",", simplify = T)
+if (extra_fields != "None") {
+  extra_args <- str_split(extra_fields, ",", simplify = T)
   for (i in 1:length(extra_args)) {
     args_name_value[i,] <- str_split(extra_args[i], ":", simplify = T)
   }
@@ -62,6 +65,7 @@ sample_data <- phyloseq::sample_data(sample_file)
 
 # Here I make a phyloseq object with the three files
 phydata <- phyloseq::phyloseq(otu_table, tax_table, sample_data)
+phydata <- phyloseq::merge_phyloseq(phydata, Rep_seqs)
 # Print the amount of information stored:
 phydata
 
