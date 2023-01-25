@@ -533,7 +533,7 @@ rule make_dwca:
   input:
     f1 = "results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt",
     f2 = "results/{PROJECT}/runs/{RUN}/05-dwca/Full_tax_table_with_lsids.csv",
-    #f3 = "{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
+    f3 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
   output:
     o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.csv",
     o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/DNA_extension_table.csv",
@@ -544,19 +544,10 @@ rule make_dwca:
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
     {input.f1} \
     {input.f2} \
+    {input.f3} \
     {config[meta][sampling][sample_data_file]}\
-    {config[meta][sequencing][target_gene]} \
-    {config[meta][sequencing][subfragment]} \
-    {config[meta][sequencing][pcr_primer_forward]} \
-    {config[meta][sequencing][pcr_primer_reverse]} \
-    {config[meta][sequencing][pcr_primer_name_forw]} \
-    {config[meta][sequencing][pcr_primer_name_reverse]} \
-    {config[meta][sequencing][pcr_primer_reference]} \
-    {config[meta][sequencing][lib_layout]} \
-    {config[meta][sequencing][seq_meth]} \
-    {config[meta][sequencing][sop]} \
-    {config[DATABASE][name]} \
-    {config[meta][sequencing][extra_fields]}"
+    "+config_path+" "
+
 
 # Make here also a simple overview image to be added to the report?
 

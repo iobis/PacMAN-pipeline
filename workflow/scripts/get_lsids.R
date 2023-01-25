@@ -125,9 +125,10 @@ taxmat$specificEpithet <- sapply(taxmat$lastvalue, function(name) {
 })
 
 # Add Biota LSID in case there is no last value
+# Kingdom is used as taxonRank so that "Biota" is also recognized correctly by GBIF
 
 taxmat$lsid[is.na(taxmat$lastvalue)] <- "urn:lsid:marinespecies.org:taxname:1"
-taxmat$taxonRank[is.na(taxmat$lastvalue)] <- "superdomain"
+taxmat$taxonRank[is.na(taxmat$lastvalue)] <- "kingdom"
 
 # Names not in WoRMS
 
@@ -159,12 +160,8 @@ message("These taxa can be found in the table: ", outpath, "Taxa_not_in_worms.cs
 
 not_in_worms <- taxmat[is.na(taxmat$lsid),]
 
-# We have the dilemma of keeping sequences that are completely unknown (as 'biota'),
-# while removing sequences that have a known non-marine origin?
-
 # Add 'Biota' as the name for the unknown sequences
 
-taxmat$lsid[is.na(taxmat$lsid)] <- "urn:lsid:marinespecies.org:taxname:1"
 taxmat$lastvalue[is.na(taxmat$lastvalue)] <- "Biota"
 
 # Add sequence to the tax_table slot (linked to each asv)
