@@ -153,6 +153,9 @@ if (config$DADA2$mergePairs$include) {
                         justConcatenate = config$DADA2$mergePairs$justConcatenate,
                         trimOverhang = config$DADA2$mergePairs$trimOverhang,
                         verbose = config$DADA2$learnERRORS$verbose)
+  if (is.data.frame(mergers)) {
+    mergers <- list(mergers) %>% setNames(sample.names)
+  }
 
   # Create read/ASV mapping
   mergers_all <- mergePairs(dadas[[1]], dereps[[1]], dadas[[2]], dereps[[2]],
@@ -160,6 +163,10 @@ if (config$DADA2$mergePairs$include) {
     returnRejects = TRUE, propagateCol = config$DADA2$mergePairs$propagateCol,
     justConcatenate = config$DADA2$mergePairs$justConcatenate, trimOverhang = config$DADA2$mergePairs$trimOverhang,
     verbose = config$DADA2$learnERRORS$verbose)
+  if (is.data.frame(mergers_all)) {
+    mergers_all <- list(mergers_all) %>% setNames(sample.names)
+  }
+
   mapping <- lapply(names(mergers_all), function(name) {
     merger_to_dada <- lapply(mergers_all[[name]]$forward, function(x) {
       which(dadas[[1]][[name]]$map == x)
