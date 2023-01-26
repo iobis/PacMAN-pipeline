@@ -221,8 +221,11 @@ if (length(files_exist[[3]]) != 0) {
     }
   }
 
-  print(plotQualityProfile(filts_passedF, aggregate = T))
-  ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_filtered_unpaired_forward.png"), dpi = 300, width = 10, height = 10, units = "cm")
+if (length(filts_passedF)!=0){ 
+    print(plotQualityProfile(filts_passedF, aggregate = T))
+    ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_filtered_unpaired_forward.png"), dpi = 300, width = 10, height = 10, units = "cm")
+  }
+
 }
 
 message("Filtering and Trimming unpaired reverse reads based on parameter set in the config file")
@@ -266,6 +269,7 @@ if (length(files_exist[[4]]) != 0) {
   filts_passedR <- c()
   plot_list <- list()
 
+
   for (j in 1:length(qualfiltsRs_single)) {
     if (file.exists(filts[[4]][j])){
       filts_passedR <- c(filts_passedR, filts[[4]][j])
@@ -275,8 +279,10 @@ if (length(files_exist[[4]]) != 0) {
     }
   }
 
-  print(plotQualityProfile(filts_passedR, aggregate = T))
-  ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_filtered_unpaired_reverse.png"), dpi = 300, width = 10, height = 10, units = "cm")
+  if (length(filts_passedR)!=0){ 
+    print(plotQualityProfile(filts_passedR, aggregate = T))
+    ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_filtered_unpaired_reverse.png"), dpi = 300, width = 10, height = 10, units = "cm")
+  }
 }
 
 write.table(stats_reads, paste0(outpath, "06-report/dada2/dada2_filtering_stats.txt"), row.names = TRUE, col.names = TRUE, quote = FALSE)
