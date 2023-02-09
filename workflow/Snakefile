@@ -191,7 +191,9 @@ rule cutadapt_paired:
     -a {config[cutadapt][rc_reverse_primer]} \
     -o {output.o1} -p {output.o2} \
     {input.p1} {input.p2} \
-    --minimum-length 1 {config[cutadapt][extra_params]} \
+    --minimum-length 1 \
+    --discard-untrimmed \
+    {config[cutadapt][extra_params]} \
      1> {log.f1}"
 
 # Reverse primers in place with: 'echo {config[cutadapt][forward_primer]} | tr ACGTacgt TGCAtgca | rev'
@@ -215,14 +217,18 @@ rule cutadapt_unpaired:
         -a {config[cutadapt][rc_reverse_primer]} \
         -o {output.o1} \
         {input.u1} \
-        --minimum-length 1 {config[cutadapt][se_extra_params]} \
+        --minimum-length 1 \
+        --discard-untrimmed \
+        {config[cutadapt][se_extra_params]} \
         1> {log.f1}; \
         cutadapt \
         -g {config[cutadapt][reverse_primer]} \
         -a {config[cutadapt][rc_forward_primer]} \
         -o {output.o2} \
         {input.u2} \
-        --minimum-length 1 {config[cutadapt][se_extra_params]} \
+        --minimum-length 1 \
+        --discard-untrimmed \
+        {config[cutadapt][se_extra_params]} \
         1> {log.f2}"
 
 # Repeat quality control
