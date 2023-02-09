@@ -392,13 +392,15 @@ The relationship of the biodiversity between the samples is shown in the followi
 (Works only if more than 2 samples are analysed in a run.)
 
 ```{r, echo=F}
-pseq.ord <- ordinate(pseq_rel, "PCoA", "bray")
-sample_data(pseq_rel)$sample_id <- sample_names(pseq_rel)
+if (nsamples(pseq_rel)>2) {
+  pseq.ord <- ordinate(pseq_rel, "PCoA", "bray")
+  sample_data(pseq_rel)$sample_id <- sample_names(pseq_rel)
 
-plot_ordination(pseq_rel, pseq.ord) +
-  geom_point(size = 4, fill = 'white', shape = 21) +
-  geom_text(aes(label = sample_id), size = 4, vjust = 'inward', hjust ='inward') +
-  theme_bw()
+  plot_ordination(pseq_rel, pseq.ord) +
+    geom_point(size = 4, fill = 'white', shape = 21) +
+    geom_text(aes(label = sample_id), size = 4, vjust = 'inward', hjust ='inward') +
+    theme_bw()
+}
 ```
 
 ## Darwin core archive tables
