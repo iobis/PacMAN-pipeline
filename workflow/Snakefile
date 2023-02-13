@@ -64,8 +64,8 @@ rule all:
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE),
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
-        expand("results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt",
-               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
+#        expand("results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt",
+#               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab",
@@ -275,7 +275,7 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
         output:
             o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
             o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
-            o4 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/mapping/{samples}/{samples}_mapping.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+            #o4 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/mapping/{samples}/{samples}_mapping.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
         log:
             o1 = expand("results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
         conda:
@@ -477,19 +477,6 @@ if config["BLAST"]["include"] == True:
                 {input.blast_results} \
                 {output.basta_results} \
                 gb"
-
-
-rule classified_taxa:
-  # This rule is just to print a simple table where the amount of taxa that are classified in the previous step are recorded:
-  input:
-    "results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
-  output:
-    "results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt"
-  shell:
-    "mkdir -p results/{PROJECT}/runs/{RUN}/06-report/taxonomy; \
-    echo 'The number of taxa classified at each level with the provided cutoff: ' > {output}; \
-    echo 'Kingdom  Phylum  Class   Order   Family  Genus   Species' >> {output}; \
-    grep -Eo 'k__|p__|c__|o__|f__|g__|s__' {input} | sort | uniq -c | sort -nr | awk '{{print $2" "$1}}' | column >> {output}"
 
 
 # RULES: DATA PACKAGING? ----------------------------------------------------------------

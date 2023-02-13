@@ -207,7 +207,7 @@ if (config$DADA2$mergePairs$include) {
       # It seems that concatenating these reads and keeping them for further analyses can result in better taxonomic coverage (Dacey et al. 2021 https://doi.org/10.1186/s12859-021-04410-2)
       # Abundances for these reads is taken from the merged abundances.
       # reverse complement reverse reads so that the following taxonomic assignment will work optimally.
-      unmerged_r[[i]] <- sapply(sapply(sapply(unmerged_r[[i]], DNAString), reverseComplement), toString)
+      unmerged_r[[i]] <- sapply(sapply(sapply(unmerged_r[[i]], DNAString), Biostrings::reverseComplement), toString)
       sequence <- paste0(unmerged_f[[i]], unmerged_r[[i]])
       abundance <- mergers[[sample.names[i]]]$abundance[!mergers[[sample.names[i]]]$accept]
       concatenated[[i]] <- tibble(sequence, abundance)
@@ -236,7 +236,7 @@ if (config$DADA2$mergePairs$include) {
   seqtab1 <- makeSequenceTable(dadas[[1]])
   seqtab2 <- makeSequenceTable(dadas[[2]])
   # Reverse complement reverse reads so that the following taxonomic assignment will work optimally.
-  colnames(seqtab2) <- sapply(sapply(sapply(colnames(seqtab2), DNAString), reverseComplement), toString)
+  colnames(seqtab2) <- sapply(sapply(sapply(colnames(seqtab2), DNAString), Biostrings::reverseComplement), toString)
   seqtab <- cbind(seqtab1, seqtab2)
 
 }
@@ -286,6 +286,8 @@ if (exists("mapping")) {
       left_join(asv_sequences, by = "sequence") %>%
       select(read, asv) %>%
       filter(!is.na(asv))
+    dir.create(file.path(paste0(outpath, "03-dada2/mapping/")))
+    dir.create(file.path(paste0(outpath, "03-dada2/mapping/", name)))
     write.table(mapping[[name]], paste0(outpath, "03-dada2/mapping/", name, "/", name, "_mapping.txt"), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
   }
 }
