@@ -111,7 +111,7 @@ for (i in 1:4) {
 
 message("Filtering and Trimming paired reads based on parameter set in the config file")
 
-out <- filterAndTrim(allfiles[[1]], filts[[1]], allfiles[[2]], filts[[2]],
+out <- filterAndTrim(files_exist[[1]], filts[[1]], files_exist[[2]], filts[[2]],
   truncLen = c(config$DADA2$filterAndTrim$Trunc_len_f,config$DADA2$filterAndTrim$Trunc_len_r),
   truncQ = config$DADA2$filterAndTrim$TruncQ,
   trimRight = config$DADA2$filterAndTrim$Trim_right,
@@ -175,7 +175,8 @@ message("Filtering and Trimming unpaired forward reads based on parameter set in
 
 if (length(files_exist[[3]]) != 0) {
 
-  out <- filterAndTrim(allfiles[[3]], filts[[3]],
+  #filts[[3]] <- filts[[3]][file.exists(filts[[3]])]
+  out <- filterAndTrim(files_exist[[3]], filts[[3]],
     truncLen = config$DADA2$filterAndTrim$Trunc_len_f,
     truncQ = config$DADA2$filterAndTrim$TruncQ,
     trimRight = config$DADA2$filterAndTrim$Trim_right,
