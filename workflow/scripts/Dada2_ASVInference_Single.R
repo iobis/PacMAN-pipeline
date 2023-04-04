@@ -118,11 +118,36 @@ errs <- list()
 dereps <- list()
 dadas <- list()
 seqtab <- list()
+files_exist <- list()
+
+
+for (i in 1:4) {
+
+  message("Check that files are not empty")
+
+  files_loop <- c()
+
+  for (j in 1:length(allfiles[[i]])) {
+    info <- file.info(allfiles[[i]][j])
+    if (!is.na(info$size) & info$size > 20) { # 20 is the size of an empty .gz file
+      files_loop <- c(files_loop, allfiles[[i]][j])
+    }
+  }
+
+  if (is.null(files_loop)) {
+    files_exist[i] <- list(NULL)
+  } else {
+    files_exist[[i]] <- files_loop
+  }
+}
+
+# Update sample names with existing paired files
+sample.names<-names(files_exist[[1]])
 
 # Loop through all file types (forward, reverse, unpaired forward, unpaired reverse) for learning errors and dereplicating
 for (i in 1:4) {
 
-  if (any(file.exists(allfiles[[i]]))) {
+  if (length(files_exist[[i]])!=0) {        #any(file.exists(files_exist[[i]]))
 
     message(paste("learning error rates of files:", i, ": (1) forward paired (2) reverse paired (3) forward single and (4) reverse single " , sep=" "))
 
@@ -130,7 +155,7 @@ for (i in 1:4) {
     if (config$meta$sequencing$seq_meth=="NovaSeq6000"){ 
     message("learning error rates using a modified error model for NovaSeq data")
 
-    errs[[i]] <- learnErrors(allfiles[[i]][file.exists(allfiles[[i]])],
+    errs[[i]] <- learnErrors(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
                             multithread = config$DADA2$learnERRORS$multithread,
                             nbases = as.numeric(config$DADA2$learnERRORS$nbases),
                             randomize = config$DADA2$learnERRORS$randomize,
@@ -144,7 +169,7 @@ for (i in 1:4) {
     } else {
     
     
-    errs[[i]] <- learnErrors(allfiles[[i]][file.exists(allfiles[[i]])],
+    errs[[i]] <- learnErrors(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
                             multithread = config$DADA2$learnERRORS$multithread,
                             nbases = as.numeric(config$DADA2$learnERRORS$nbases),
                             randomize = config$DADA2$learnERRORS$randomize,
@@ -168,7 +193,8 @@ for (i in 1:4) {
     dev.off()
 
     message("Running dereplication of reads")
-    dereps[[i]] <- derepFastq(allfiles[[i]][file.exists(allfiles[[i]])],
+    #print(paste("files that exist:", files_exist[[i]]))
+    dereps[[i]] <- derepFastq(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
                               n = as.numeric(config$DADA2$derepFastq$num),
                               config$DADA2$learnERRORS$verbose)
 
@@ -183,12 +209,13 @@ for (i in 1:4) {
 
     # Convert to list in case there's only one file
     if (is(dadas[[i]], "dada")) {
+      message("Convert to list in case there's only one file")
       dadas[[i]] <- list(dadas[[i]])
-      names(dadas[[i]]) <- names(allfiles[[i]][file.exists(allfiles[[i]])])
+      names(dadas[[i]]) <- names(files_exist[[i]])#allfiles[[i]][file.exists(allfiles[[i]])])
     }
     if (is(dereps[[i]], "derep")) {
       dereps[[i]] <- list(dereps[[i]])
-      names(dereps[[i]]) <- names(allfiles[[i]][file.exists(allfiles[[i]])])
+      names(dereps[[i]]) <- names(files_exist[[i]])#allfiles[[i]][file.exists(allfiles[[i]])])
     }
 
   # If no files found for the paired reads (should not be the case!)
@@ -325,13 +352,13 @@ if (config$DADA2$mergePairs$include) {
 
 # Add ASVs from single reads to full table, and format table to the right format to continue with the pipeline
 # It has to be an integer matrix with samples as rownames and sequences as column names
-if (any(file.exists(allfiles[[3]]))) {
+if (length(files_exist[[3]])!=0) {
   message("Adding ASVs from unpaired forward reads to ASV-table")
   seqtab3 <- makeSequenceTable(dadas[[3]])
   seqtab <- merge_format_seqtab(seqtab, seqtab3)
 }
 
-if (any(file.exists(allfiles[[4]]))) {
+if (length(files_exist[[4]])!=0) {
   message("Adding ASVs from unpaired reverse reads to ASV-table")
   seqtab4 <- makeSequenceTable(dadas[[4]])
   # Here also the sequences from the reverse reads are reverse complemented before they are added to the sequence table
@@ -377,6 +404,9 @@ if (exists("mapping")) {
 # Finally, change names in otu table
 message("Changing sequence names")
 colnames(seqtab.nochim) <- new.names
+#Replace any NAs that are possibly in the seqtab with 0s
+seqtab.nochim[is.na(seqtab.nochim)] <- 0
+
 
 # This show sequence length distributions (see if you should include this)
 #seq_hist <- table(nchar(getSequences(seqtab)))
@@ -398,17 +428,17 @@ if (config$DADA2$mergePairs$include) {
 }
 
 # Add also information on the reads that came from possibly evaluated single reads
-if (any(file.exists(allfiles[[3]]))) {
+if (length(files_exist[[3]])!=0) {
   message("Adding info from unpaired forward reads to the summary table")
   denoisedF_single <- sapply(dadas[[3]], getN)
   track <- merge(track, data.frame(denoisedF_single), by = 0, all = TRUE)
   rownames(track) <- track$Row.names
   track <- subset(track, select = -Row.names)
   # Reorder columns:
-  #track <- track %>% relocate(denoisedF_single, .before = nonchim)
+  track <- track %>% relocate(denoisedF_single, .before = nonchim)
 }
 
-if (any(file.exists(allfiles[[4]]))) {
+if (length(files_exist[[4]])!=0) {
   message("Adding info from unpaired reverse reads to the summary table")
   denoisedR_single <- sapply(dadas[[4]], getN)
   track <- merge(track, data.frame(denoisedR_single), by = 0, all = TRUE)
@@ -418,12 +448,16 @@ if (any(file.exists(allfiles[[4]]))) {
 }
 
 rownames(track)
-rownames(track) <- sample.names
-message(track)
+#rownames(track) <- sample.names
+#message(track)
 
 # Read results of filtering step and append the results of ASV step:
 out <- read.table(paste0(outpath, "06-report/dada2/dada2_filtering_stats.txt"), header = TRUE)
-track <- cbind(out, track)
+#track <- cbind(out, track)
+track <- merge(out, track, by = 0, all = TRUE)
+rownames(track) <- track$Row.names
+track <- subset(track, select = -Row.names)
+
 
 # Write output tables of reads and the otu_table:
 write.table(track, paste0(outpath, "06-report/dada2/dada2_stats.txt"), row.names = TRUE, col.names = TRUE, quote = FALSE)

@@ -47,6 +47,7 @@ quals <- list()
 
 # loop through 1. forward paired, 2. reverse paired 3. forward single 4. reverse single reads
 # First check that files are not empty (cutadapt returns empty files for those that don't pass any filters.)
+# Filter and trim does not make empty files that don't pass filters, so make these separately.
 message("Analyse different files group separately")
 
 for (i in 1:4) {
@@ -292,3 +293,18 @@ write.table(stats_reads, paste0(outpath, "06-report/dada2/dada2_filtering_stats.
 if (file.exists("Rplots.pdf")) {
   file.remove("Rplots.pdf")
 }
+
+# Make empty files for the those samples that did not pass filtering (and no files therefore created)
+
+## There is no error if all reads have been eliminated, but no files
+  ## are written in this case. Check for the output files, and if they
+  ## don't exist, create empty ones.
+ 
+ for (i in 1:length(filts)) {
+  for(fn in filts[[i]]){
+    if(!file.exists(fn)){
+      cat(gettextf('creating empty file %s\n', fn))
+      gzf = gzfile(fn)
+      cat('', file=gzf, fill=FALSE)
+      close(gzf)
+    }}}
