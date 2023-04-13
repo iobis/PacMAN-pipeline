@@ -75,9 +75,21 @@ Removing the `-np` flag will initiate the run.
 The repository includes a Dockerfile to run the entire pipeline in a Docker container. To do so, add your data files to the `data` directory and run the following commands to build the container and run the pipeline:
 
 ```bash
-docker build -t snakemake .
-docker run -v $(pwd):/code snakemake /bin/bash \
-  -c "source activate snakemake && snakemake --use-conda -p --cores all"
+docker build -t pipeline .
+docker run -v $(pwd):/src pipeline /bin/bash \
+  -c "snakemake --use-conda -p --cores all"
+```
+
+Example when using external data and results folders:
+
+```bash
+docker build -t pipeline .
+docker run \
+   -v /home/ubuntu/data/dev/PacMAN-pipeline:/src \
+   -v /home/ubuntu/data:/src/data \
+   -v /home/ubuntu/data/results:/src/results \
+   pipeline \
+   /bin/bash -c "snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config/config_rey_noblast_2samples.yaml"
 ```
 
 ## Steps
