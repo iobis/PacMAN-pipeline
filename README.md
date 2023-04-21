@@ -1,7 +1,7 @@
 # PacMAN-pipeline
 ## Bioinformatics pipeline for the PacMAN project *UNDER DEVELOPMENT*
 
-This is the bioinformatics pipeline developed for the PacMAN (Pacific Islands Marine Bioinvasions Alert Network). This pipeline cleans and classifies sequences from eDNA samples. The PacMAN-pipeline is under development at the moment, and we expect to have a first version by mid 2022. The steps in this pipeline are compiled from publicly available bioinformatic pipelines like [ANACAPA](https://github.com/limey-bean/Anacapa), [tourmaline](https://github.com/lukenoaa/tourmaline), [tagseq-qiime2-snakemake](https://github.com/shu251/tagseq-qiime2-snakemake), [pema](https://github.com/hariszaf/pema), [CASCABEL](https://github.com/AlejandroAb/CASCABEL) and [MBARI-BOG](https://github.com/MBARI-BOG/BOG-Banzai-Dada2-Pipeline). The pipeline is based on the snakemake workflow management system. At first, we will develop this pipeline only keeping in mind CO1 data, but we want to expand the process to other barcodes as well, so that in the future it could be used for OBIS datasets broadly.
+This is the bioinformatics pipeline developed for the PacMAN (Pacific Islands Marine Bioinvasions Alert Network). This pipeline cleans and classifies sequences from eDNA samples. The PacMAN-pipeline is still under development with a first production release planned in 2023. The steps in this pipeline are compiled from publicly available bioinformatic pipelines like [ANACAPA](https://github.com/limey-bean/Anacapa), [tourmaline](https://github.com/lukenoaa/tourmaline), [tagseq-qiime2-snakemake](https://github.com/shu251/tagseq-qiime2-snakemake), [pema](https://github.com/hariszaf/pema), [CASCABEL](https://github.com/AlejandroAb/CASCABEL) and [MBARI-BOG](https://github.com/MBARI-BOG/BOG-Banzai-Dada2-Pipeline). The pipeline is based on the snakemake workflow management system. At first, we will develop this pipeline only keeping in mind CO1 data, but we want to expand the process to other barcodes as well, so that in the future it could be used for OBIS datasets broadly.
 
 The initial pipeline has the following steps:
 
@@ -75,9 +75,21 @@ Removing the `-np` flag will initiate the run.
 The repository includes a Dockerfile to run the entire pipeline in a Docker container. To do so, add your data files to the `data` directory and run the following commands to build the container and run the pipeline:
 
 ```bash
-docker build -t snakemake .
-docker run -v $(pwd):/code snakemake /bin/bash \
-  -c "source activate snakemake && snakemake --use-conda -p --cores all"
+docker build -t pipeline .
+docker run -v $(pwd):/src pipeline /bin/bash \
+  -c "snakemake --use-conda -p --cores all"
+```
+
+Example when using external data and results folders:
+
+```bash
+docker build -t pipeline .
+docker run \
+   -v /home/ubuntu/data/dev/PacMAN-pipeline:/src \
+   -v /home/ubuntu/data:/src/data \
+   -v /home/ubuntu/data/results:/src/results \
+   pipeline \
+   /bin/bash -c "snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config/config_rey_noblast_2samples.yaml"
 ```
 
 ## Steps
