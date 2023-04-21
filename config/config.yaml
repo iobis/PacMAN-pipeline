@@ -8,6 +8,8 @@ RUN: Blast_trials3
 # Metadata for the sequencing run:
 # Here values can be added that are shared across all samples (can also be added to the sample data csv file if wanted).
 # Values that differ between samples should be added to the sample_data_template.csv file!
+# Note: Adding lib_layout Single_end (or anything other than paired) will run the samples as if they were single-ended 
+# However now expects still 1P and 2P files separately. It was written for the case that the marker is shorter than the sequencing kit 
 meta:
   sampling:
     sample_data_file: config/sample_data_template_4samples.csv
@@ -148,6 +150,7 @@ TAXONOMY:
 # Instructions for downloading these can be found in the BASTA documentation
 BLAST:
   include: True
+  perc_identity: 85
   database: -db data/databases/ncbi/nt/20211125/nt #-remote -db nt #
   database_date: 2021-11-25
   tax_db: data/databases/ncbi/taxonomy
