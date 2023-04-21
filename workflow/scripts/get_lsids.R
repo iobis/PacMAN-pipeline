@@ -18,7 +18,7 @@ tax_file <- read.csv(args[2], sep = "\t", header = T)
 rep_seqs <- Biostrings::readDNAStringSet(args[3])
 
 #If blast was performed on the unknown sequences:
-if (length(args) == 5) {
+if (length(args) == 5 & file.size(args[4]) > 0) {
   message("0. Results of Blast annotation read")
   basta_file <- read.csv(args[4], sep = "\t", header = F)
 }
@@ -69,8 +69,8 @@ pattern <- "identity_filtered/\\s*(.*?)\\s*_blca_tax_table"
 result <- regmatches(args[2], regexec(pattern, args[2]))
 taxmat$otu_db <- result[[1]][2]
 
-# If Blast was performed on unknown sequences
-if (length(args) == 5) {
+# If Blast was performed on unknown sequences and gave results after lca
+if (length(args) == 5 & file.size(args[4]) > 0) {
   message("1.1 Adding Blast results to taxonomic table")
   colnames(basta_file) <- c("rowname", "sum.taxonomy")
   taxmat2 <- separate(basta_file, "sum.taxonomy", into = c("kingdom", "phylum", "class", "order", "family", "genus", "species"), sep = ";")
@@ -83,14 +83,24 @@ if (length(args) == 5) {
   taxmat2$otu_db <- paste0("NCBI-nt;", args[5])
   rownames(taxmat2) <- taxmat2$rowname
   taxmat2 <- subset(taxmat2, select = -c(rowname))
+  
   # Combine this taxmat to the original one
   # At the moment the unknowns are there twice! So first remove duplicates before you combine them
   taxmat <- taxmat[!(rownames(taxmat) %in% rownames(taxmat2)),]
   taxmat <- rbind(taxmat, taxmat2)
+
 }
 
-# Because WORMS doesn't recognize Eukaryota, change those that have this in the lastvalue to Biota:
+# Add possible remaining unknowns to the taxmat based on asvs in the rep_seqs (keep all ASVs in the final dataset)
+rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs)%in%row.names(taxmat),])
+rn <- row.names(taxmat)
+taxmat[nrow(taxmat) + seq_along(rep_seqs_unknown), ] <- NA 
+row.names(taxmat) <- c(rn, rep_seqs_unknown)
+#Fill the original database values on the otu_seq_comp_appr and otu_db for the unknown sequences as well
+taxmat[is.na(taxmat$otu_seq_comp_appr), "otu_seq_comp_appr"] <- "bowtie2;2.4.4;ANACAPA-blca;2021"
+taxmat[is.na(taxmat$otu_db), "otu_db"] <- taxmat[1,"otu_db"]
 
+# Because WORMS doesn't recognize Eukaryota, change those that have this in the lastvalue to Biota:
 taxmat$lastvalue <- recode(taxmat$lastvalue, "Eukaryota" = "Biota")
 
 # Find WoRMS LSID with worrms

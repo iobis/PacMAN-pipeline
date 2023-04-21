@@ -64,8 +64,8 @@ rule all:
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE),
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
-        expand("results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt",
-               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
+#        expand("results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt",
+#               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab",
@@ -170,29 +170,63 @@ rule trimmomatic_pe:
 # Somehow reverse complements added as input!
 #PRIMER1RC=$( echo ${PRIMER1} | tr "[ABCDGHMNRSTUVWXYabcdghmnrstuvwxy]" "[TVGHCDKNYSAABWXRtvghcdknysaabwxr]" | rev )
 #PRIMER2RC=$( echo ${PRIMER2} | tr "[ABCDGHMNRSTUVWXYabcdghmnrstuvwxy]" "[TVGHCDKNYSAABWXRtvghcdknysaabwxr]" | rev )
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+    rule cutadapt_paired:
+      input:
+        p1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1P.fastq.gz",
+        p2 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_2P.fastq.gz",
+      output:
+        o1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
+        o2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
+        #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
+      log:
+        f1 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_log.txt",
+      conda:
+        "envs/trim.yaml"
+      shell:
+        "cutadapt  \
+        -g {config[cutadapt][forward_primer]} \
+        -G {config[cutadapt][reverse_primer]} \
+        -A {config[cutadapt][rc_forward_primer]} \
+        -a {config[cutadapt][rc_reverse_primer]} \
+        -o {output.o1} -p {output.o2} \
+        {input.p1} {input.p2} \
+        --minimum-length 1 \
+        {config[cutadapt][extra_params]} \
+        1> {log.f1}"
+else: 
+    rule cutadapt_paired: #This is for the specific case that the sequencing files are paired (1P and 2P), 
+                          #but the full marker sequence is found in each sequence file (i.e. the sequencing kit is longer than the marker) 
+      input:
+        p1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1P.fastq.gz",
+        p2 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_2P.fastq.gz",
+      output:
+        o1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
+        o2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
+        #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
+      log:
+        f1 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1P_log.txt",
+        f2 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2P_log.txt",
+      conda:
+        "envs/trim.yaml"
+      shell:
+         "cutadapt \
+        -g {config[cutadapt][forward_primer]} \
+        -a {config[cutadapt][rc_reverse_primer]} \
+        -o {output.o1} \
+        {input.p1} \
+        --minimum-length 1 \
+        {config[cutadapt][se_extra_params]} \
+        1> {log.f1}; \
+        cutadapt \
+        -g {config[cutadapt][reverse_primer]} \
+        -a {config[cutadapt][rc_forward_primer]} \
+        -o {output.o2} \
+        {input.p2} \
+        --minimum-length 1 \
+        {config[cutadapt][se_extra_params]} \
+        1> {log.f2}"
 
-rule cutadapt_paired:
-  input:
-    p1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1P.fastq.gz",
-    p2 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_2P.fastq.gz",
-  output:
-    o1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
-    o2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
-    #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
-  log:
-    f1 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_log.txt",
-  conda:
-    "envs/trim.yaml"
-  shell:
-    "cutadapt  \
-    -g {config[cutadapt][forward_primer]} \
-    -G {config[cutadapt][reverse_primer]} \
-    -A {config[cutadapt][rc_forward_primer]} \
-    -a {config[cutadapt][rc_reverse_primer]} \
-    -o {output.o1} -p {output.o2} \
-    {input.p1} {input.p2} \
-    --minimum-length 1 {config[cutadapt][extra_params]} \
-     1> {log.f1}"
 
 # Reverse primers in place with: 'echo {config[cutadapt][forward_primer]} | tr ACGTacgt TGCAtgca | rev'
 # But check also for all special characters!
@@ -215,14 +249,16 @@ rule cutadapt_unpaired:
         -a {config[cutadapt][rc_reverse_primer]} \
         -o {output.o1} \
         {input.u1} \
-        --minimum-length 1 {config[cutadapt][se_extra_params]} \
+        --minimum-length 1 \
+        {config[cutadapt][se_extra_params]} \
         1> {log.f1}; \
         cutadapt \
         -g {config[cutadapt][reverse_primer]} \
         -a {config[cutadapt][rc_forward_primer]} \
         -o {output.o2} \
         {input.u2} \
-        --minimum-length 1 {config[cutadapt][se_extra_params]} \
+        --minimum-length 1 \
+        {config[cutadapt][se_extra_params]} \
         1> {log.f2}"
 
 # Repeat quality control
@@ -233,52 +269,52 @@ rule cutadapt_unpaired:
 
 # In this section we run the dada2 pipeline, both paired and single reads are analysed and added to the final tables.
 
-if config["meta"]["sequencing"]["lib_layout"] == "Paired":
-    rule dada2_filter:
-        input:
-            #files = expand("{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/", PROJECT=PROJECT, RUN=RUN, samples=samples),
-            f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
+#if config["meta"]["sequencing"]["lib_layout"] == "Paired": This not used here, also single-end works 
+rule dada2_filter:
+    input:
+        #files = expand("{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/", PROJECT=PROJECT, RUN=RUN, samples=samples),
+        f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
                         PROJECT=PROJECT, RUN=RUN, samples=samples),
-            f2 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
+        f2 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
                         PROJECT=PROJECT, RUN=RUN, samples=samples),
-            f3 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
+        f3 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
                         PROJECT=PROJECT, RUN=RUN, samples=samples),
-            f4 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
+        f4 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
                         PROJECT=PROJECT, RUN=RUN, samples=samples),
-        output:
-            FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
+    output:
+        FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
                            PROJECT=PROJECT, RUN=RUN, samples=samples),
-            FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
+        FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
                            PROJECT=PROJECT, RUN=RUN, samples=samples),
-            #directory(expand("{PROJECT}/runs/{RUN}/dada2/filtered/{samples}/"), PROJECT=PROJECT, RUN=RUN, samples=samples),
-            #stats="{PROJECT}/runs/{RUN}/dada2/dada2_filtering_stats.txt",
-        conda:
-            "envs/dada2.yaml"
-        shell:
-            "Rscript ./workflow/scripts/Dada2_FilterAndTrim_combined.R \
-            results/{config[PROJECT]}/runs/{config[RUN]}/ \
-            "+config_path+" \
-            {input.f1}"
+        #directory(expand("{PROJECT}/runs/{RUN}/dada2/filtered/{samples}/"), PROJECT=PROJECT, RUN=RUN, samples=samples),
+        #stats="{PROJECT}/runs/{RUN}/dada2/dada2_filtering_stats.txt",
+    conda:
+        "envs/dada2.yaml"
+    shell:
+        "Rscript ./workflow/scripts/Dada2_FilterAndTrim_combined.R \
+        results/{config[PROJECT]}/runs/{config[RUN]}/ \
+        "+config_path+" \
+        {input.f1}"
 
-    rule dada2_ASV:
-        input:
-            FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
+rule dada2_ASV:
+    input:
+        FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
                            PROJECT=PROJECT, RUN=RUN, samples=samples),
-            FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
+        FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
                            PROJECT=PROJECT, RUN=RUN, samples=samples),
-        output:
-            o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
-            o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
-            o4 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/mapping/{samples}/{samples}_mapping.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
-        log:
-            o1 = expand("results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
-        conda:
-            "envs/dada2.yaml"
-        shell:
-            "Rscript ./workflow/scripts/Dada2_ASVInference_Single.R \
-            results/{config[PROJECT]}/runs/{config[RUN]}/ \
-            "+config_path+" \
-            {input.FiltF}"
+    output:
+        o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+        o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
+        #o4 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/mapping/{samples}/{samples}_mapping.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+    log:
+        o1 = expand("results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+    conda:
+        "envs/dada2.yaml"
+    shell:
+        "Rscript ./workflow/scripts/Dada2_ASVInference_Single.R \
+        results/{config[PROJECT]}/runs/{config[RUN]}/ \
+        "+config_path+" \
+        {input.FiltF}"
 
 
 # RULES: TAXONOMIC ASSIGNMENT ----------------------------------------------------------------
@@ -410,6 +446,7 @@ if config["BLAST"]["include"] == True:
             taxa = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.out",
             filtered = "results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
             fasta = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
+            rejects= "results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_rejects.fasta",
         output:
             o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local_unknowns_cutoff{CUTOFF}.sam.blca.out",
             o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_unclassified-seqs_cutoff{CUTOFF}.fna",
@@ -422,10 +459,12 @@ if config["BLAST"]["include"] == True:
             awk '/;;;;;;/ {{print $1}}' {input.filtered} | cat >> {output.o1}; \
             sort -t . -k 2n -o {output.o1} {output.o1}; \
             seqtk subseq {input.fasta} {output.o1}  > {output.o2}; \
+            cat {input.rejects} >> {output.o2}; \
             blastn \
             -query {output.o2} \
             -out {output.o3} \
             -outfmt 6 \
+            -perc_identity {config[BLAST][perc_identity]} \
             {config[BLAST][database]}"
             # removed this as can be filtered later: -evalue 5e-13 \
 
@@ -444,6 +483,7 @@ if config["BLAST"]["include"] == True:
                 "basta sequence \
                 -p {config[BLAST][portion_of_hits]} \
                 -i {config[BLAST][percent_identity]} \
+                -l {config[BLAST][alignment_length]} \
                 -e {config[BLAST][e-value]} \
                 -n {config[BLAST][max_hits]} \
                 -m {config[BLAST][min_hits]} \
@@ -464,6 +504,7 @@ if config["BLAST"]["include"] == True:
                 basta sequence \
                 -p {config[BLAST][portion_of_hits]} \
                 -i {config[BLAST][percent_identity]} \
+                -l {config[BLAST][alignment_length]} \
                 -e {config[BLAST][e-value]} \
                 -n {config[BLAST][max_hits]} \
                 -m {config[BLAST][min_hits]} \
@@ -471,19 +512,6 @@ if config["BLAST"]["include"] == True:
                 {input.blast_results} \
                 {output.basta_results} \
                 gb"
-
-
-rule classified_taxa:
-  # This rule is just to print a simple table where the amount of taxa that are classified in the previous step are recorded:
-  input:
-    "results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
-  output:
-    "results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt"
-  shell:
-    "mkdir -p results/{PROJECT}/runs/{RUN}/06-report/taxonomy; \
-    echo 'The number of taxa classified at each level with the provided cutoff: ' > {output}; \
-    echo 'Kingdom  Phylum  Class   Order   Family  Genus   Species' >> {output}; \
-    grep -Eo 'k__|p__|c__|o__|f__|g__|s__' {input} | sort | uniq -c | sort -nr | awk '{{print $2" "$1}}' | column >> {output}"
 
 
 # RULES: DATA PACKAGING? ----------------------------------------------------------------

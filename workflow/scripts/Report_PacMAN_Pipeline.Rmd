@@ -65,6 +65,8 @@ The first step of the process was to trim the samples using [Trimmomatic](http:/
 The command that was used was:
 
 ```{r, echo=F}
+
+
 trim_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/trimmomatic/", sample_ids[1], "_log.txt")
 
 readLines(trim_report, n = 2)
@@ -101,24 +103,33 @@ kable(TrimResults_Percentage)
 
 The next step in the process ran cutadapt on all samples (paired and unpaired results).
 
-The command that was used was:
+The command(s) that was used was:
 
 ```{r, echo=F}
 #cut_report <- capture.output(cat("../PacMAN-pipeline-backup/results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt", sep = ""))
-
+if (config$meta$sequencing$lib_layout=="Paired") {
 cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt")
-
 readLines(cut_report, n = 2)
+} else {
+cut_report_1P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_1P_log.txt")
+readLines(cut_report_1P, n = 2)
+cut_report_2P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_2P_log.txt")
+readLines(cut_report_2P, n = 2)
+}
+
 ```
 
 ### Paired reads
 
 The results for all paired samples were:
 
-```{r, echo=F, warning=F}
+```{r, echo=F, warning=F, results='asis'}
 cutResults <- data.frame(TotalReadPairsProcessed = NA, Read1withPrimer = NA, Read2withPrimer = NA, PairsTooShort = NA, PairsWritten = NA, BasePairsProcessed = NA, Read1BpProcessed = NA, Read2BpProcessed = NA, BasePairsWritten = NA, Read1BpWritten = NA, Read2BpWritten = NA)
 
+if (config$meta$sequencing$lib_layout=="Paired") { 
+print("checking analysis of paired samples")
 for (i in 1:length(sample_ids)) {
+print(sample_ids[i])
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_log.txt")
   text <- readLines(cut_report)
   rows <- grep("^===", text)
@@ -129,11 +140,14 @@ for (i in 1:length(sample_ids)) {
   rownames(cutResults)[i] <- sample_ids[i]
 }
 
-kable(cutResults)
+print(kable(cutResults))
 
 cutResults_Percentage <- round(cutResults[,c(2:5)] / cutResults[,c(1)] * 100, digits = 2)
 cutResults_Percentage$BasePairsWritten <- round(cutResults[,7] / cutResults[,6] * 100, digits = 2)
+
 kable(cutResults_Percentage)
+}
+
 ```
 
 ### Unpaired reads
@@ -143,6 +157,30 @@ While for forward unpaired reads they were:
 ```{r, echo=F, warning=F}
 cutResults <- data.frame(TotalReadPairsProcessed = NA, ReadwithPrimer = NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
+if (config$meta$sequencing$lib_layout!="Paired") { 
+for (i in 1:length(sample_ids)) {
+  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1P_log.txt")
+  text <- readLines(cut_report)
+
+  if (any(grepl("^===", text))) {
+    rows <- grep("^===", text)
+    report <- text[c((rows[1]+2):(rows[2]-2))]
+    #sample <- report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+    sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+
+    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
+    if (any(!grepl("short", report))) {
+      sample <- append(sample, 0, after = 2)
+    }
+    cutResults[i,] <- sample[!is.na(sample)]
+    rownames(cutResults)[i] <- paste(sample_ids[i],"1P")
+  } else {
+    cutResults[i,] <- rep(0,6)
+    rownames(cutResults)[i] <- paste(sample_ids[i],"1P")
+  }
+}
+}
+
 for (i in 1:length(sample_ids)) {
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_unpaired1_log.txt")
   text <- readLines(cut_report)
@@ -150,7 +188,8 @@ for (i in 1:length(sample_ids)) {
   if (any(grepl("^===", text))) {
     rows <- grep("^===", text)
     report <- text[c((rows[1]+2):(rows[2]-2))]
-    sample <- report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+    #sample <- report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+    sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
 
     #Not all of the reports list ReadsTooShort, so add for those that don't a 0
     if (any(!grepl("short", report))) {
@@ -175,6 +214,32 @@ And for reverse unpaired reads they were:
 
 ```{r, echo=F, warning=F}
 cutResults <- data.frame(TotalReadPairsProcessed = NA, ReadwithPrimer = NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
+
+if (config$meta$sequencing$lib_layout!="Paired") { 
+for (i in 1:length(sample_ids)) {
+  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2P_log.txt")
+  text <- readLines(cut_report)
+
+  if (any(grepl("^===", text))) {
+    rows <- grep("^===", text)
+    report <- text[c((rows[1]+2):(rows[2]-2))]
+    #sample <- report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+    sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+
+    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
+    if (any(!grepl("short", report))) {
+      sample <- append(sample, 0, after = 2)
+    }
+    cutResults[i,] <- sample[!is.na(sample)]
+    rownames(cutResults)[i] <- paste(sample_ids[i],"2P")
+  } else {
+    cutResults[i,] <- rep(0,6)
+    rownames(cutResults)[i] <- paste(sample_ids[i],"2P")
+  }
+}
+}
+
+
 
 for (i in 1:length(sample_ids)) {
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_unpaired2_log.txt")
@@ -239,7 +304,9 @@ knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", con
 And after trimming it was:
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%", fig.cap="caption", fig.show='hold', fig.align='center'}
+if (config$meta$sequencing$lib_layout=="Paired") {
 knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png")))
+}
 ```
 
 In case unpaired reads were kept after trimming and primer removal, quality profiles for unpaired reads can also be found in:
@@ -363,9 +430,13 @@ colSums(!is.na(tax_table(pseq)[,c(1:7)]))
 }
 ```
 
-In relative abundance (see total number of reads in the dada2 output), the most abundant taxa at phylumn level and at species level are shown in the following images.
+In relative abundance (see total number of reads in the dada2 output), the most abundant taxa at phylum level and at species level are shown in the following images.
 
 ```{r}
+
+#in case there are NA's in the pseq table:
+pseq@otu_table<-replace(pseq@otu_table, is.na(pseq@otu_table), 0)
+
 pseq_rel <- transform_sample_counts(pseq, function(x) x / sum(x) )
 pmelt <- psmelt(pseq_rel)
 
@@ -392,13 +463,19 @@ The relationship of the biodiversity between the samples is shown in the followi
 (Works only if more than 2 samples are analysed in a run.)
 
 ```{r, echo=F}
-pseq.ord <- ordinate(pseq_rel, "PCoA", "bray")
-sample_data(pseq_rel)$sample_id <- sample_names(pseq_rel)
+pseq = subset_samples(pseq, sample_sums(pseq)>0)
+pseq_rel <- transform_sample_counts(pseq, function(x) x / sum(x) )
 
-plot_ordination(pseq_rel, pseq.ord) +
-  geom_point(size = 4, fill = 'white', shape = 21) +
-  geom_text(aes(label = sample_id), size = 4, vjust = 'inward', hjust ='inward') +
-  theme_bw()
+
+if (nsamples(pseq_rel)>2) {
+  pseq.ord <- ordinate(pseq_rel, "PCoA", "bray")
+  sample_data(pseq_rel)$sample_id <- sample_names(pseq_rel)
+
+  plot_ordination(pseq_rel, pseq.ord) +
+    geom_point(size = 4, fill = 'white', shape = 21) +
+    geom_text(aes(label = sample_id), size = 4, vjust = 'inward', hjust ='inward') +
+    theme_bw()
+}
 ```
 
 ## Darwin core archive tables

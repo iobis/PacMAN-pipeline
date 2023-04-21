@@ -15,7 +15,7 @@ outpath <- args[1]
 # LOAD data (this will be done from input later on)
 
 tax_file <- read.csv(args[3], sep = "\t", header = T, row.names = 1)
-otu_file <- read.csv(args[2], sep = "\t", header = T, row.names = 1)
+otu_file <- read.csv(args[2], sep = "\t", header = T, row.names = 1, check.names = F)
 Rep_seqs <- Biostrings::readDNAStringSet(args[4])
 sample_file <- read.csv(args[5], sep = ";", header = T, row.names = 1)
 config <- read_yaml(args[6])

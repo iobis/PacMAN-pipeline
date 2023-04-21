@@ -47,6 +47,7 @@ quals <- list()
 
 # loop through 1. forward paired, 2. reverse paired 3. forward single 4. reverse single reads
 # First check that files are not empty (cutadapt returns empty files for those that don't pass any filters.)
+# Filter and trim does not make empty files that don't pass filters, so make these separately.
 message("Analyse different files group separately")
 
 for (i in 1:4) {
@@ -108,30 +109,30 @@ for (i in 1:4) {
 
 # Run filtering on reads:
 # Paired reads together and single reads separately
+if (config$meta$sequencing$lib_layout=="Paired") {
+  message("Filtering and Trimming paired reads based on parameter set in the config file")
 
-message("Filtering and Trimming paired reads based on parameter set in the config file")
-
-out <- filterAndTrim(allfiles[[1]], filts[[1]], allfiles[[2]], filts[[2]],
-  truncLen = c(config$DADA2$filterAndTrim$Trunc_len_f,config$DADA2$filterAndTrim$Trunc_len_r),
-  truncQ = config$DADA2$filterAndTrim$TruncQ,
-  trimRight = config$DADA2$filterAndTrim$Trim_right,
-  trimLeft = config$DADA2$filterAndTrim$Trim_left,
-  maxLen = config$DADA2$filterAndTrim$maxLen,
-  minLen = config$DADA2$filterAndTrim$minLen,
-  maxN = config$DADA2$filterAndTrim$maxN,
-  minQ = config$DADA2$filterAndTrim$minQ,
-  maxEE = config$DADA2$filterAndTrim$MaxEE,
-  rm.phix = config$DADA2$filterAndTrim$Rm.phix,
-  orient.fwd = config$DADA2$filterAndTrim$orient.fwd,
-  matchIDs = config$DADA2$filterAndTrim$matchIDs,
-  id.sep = config$DADA2$filterAndTrim$id.sep,
-  id.field = config$DADA2$filterAndTrim$id.field,
-  compress = config$DADA2$filterAndTrim$compress,
-  multithread = config$DADA2$filterAndTrim$multithread,
-  n = config$DADA2$filterAndTrim$num,
-  OMP = config$DADA2$filterAndTrim$OMP,
-  verbose = config$DADA2$filterAndTrim$verbose
-)
+  out <- filterAndTrim(files_exist[[1]], filts[[1]], files_exist[[2]], filts[[2]],
+    truncLen = c(config$DADA2$filterAndTrim$Trunc_len_f,config$DADA2$filterAndTrim$Trunc_len_r),
+    truncQ = config$DADA2$filterAndTrim$TruncQ,
+    trimRight = config$DADA2$filterAndTrim$Trim_right,
+    trimLeft = config$DADA2$filterAndTrim$Trim_left,
+    maxLen = config$DADA2$filterAndTrim$maxLen,
+    minLen = config$DADA2$filterAndTrim$minLen,
+    maxN = config$DADA2$filterAndTrim$maxN,
+    minQ = config$DADA2$filterAndTrim$minQ,
+    maxEE = config$DADA2$filterAndTrim$MaxEE,
+    rm.phix = config$DADA2$filterAndTrim$Rm.phix,
+    orient.fwd = config$DADA2$filterAndTrim$orient.fwd,
+    matchIDs = config$DADA2$filterAndTrim$matchIDs,
+    id.sep = config$DADA2$filterAndTrim$id.sep,
+    id.field = config$DADA2$filterAndTrim$id.field,
+    compress = config$DADA2$filterAndTrim$compress,
+    multithread = config$DADA2$filterAndTrim$multithread,
+    n = config$DADA2$filterAndTrim$num,
+    OMP = config$DADA2$filterAndTrim$OMP,
+    verbose = config$DADA2$filterAndTrim$verbose
+  )
 
 # Write out to save the effect of filtering on the reads:
 rownames(out) <- sample.names[[1]]
@@ -169,13 +170,47 @@ ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_paired_filter
 print(plotQualityProfile(filts_passedR, aggregate = T))
 ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png"), dpi = 300, width = 10, height = 10, units = "cm")
 
+} else {
+
+message("Paired read files will be analysed in single-end mode")
+
+#Append files_exist 1P and files_exist 2P to the single reads so that they are analysed in the same workflow
+#Forward reads:
+if (length(files_exist[[3]] != 0)) { 
+files_exist[[3]]=c(files_exist[[1]], files_exist[[3]])
+filts[[3]]=c(filts[[1]], filts[[3]])
+quals[[3]]=c(quals[[1]], quals[[3]])
+sample.names[[3]]=c(sample.names[[1]], sample.names[[3]])
+} else {
+files_exist[[3]]=files_exist[[1]]
+filts[[3]]=filts[[1]]
+quals[[3]]=quals[[1]]
+sample.names[[3]]=sample.names[[1]]
+}
+
+#Reverse reads:
+if (length(files_exist[[4]] != 0)) { 
+files_exist[[4]]=c(files_exist[[2]], files_exist[[4]])
+filts[[4]]=c(filts[[2]], filts[[4]])
+quals[[4]]=c(quals[[2]], quals[[4]])
+sample.names[[4]]=c(sample.names[[2]], sample.names[[4]])
+} else {
+files_exist[[4]]=files_exist[[2]]
+filts[[4]]=filts[[2]]
+quals[[4]]=quals[[2]]
+sample.names[[4]]=sample.names[[2]]
+}
+
+} 
+
 # Same for single reads:
 
 message("Filtering and Trimming unpaired forward reads based on parameter set in the config file")
 
 if (length(files_exist[[3]]) != 0) {
 
-  out <- filterAndTrim(allfiles[[3]], filts[[3]],
+  #filts[[3]] <- filts[[3]][file.exists(filts[[3]])]
+  out <- filterAndTrim(files_exist[[3]], filts[[3]],
     truncLen = config$DADA2$filterAndTrim$Trunc_len_f,
     truncQ = config$DADA2$filterAndTrim$TruncQ,
     trimRight = config$DADA2$filterAndTrim$Trim_right,
@@ -201,9 +236,15 @@ if (length(files_exist[[3]]) != 0) {
   rownames(out) <- sample.names[[3]]
   out <- as.data.frame(out)
   colnames(out) <- c("reads.in.forward.single", "reads.out.forward.single")
+  
+  if (config$meta$sequencing$lib_layout=="Paired") {
   stats_reads <- cbind(stats_reads, out[match(rownames(stats_reads), rownames(out)),])
   #stats_reads$reads.out.forward.single = out$reads.out.forward.single[match(rownames(stats_reads), rownames(out))]
   #write.table(out, paste0(outpath, "06-report/dada2/dada2_filtering_stats_unpaired_forward_reads.txt"), row.names = TRUE, col.names = TRUE, quote = FALSE)
+  } else {
+    stats_reads <- out
+  }
+
 
   qualfiltsFs_single <- gsub(".png", "_filtered.png", quals[[3]])
 
@@ -291,3 +332,18 @@ write.table(stats_reads, paste0(outpath, "06-report/dada2/dada2_filtering_stats.
 if (file.exists("Rplots.pdf")) {
   file.remove("Rplots.pdf")
 }
+
+# Make empty files for the those samples that did not pass filtering (and no files therefore created)
+
+## There is no error if all reads have been eliminated, but no files
+  ## are written in this case. Check for the output files, and if they
+  ## don't exist, create empty ones.
+ 
+ for (i in 1:length(filts)) {
+  for(fn in filts[[i]]){
+    if(!file.exists(fn)){
+      cat(gettextf('creating empty file %s\n', fn))
+      gzf = gzfile(fn)
+      cat('', file=gzf, fill=FALSE)
+      close(gzf)
+    }}}

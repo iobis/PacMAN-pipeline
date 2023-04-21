@@ -40,6 +40,68 @@ if (length(nti) == 0) {
   ntj <- c("A", "C", "G", "T")
 }
 
+#For the analysis of Novaseq data, use a different error model, because of binned quality values
+#https://github.com/ErnakovichLab/dada2_ernakovichlab/tree/split_for_premise
+#https://github.com/benjjneb/dada2/issues/1307 and issue 791
+
+loessErrfun_mod4 <- function(trans) {
+  qq <- as.numeric(colnames(trans))
+  est <- matrix(0, nrow=0, ncol=length(qq))
+  for(nti in c("A","C","G","T")) {
+    for(ntj in c("A","C","G","T")) {
+      if(nti != ntj) {
+        errs <- trans[paste0(nti,"2",ntj),]
+        tot <- colSums(trans[paste0(nti,"2",c("A","C","G","T")),])
+        rlogp <- log10((errs+1)/tot)  # 1 psuedocount for each err, but if tot=0 will give NA
+        rlogp[is.infinite(rlogp)] <- NA
+        df <- data.frame(q=qq, errs=errs, tot=tot, rlogp=rlogp)
+        
+        # original
+        # ###! mod.lo <- loess(rlogp ~ q, df, weights=errs) ###!
+        # mod.lo <- loess(rlogp ~ q, df, weights=tot) ###!
+        # #        mod.lo <- loess(rlogp ~ q, df)
+        
+        # jonalim's solution
+        # https://github.com/benjjneb/dada2/issues/938
+        mod.lo <- loess(rlogp ~ q, df, weights = log10(tot),degree = 1, span = 0.95)
+        
+        pred <- predict(mod.lo, qq)
+        maxrli <- max(which(!is.na(pred)))
+        minrli <- min(which(!is.na(pred)))
+        pred[seq_along(pred)>maxrli] <- pred[[maxrli]]
+        pred[seq_along(pred)<minrli] <- pred[[minrli]]
+        est <- rbind(est, 10^pred)
+      } # if(nti != ntj)
+    } # for(ntj in c("A","C","G","T"))
+  } # for(nti in c("A","C","G","T"))
+  
+  # HACKY
+  MAX_ERROR_RATE <- 0.25
+  MIN_ERROR_RATE <- 1e-7
+  est[est>MAX_ERROR_RATE] <- MAX_ERROR_RATE
+  est[est<MIN_ERROR_RATE] <- MIN_ERROR_RATE
+  
+  # enforce monotonicity
+  # https://github.com/benjjneb/dada2/issues/791
+  estorig <- est
+  est <- est %>%
+    data.frame() %>%
+    mutate_all(funs(case_when(. < X40 ~ X40,
+                              . >= X40 ~ .))) %>% as.matrix()
+  rownames(est) <- rownames(estorig)
+  colnames(est) <- colnames(estorig)
+  
+  # Expand the err matrix with the self-transition probs
+  err <- rbind(1-colSums(est[1:3,]), est[1:3,],
+               est[4,], 1-colSums(est[4:6,]), est[5:6,],
+               est[7:8,], 1-colSums(est[7:9,]), est[9,],
+               est[10:12,], 1-colSums(est[10:12,]))
+  rownames(err) <- paste0(rep(c("A","C","G","T"), each=4), "2", c("A","C","G","T"))
+  colnames(err) <- colnames(trans)
+  # Return
+  return(err)
+}
+
 # Get sample names
 sample.names <- gsub("_1P.fastq.gz", "", basename(filtFs))
 message(paste0("Sample ", sample.names, " will be analyzed", collapse = "\n"))
@@ -56,21 +118,66 @@ errs <- list()
 dereps <- list()
 dadas <- list()
 seqtab <- list()
+files_exist <- list()
+
+
+for (i in 1:4) {
+
+  message("Check that files are not empty")
+
+  files_loop <- c()
+
+  for (j in 1:length(allfiles[[i]])) {
+    info <- file.info(allfiles[[i]][j])
+    if (!is.na(info$size) & info$size > 20) { # 20 is the size of an empty .gz file
+      files_loop <- c(files_loop, allfiles[[i]][j])
+    }
+  }
+
+  if (is.null(files_loop)) {
+    files_exist[i] <- list(NULL)
+  } else {
+    files_exist[[i]] <- files_loop
+  }
+}
+
+# Update sample names with existing paired files
+sample.names<-names(files_exist[[1]])
 
 # Loop through all file types (forward, reverse, unpaired forward, unpaired reverse) for learning errors and dereplicating
 for (i in 1:4) {
 
-  if (any(file.exists(allfiles[[i]]))) {
+  if (length(files_exist[[i]])!=0) {        #any(file.exists(files_exist[[i]]))
 
     message(paste("learning error rates of files:", i, ": (1) forward paired (2) reverse paired (3) forward single and (4) reverse single " , sep=" "))
 
-    errs[[i]] <- learnErrors(allfiles[[i]][file.exists(allfiles[[i]])],
+    #Add here a more generic character matching
+    if (config$meta$sequencing$seq_meth=="NovaSeq6000"){ 
+    message("learning error rates using a modified error model for NovaSeq data")
+
+    errs[[i]] <- learnErrors(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
+                            multithread = config$DADA2$learnERRORS$multithread,
+                            nbases = as.numeric(config$DADA2$learnERRORS$nbases),
+                            randomize = config$DADA2$learnERRORS$randomize,
+                            MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
+                            OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
+                            verbose = config$DADA2$learnERRORS$verbose,
+                            errorEstimationFunction = loessErrfun_mod4,
+                            )
+
+
+    } else {
+    
+    
+    errs[[i]] <- learnErrors(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
                             multithread = config$DADA2$learnERRORS$multithread,
                             nbases = as.numeric(config$DADA2$learnERRORS$nbases),
                             randomize = config$DADA2$learnERRORS$randomize,
                             MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
                             OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
                             verbose = config$DADA2$learnERRORS$verbose)
+
+    }
 
     message("Making error estimation plots of reads")
     png(filename = paste0(outpath, "06-report/dada2/error_profile_", names(allfiles)[i], ".png"))
@@ -86,7 +193,8 @@ for (i in 1:4) {
     dev.off()
 
     message("Running dereplication of reads")
-    dereps[[i]] <- derepFastq(allfiles[[i]][file.exists(allfiles[[i]])],
+    #print(paste("files that exist:", files_exist[[i]]))
+    dereps[[i]] <- derepFastq(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
                               n = as.numeric(config$DADA2$derepFastq$num),
                               config$DADA2$learnERRORS$verbose)
 
@@ -101,12 +209,13 @@ for (i in 1:4) {
 
     # Convert to list in case there's only one file
     if (is(dadas[[i]], "dada")) {
+      message("Convert to list in case there's only one file")
       dadas[[i]] <- list(dadas[[i]])
-      names(dadas[[i]]) <- names(allfiles[[i]][file.exists(allfiles[[i]])])
+      names(dadas[[i]]) <- names(files_exist[[i]])#allfiles[[i]][file.exists(allfiles[[i]])])
     }
     if (is(dereps[[i]], "derep")) {
       dereps[[i]] <- list(dereps[[i]])
-      names(dereps[[i]]) <- names(allfiles[[i]][file.exists(allfiles[[i]])])
+      names(dereps[[i]]) <- names(files_exist[[i]])#allfiles[[i]][file.exists(allfiles[[i]])])
     }
 
   # If no files found for the paired reads (should not be the case!)
@@ -207,7 +316,7 @@ if (config$DADA2$mergePairs$include) {
       # It seems that concatenating these reads and keeping them for further analyses can result in better taxonomic coverage (Dacey et al. 2021 https://doi.org/10.1186/s12859-021-04410-2)
       # Abundances for these reads is taken from the merged abundances.
       # reverse complement reverse reads so that the following taxonomic assignment will work optimally.
-      unmerged_r[[i]] <- sapply(sapply(sapply(unmerged_r[[i]], DNAString), reverseComplement), toString)
+      unmerged_r[[i]] <- sapply(sapply(sapply(unmerged_r[[i]], DNAString), Biostrings::reverseComplement), toString)
       sequence <- paste0(unmerged_f[[i]], unmerged_r[[i]])
       abundance <- mergers[[sample.names[i]]]$abundance[!mergers[[sample.names[i]]]$accept]
       concatenated[[i]] <- tibble(sequence, abundance)
@@ -222,7 +331,7 @@ if (config$DADA2$mergePairs$include) {
     # This is all rejected (non-merged) abundances combined.
     # This column messes with future steps, so we want to remove it.
     # We have instead collected the abundances of the unmerged reads to add to the table with sequences.
-    seqtab <- seqtab[,-which(colnames(seqtab) == "")]
+    #seqtab <- seqtab[,-which(colnames(seqtab) == "")]
 
     # Merge with paired reads and format for the next steps (integer matrix)
     seqtab <- merge_format_seqtab(seqtab, seqtab_unmerged)
@@ -236,20 +345,20 @@ if (config$DADA2$mergePairs$include) {
   seqtab1 <- makeSequenceTable(dadas[[1]])
   seqtab2 <- makeSequenceTable(dadas[[2]])
   # Reverse complement reverse reads so that the following taxonomic assignment will work optimally.
-  colnames(seqtab2) <- sapply(sapply(sapply(colnames(seqtab2), DNAString), reverseComplement), toString)
+  colnames(seqtab2) <- sapply(sapply(sapply(colnames(seqtab2), DNAString), Biostrings::reverseComplement), toString)
   seqtab <- cbind(seqtab1, seqtab2)
 
 }
 
 # Add ASVs from single reads to full table, and format table to the right format to continue with the pipeline
 # It has to be an integer matrix with samples as rownames and sequences as column names
-if (any(file.exists(allfiles[[3]]))) {
+if (length(files_exist[[3]])!=0) {
   message("Adding ASVs from unpaired forward reads to ASV-table")
   seqtab3 <- makeSequenceTable(dadas[[3]])
   seqtab <- merge_format_seqtab(seqtab, seqtab3)
 }
 
-if (any(file.exists(allfiles[[4]]))) {
+if (length(files_exist[[4]])!=0) {
   message("Adding ASVs from unpaired reverse reads to ASV-table")
   seqtab4 <- makeSequenceTable(dadas[[4]])
   # Here also the sequences from the reverse reads are reverse complemented before they are added to the sequence table
@@ -286,6 +395,8 @@ if (exists("mapping")) {
       left_join(asv_sequences, by = "sequence") %>%
       select(read, asv) %>%
       filter(!is.na(asv))
+    dir.create(file.path(paste0(outpath, "03-dada2/mapping/")))
+    dir.create(file.path(paste0(outpath, "03-dada2/mapping/", name)))
     write.table(mapping[[name]], paste0(outpath, "03-dada2/mapping/", name, "/", name, "_mapping.txt"), sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
   }
 }
@@ -293,6 +404,9 @@ if (exists("mapping")) {
 # Finally, change names in otu table
 message("Changing sequence names")
 colnames(seqtab.nochim) <- new.names
+#Replace any NAs that are possibly in the seqtab with 0s
+seqtab.nochim[is.na(seqtab.nochim)] <- 0
+
 
 # This show sequence length distributions (see if you should include this)
 #seq_hist <- table(nchar(getSequences(seqtab)))
@@ -314,7 +428,7 @@ if (config$DADA2$mergePairs$include) {
 }
 
 # Add also information on the reads that came from possibly evaluated single reads
-if (any(file.exists(allfiles[[3]]))) {
+if (length(files_exist[[3]])!=0) {
   message("Adding info from unpaired forward reads to the summary table")
   denoisedF_single <- sapply(dadas[[3]], getN)
   track <- merge(track, data.frame(denoisedF_single), by = 0, all = TRUE)
@@ -324,7 +438,7 @@ if (any(file.exists(allfiles[[3]]))) {
   track <- track %>% relocate(denoisedF_single, .before = nonchim)
 }
 
-if (any(file.exists(allfiles[[4]]))) {
+if (length(files_exist[[4]])!=0) {
   message("Adding info from unpaired reverse reads to the summary table")
   denoisedR_single <- sapply(dadas[[4]], getN)
   track <- merge(track, data.frame(denoisedR_single), by = 0, all = TRUE)
@@ -334,12 +448,16 @@ if (any(file.exists(allfiles[[4]]))) {
 }
 
 rownames(track)
-rownames(track) <- sample.names
-message(track)
+#rownames(track) <- sample.names
+#message(track)
 
 # Read results of filtering step and append the results of ASV step:
 out <- read.table(paste0(outpath, "06-report/dada2/dada2_filtering_stats.txt"), header = TRUE)
-track <- cbind(out, track)
+#track <- cbind(out, track)
+track <- merge(out, track, by = 0, all = TRUE)
+rownames(track) <- track$Row.names
+track <- subset(track, select = -Row.names)
+
 
 # Write output tables of reads and the otu_table:
 write.table(track, paste0(outpath, "06-report/dada2/dada2_stats.txt"), row.names = TRUE, col.names = TRUE, quote = FALSE)
