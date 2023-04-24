@@ -484,7 +484,7 @@ if config["BLAST"]["include"] == True:
                 -p {config[BLAST][portion_of_hits]} \
                 -i {config[BLAST][percent_identity]} \
                 -l {config[BLAST][alignment_length]} \
-                -e {config[BLAST][e-value]} \
+                -e {config[BLAST][e_value]} \
                 -n {config[BLAST][max_hits]} \
                 -m {config[BLAST][min_hits]} \
                 -d {config[BLAST][tax_db]} \

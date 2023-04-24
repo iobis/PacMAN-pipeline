@@ -380,6 +380,8 @@ kable(dada2_stats)
 
 ## Assigning taxonomy
 
+### Bowtie2-blca
+
 Next, taxonomy was assigned to the inferred reads. The sequences were aligned to the provided reference database using bowtie2. Because of this the bowtie2 database was also built (if not already provided), from the reference sequences.
 
 The command used for the alignment was the following:
@@ -387,6 +389,16 @@ The command used for the alignment was the following:
 ```{r, echo=F}
 cat("bowtie2 -x bowtie2-database -f -U representative_seqs -S alignment.sam --no-hd --no-sq --very-sensitive --local --no-unal -p ",config$TAXONOMY$threads," -k " ,config$TAXONOMY$distinct_alignments," --un rejects.fasta", sep="")
 ```
+
+The amount of alignments that were made to the provided database:
+
+```{R}
+
+cat(readLines(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/bowtie2/bowtie2_", config$DATABASE$name, "_log.txt")), sep = '\n')
+
+```
+
+Note, all alignments are treated as unpaired as any merging of reads would have happened in the dada2 pipeline. 
 
 The best distinct alignments (parameter -k), were then used to infer the taxonomy based on a bayesian least common ancestor method. In this method, a higher taxonomy is assigned, if it shared enough times in the alignments made in the first step.
 
@@ -402,6 +414,43 @@ The provided `cutoff` was then used to filter the blca output for reliable taxon
 
 ```{r, echo=F}
 cat("python ./workflow/scripts/reformat_summary_for_r.py blca.output tax.table   ", config$TAXONOMY$blca_identity_cutoff, sep = "")
+```
+
+
+### Blast against the full ncbi-nt
+
+If chosen by the user (Blast: include: TRUE in the config file) the unknown sequences that did not align with the defined reference database, as well as those that did not have a match based on the blca analysis were aligned against the full ncbi-nt database. 
+The used command was:
+
+```{r, echo=F}
+if (config$BLAST$include) {
+
+cat("blastn -query  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blca/", config$DATABASE$name, "_unclassified-seqs_cutoff", config$TAXONOMY$blca_identity_cutoff, ".fna", 
+    " -out " , "results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_identity_cutoff, ".tab", 
+    " -outfmt 6 -perc_indentity ", config$BLAST$perc_identity, " ", "config$BLAST$database", sep = "")
+
+} else {
+
+  cat("Blast was not included in this analysis run")
+}
+```
+
+The results of the blast query were then filtered with a last common ancestor script using [basta](https://github.com/timkahlke/BASTA). BASTA is a command-line tool written in python that was developed to enable a basic taxonomy annotation based on a Last Common Ancestor algorithm similar to the one implemented in MEGAN. 
+A number of parameters can be chosen for the basta-lca analysis. The following command was used. 
+
+```{r, echo=F}
+
+if (config$BLAST$include) {
+
+cat("basta sequence -p ", config$BLAST$portion_of_hits, " -i ", config$BLAST$percent_identity, " -l ", config$BLAST$alignment_length, " -e ", config$BLAST$e_value, " -n ", config$BLAST$max_hits, " -m ", config$BLAST$min_hits, " -d ", config$BLAST$tax_db,
+ "  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_identity_cutoff, ".tab   results/", 
+ config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_lca_cutoff", config$TAXONOMY$blca_identity_cutoff, ".tab gb", sep="")
+
+} else {
+
+  cat("Blast was not included in this analysis run")
+}
+
 ```
 
 A phyloseq object was built with this information, and can be found here:
@@ -432,32 +481,51 @@ colSums(!is.na(tax_table(pseq)[,c(1:7)]))
 
 In relative abundance (see total number of reads in the dada2 output), the most abundant taxa at phylum level and at species level are shown in the following images.
 
-```{r}
+```{r, echo=F}
 
 #in case there are NA's in the pseq table:
 pseq@otu_table<-replace(pseq@otu_table, is.na(pseq@otu_table), 0)
 
 pseq_rel <- transform_sample_counts(pseq, function(x) x / sum(x) )
+
+# Top 10 at phylum level:
+pseq_phyla=tax_glom(pseq,  taxrank="phylum")
+top.phyla <- sort(tapply(taxa_sums(pseq), tax_table(pseq)[, "phylum"], sum), TRUE)
+top.phyla <- top.phyla[1:10]
+pseq_phyla <- subset_taxa(pseq_rel, phylum %in% names(top.phyla))
+plot_bar(pseq_phyla, x = "phylum", fill="phylum")+
+  geom_bar(stat="identity")+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none', plot.title = element_text(size = 10, face = "bold"))+
+  ggtitle(paste("Relative abundance of the most common phyla in the full set of samples (n =", nsamples(pseq), ")"))
+
+# Top 10 at class level:
 pmelt <- psmelt(pseq_rel)
+pseq_phyla=tax_glom(pseq,  taxrank="class")
+top.phyla <- sort(tapply(taxa_sums(pseq), tax_table(pseq)[, "class"], sum), TRUE)
+top.phyla <- top.phyla[1:10]
+pseq_phyla <- subset_taxa(pseq_rel, class %in% names(top.phyla))
+plot_bar(pseq_phyla, x = "class", fill="class")+
+  geom_bar(stat="identity")+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none', plot.title = element_text(size = 10, face = "bold"))+
+  ggtitle(paste("Relative abundance of the most common taxonomic classes in the full set of samples (n =", nsamples(pseq), ")"))
 
-pmelt %>%
-  group_by(phylum) %>%
-  filter(Abundance > 0.01) %>%
-  ggplot(aes(phylum, y = Abundance, fill = phylum)) +
-    geom_bar(stat = 'identity') +
-    theme_classic() +
-    theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none') +
-    facet_grid(~Sample)
 
-pmelt %>%
-  group_by(species) %>%
-  filter(Abundance > 0.01) %>%
-  ggplot(aes(species, y = Abundance, fill = phylum)) +
-    geom_bar(stat = 'identity')+
-    theme_classic()+
-    theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none')+
-    facet_grid(~Sample, scales = 'free_x')
+# Top 10 at species level:
+pmelt <- psmelt(pseq_rel)
+pseq_phyla=tax_glom(pseq,  taxrank="species")
+top.phyla <- sort(tapply(taxa_sums(pseq), tax_table(pseq)[, "species"], sum), TRUE)
+top.phyla <- top.phyla[1:10]
+pseq_phyla <- subset_taxa(pseq_rel, species %in% names(top.phyla))
+plot_bar(pseq_phyla, x = "species", fill="species")+
+  geom_bar(stat="identity")+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none', plot.title = element_text(size = 10, face = "bold"))+
+  ggtitle(paste("Relative abundance of the most common species in the full set of samples (n =", nsamples(pseq), ")"))
+
 ```
+
 
 The relationship of the biodiversity between the samples is shown in the following ordination. The closer together the samples are depicted, the more similar the biodiversity measured in each of the samples was.
 (Works only if more than 2 samples are analysed in a run.)
