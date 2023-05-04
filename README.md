@@ -88,6 +88,7 @@ docker run \
    -v /home/ubuntu/data/dev/PacMAN-pipeline:/src \
    -v /home/ubuntu/data:/src/data \
    -v /home/ubuntu/data/results:/src/results \
+    --rm \
    pipeline \
    /bin/bash -c "snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config/config_rey_noblast_2samples.yaml"
 ```
