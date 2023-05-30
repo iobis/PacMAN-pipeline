@@ -28,16 +28,16 @@ config <- read_yaml(params$config)
 ```{r, echo=FALSE, results='asis'}
 cat("Specifically, this is the report for the project: `", config$PROJECT, "`    And the pipeline run: `", config$RUN, "`.    ", sep = "")
 
-if (R.utils::isAbsolutePath(config$meta$sampling$sample_data_file)) {
-  sample_data_file <- config$meta$sampling$sample_data_file
+if (R.utils::isAbsolutePath(config$SAMPLE_SET)) {
+  sample_set_file <- config$SAMPLE_SET
 } else {
-  sample_data_file <- file.path("../..", config$meta$sampling$sample_data_file)
+  sample_set_file <- file.path("../..", config$SAMPLE_SET)
 }
-sample_data <- read.table(sample_data_file, sep = ";", header = TRUE)
-sample_ids <- unique(sample_data$sample.id)
+sample_set <- read.csv(sample_set_file)
+sample_ids <- unique(sample_set$sample.id)
 
 cat("And the samples that were run in this analysis are:\n\n")
-for (id in unique(sample_data$sample.id)) {
+for (id in sample_ids) {
   cat("- ", id, "\n")
 }
 ```
