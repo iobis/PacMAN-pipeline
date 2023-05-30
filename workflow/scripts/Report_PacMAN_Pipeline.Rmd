@@ -28,7 +28,12 @@ config <- read_yaml(params$config)
 ```{r, echo=FALSE, results='asis'}
 cat("Specifically, this is the report for the project: `", config$PROJECT, "`    And the pipeline run: `", config$RUN, "`.    ", sep = "")
 
-sample_data <- read.table(paste0("../../", config$meta$sampling$sample_data_file), sep = ";", header = TRUE)
+if (R.utils::isAbsolutePath(config$meta$sampling$sample_data_file)) {
+  sample_data_file <- config$meta$sampling$sample_data_file
+} else {
+  sample_data_file <- file.path("../..", config$meta$sampling$sample_data_file)
+}
+sample_data <- read.table(sample_data_file, sep = ";", header = TRUE)
 sample_ids <- unique(sample_data$sample.id)
 
 cat("And the samples that were run in this analysis are:\n\n")
@@ -65,8 +70,6 @@ The first step of the process was to trim the samples using [Trimmomatic](http:/
 The command that was used was:
 
 ```{r, echo=F}
-
-
 trim_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/trimmomatic/", sample_ids[1], "_log.txt")
 
 readLines(trim_report, n = 2)
@@ -108,15 +111,14 @@ The command(s) that was used was:
 ```{r, echo=F}
 #cut_report <- capture.output(cat("../PacMAN-pipeline-backup/results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt", sep = ""))
 if (config$meta$sequencing$lib_layout=="Paired") {
-cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt")
-readLines(cut_report, n = 2)
+  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt")
+  readLines(cut_report, n = 2)
 } else {
-cut_report_1P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_1P_log.txt")
-readLines(cut_report_1P, n = 2)
-cut_report_2P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_2P_log.txt")
-readLines(cut_report_2P, n = 2)
+  cut_report_1P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_1P_log.txt")
+  readLines(cut_report_1P, n = 2)
+  cut_report_2P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_2P_log.txt")
+  readLines(cut_report_2P, n = 2)
 }
-
 ```
 
 ### Paired reads
@@ -127,27 +129,26 @@ The results for all paired samples were:
 cutResults <- data.frame(TotalReadPairsProcessed = NA, Read1withPrimer = NA, Read2withPrimer = NA, PairsTooShort = NA, PairsWritten = NA, BasePairsProcessed = NA, Read1BpProcessed = NA, Read2BpProcessed = NA, BasePairsWritten = NA, Read1BpWritten = NA, Read2BpWritten = NA)
 
 if (config$meta$sequencing$lib_layout=="Paired") { 
-print("checking analysis of paired samples")
-for (i in 1:length(sample_ids)) {
-print(sample_ids[i])
-  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_log.txt")
-  text <- readLines(cut_report)
-  rows <- grep("^===", text)
-  report <- text[c((rows[1]+2):(rows[2]-2))]
-  sample <- report %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
-  cutResults[i,] <- sample[c(1,3,6,8,10,12,14,16,17,20,22)]
-  #Collect only meaningful numbers (should always be in the same order for paired reads from cutadapt)
-  rownames(cutResults)[i] <- sample_ids[i]
+  print("checking analysis of paired samples")
+  for (i in 1:length(sample_ids)) {
+    print(sample_ids[i])
+    cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_log.txt")
+    text <- readLines(cut_report)
+    rows <- grep("^===", text)
+    report <- text[c((rows[1]+2):(rows[2]-2))]
+    sample <- report %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+    cutResults[i,] <- sample[c(1,3,6,8,10,12,14,16,17,20,22)]
+    #Collect only meaningful numbers (should always be in the same order for paired reads from cutadapt)
+    rownames(cutResults)[i] <- sample_ids[i]
+  }
+
+  print(kable(cutResults))
+
+  cutResults_Percentage <- round(cutResults[,c(2:5)] / cutResults[,c(1)] * 100, digits = 2)
+  cutResults_Percentage$BasePairsWritten <- round(cutResults[,7] / cutResults[,6] * 100, digits = 2)
+
+  kable(cutResults_Percentage)
 }
-
-print(kable(cutResults))
-
-cutResults_Percentage <- round(cutResults[,c(2:5)] / cutResults[,c(1)] * 100, digits = 2)
-cutResults_Percentage$BasePairsWritten <- round(cutResults[,7] / cutResults[,6] * 100, digits = 2)
-
-kable(cutResults_Percentage)
-}
-
 ```
 
 ### Unpaired reads
@@ -158,27 +159,27 @@ While for forward unpaired reads they were:
 cutResults <- data.frame(TotalReadPairsProcessed = NA, ReadwithPrimer = NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 if (config$meta$sequencing$lib_layout!="Paired") { 
-for (i in 1:length(sample_ids)) {
-  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1P_log.txt")
-  text <- readLines(cut_report)
+  for (i in 1:length(sample_ids)) {
+    cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1P_log.txt")
+    text <- readLines(cut_report)
 
-  if (any(grepl("^===", text))) {
-    rows <- grep("^===", text)
-    report <- text[c((rows[1]+2):(rows[2]-2))]
-    #sample <- report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
-    sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+    if (any(grepl("^===", text))) {
+      rows <- grep("^===", text)
+      report <- text[c((rows[1]+2):(rows[2]-2))]
+      #sample <- report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+      sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
 
-    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
-    if (any(!grepl("short", report))) {
-      sample <- append(sample, 0, after = 2)
+      #Not all of the reports list ReadsTooShort, so add for those that don't a 0
+      if (any(!grepl("short", report))) {
+        sample <- append(sample, 0, after = 2)
+      }
+      cutResults[i,] <- sample[!is.na(sample)]
+      rownames(cutResults)[i] <- paste(sample_ids[i],"1P")
+    } else {
+      cutResults[i,] <- rep(0,6)
+      rownames(cutResults)[i] <- paste(sample_ids[i],"1P")
     }
-    cutResults[i,] <- sample[!is.na(sample)]
-    rownames(cutResults)[i] <- paste(sample_ids[i],"1P")
-  } else {
-    cutResults[i,] <- rep(0,6)
-    rownames(cutResults)[i] <- paste(sample_ids[i],"1P")
   }
-}
 }
 
 for (i in 1:length(sample_ids)) {
@@ -216,30 +217,28 @@ And for reverse unpaired reads they were:
 cutResults <- data.frame(TotalReadPairsProcessed = NA, ReadwithPrimer = NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 if (config$meta$sequencing$lib_layout!="Paired") { 
-for (i in 1:length(sample_ids)) {
-  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2P_log.txt")
-  text <- readLines(cut_report)
+  for (i in 1:length(sample_ids)) {
+    cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2P_log.txt")
+    text <- readLines(cut_report)
 
-  if (any(grepl("^===", text))) {
-    rows <- grep("^===", text)
-    report <- text[c((rows[1]+2):(rows[2]-2))]
-    #sample <- report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
-    sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+    if (any(grepl("^===", text))) {
+      rows <- grep("^===", text)
+      report <- text[c((rows[1]+2):(rows[2]-2))]
+      #sample <- report %>% str_extract_all("\\(?[0-9,.][0-9,.]+\\)?") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+      sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
 
-    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
-    if (any(!grepl("short", report))) {
-      sample <- append(sample, 0, after = 2)
+      #Not all of the reports list ReadsTooShort, so add for those that don't a 0
+      if (any(!grepl("short", report))) {
+        sample <- append(sample, 0, after = 2)
+      }
+      cutResults[i,] <- sample[!is.na(sample)]
+      rownames(cutResults)[i] <- paste(sample_ids[i],"2P")
+    } else {
+      cutResults[i,] <- rep(0,6)
+      rownames(cutResults)[i] <- paste(sample_ids[i],"2P")
     }
-    cutResults[i,] <- sample[!is.na(sample)]
-    rownames(cutResults)[i] <- paste(sample_ids[i],"2P")
-  } else {
-    cutResults[i,] <- rep(0,6)
-    rownames(cutResults)[i] <- paste(sample_ids[i],"2P")
   }
 }
-}
-
-
 
 for (i in 1:length(sample_ids)) {
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_unpaired2_log.txt")
@@ -305,7 +304,7 @@ And after trimming it was:
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%", fig.cap="caption", fig.show='hold', fig.align='center'}
 if (config$meta$sequencing$lib_layout=="Paired") {
-knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png")))
+  knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png")))
 }
 ```
 
@@ -423,10 +422,10 @@ Note also that the sequences of the ASVs are stored in the tax_table of the phyl
 The total number of taxa assigned at each taxonomic level:
 
 ```{r, echo=F}
-if (colSums(is.na(tax_table(pseq)[,c(7)]))==0) {
-colSums(tax_table(pseq)[,c(1:7)]!="") 
+if (colSums(is.na(tax_table(pseq)[,c(7)])) == 0) {
+  colSums(tax_table(pseq)[,c(1:7)]!="") 
 } else {
-colSums(!is.na(tax_table(pseq)[,c(1:7)]))
+  colSums(!is.na(tax_table(pseq)[,c(1:7)]))
 }
 ```
 
@@ -435,7 +434,7 @@ In relative abundance (see total number of reads in the dada2 output), the most 
 ```{r}
 
 #in case there are NA's in the pseq table:
-pseq@otu_table<-replace(pseq@otu_table, is.na(pseq@otu_table), 0)
+pseq@otu_table <- replace(pseq@otu_table, is.na(pseq@otu_table), 0)
 
 pseq_rel <- transform_sample_counts(pseq, function(x) x / sum(x) )
 pmelt <- psmelt(pseq_rel)
@@ -463,11 +462,10 @@ The relationship of the biodiversity between the samples is shown in the followi
 (Works only if more than 2 samples are analysed in a run.)
 
 ```{r, echo=F}
-pseq = subset_samples(pseq, sample_sums(pseq)>0)
+pseq <- subset_samples(pseq, sample_sums(pseq)>0)
 pseq_rel <- transform_sample_counts(pseq, function(x) x / sum(x) )
 
-
-if (nsamples(pseq_rel)>2) {
+if (nsamples(pseq_rel) > 2) {
   pseq.ord <- ordinate(pseq_rel, "PCoA", "bray")
   sample_data(pseq_rel)$sample_id <- sample_names(pseq_rel)
 
