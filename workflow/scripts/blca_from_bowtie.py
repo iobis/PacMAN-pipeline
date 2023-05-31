@@ -3,10 +3,11 @@
 
 # Example usage:
 # python blca_from_bowtie.py -i take_3_local.sam -r CO1_labeled_taxonomy.txt -q CO1_.fasta -b 0.8 -p path/to/muscle
-from __future__ import print_function, division
 
+from __future__ import print_function, division
 import sys
 import os
+import signal
 
 if sys.version_info < (3, 0):
     from StringIO import StringIO
@@ -120,6 +121,7 @@ class NotAvailableHandler(object):
 
 
 parser = argparse.ArgumentParser(description='Bayesian-based LCA taxonomic classification method')
+
 ##### Required arguments #####
 required = parser.add_argument_group('required arguments')
 required.add_argument("-i", "--sam", help="Input SAM file", type=str, required=True)
@@ -239,6 +241,7 @@ def random_aln_score(alndic, query, match, mismatch, ngap):
                     hitscore[k] += float(ngap)
     return hitscore
 
+
 def get_gap_pos(query, alndic):
     '''Get the gap position in the alignment'''
     for i in range(len(alndic[query])):
@@ -323,8 +326,7 @@ with open(sam_file_name) as sam_file:
 
 rejects = possible_rejects.difference(set(input_sequences))
 
-
-print ("> 3 > Read in bowtie2 output!")
+print("> 3 > Read in bowtie2 output!")
 
 already_assigned = set()
 if continue_mode:
@@ -343,6 +345,7 @@ print("> 3 > Read in bowtie2 output!")
 
 count = 0
 outfile = open(outfile_name, 'w')
+
 for seqn, info in input_sequences.items():
     count += 1
 
@@ -363,26 +366,28 @@ for seqn, info in input_sequences.items():
     fifsa.append(">" + seqn + "\n" + info.seq)
     fifsa = "\n".join(fifsa)
     # os.system("rm " + seqn + ".dblist")
+
     ### Run muscle ###
     muscle_call = [muscle_path, '-quiet', '-clw', '-maxiters',  str(muscle_max_iterations)]
     if muscle_use_diags:
         muscle_call.append('-diags')
-    proc = subprocess.Popen(muscle_call, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    proc = subprocess.Popen(muscle_call, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
     outs, errs = proc.communicate(fifsa.encode('utf-8'))
 
-    # print outs
-    # print errs
-    # print StringIO.StringIO(outs)
+    if proc.returncode == -signal.SIGSEGV:
+        print("Error: segmentation fault")
+
     alndic = get_dic_from_aln(StringIO(outs.decode('utf-8')))
     # os.system("rm " + seqn + ".hits.fsa")
     # os.system("rm " + seqn + ".muscle")
     #    	print "Processing:",k1
+
     ### get gap position and truncate the alignment###
     ## SAARA: Was getting here a keyerror, but wanted to see if otherwise working so added the exception
-    #try:
-        #start, end = get_gap_pos(seqn, alndic)
-    #except KeyError:
-        #continue
+    # try:
+    #     start, end = get_gap_pos(seqn, alndic)
+    # except KeyError:
+    #     continue
     start, end = get_gap_pos(seqn, alndic)
     trunc_alndic = cut_gap(alndic, start, end)
     orgscore = pairwise_score(trunc_alndic, seqn, match, mismatch, ngap)
