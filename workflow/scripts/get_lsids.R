@@ -37,41 +37,49 @@ if (!is.null(basta_file_path)) {
 
 message("1. Modify tax table for taxonomic ranks, and find all possible worms ids (using worrms package)")
 
-# Move names to the appropriate columns if using the MIDORI database
-
-if (grepl("MIDORI_UNIQ", tax_file_path, fixed = TRUE, ignore.case = TRUE)) {
-
-  taxonomies <- str_split(tax_file$sum.taxonomy, ";")
-
-  clean_taxonomy <- function(taxa) {
-    taxa <- taxa[taxa != "" & taxa != "NA"]
-    if (length(taxa) == 0) return(list(kingdom = NA))
-    parts <- str_match(taxa, "([a-z]+)__(.*)_[0-9]")
-    ranks <- recode(parts[,2], "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
-    taxon_names <- as.list(parts[,3])
-    names(taxon_names) <- ranks
-    return(taxon_names)
+clean_taxonomy_prefixed <- function(taxa) {
+  taxa <- taxa[taxa != "" & taxa != "NA" & taxa != "nan"]
+  if (length(taxa) == 0) {
+    return(list(kingdom = NA))
   }
-
-  cleaned <- lapply(taxonomies, clean_taxonomy)
-  taxmat <- as.data.frame(bind_rows(cleaned))
-  row.names(taxmat) <- tax_file$rowname
-
-} else {
-
-  taxmat <- separate(tax_file, "sum.taxonomy", into = c("kingdom", "phylum", "class", "order", "family", "genus", "species"), sep = ";")
-  rownames(taxmat) <- taxmat$rowname
-  taxmat <- subset(taxmat, select = -c(rowname))
-
+  parts <- str_match(taxa, "([a-z]+)__(.*)_[0-9]")
+  ranks <- recode(parts[,2], "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
+  taxon_names <- as.list(parts[,3])
+  names(taxon_names) <- ranks
+  return(taxon_names)
 }
 
-taxmat <- taxmat %>%
+clean_taxonomy <- function(taxa) {
+  if (length(taxa) == 0) {
+    return(list(kingdom = NA))
+  }
+  taxa[taxa %in% c("", "NA", "nan")] <- NA
+  ranks <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
+  taxon_names <- setNames(as.list(taxa), ranks[1:length(taxa)])
+  return(taxon_names)
+}
+
+taxonomies <- str_split(tax_file$sum.taxonomy, ";")
+
+if (grepl("MIDORI_UNIQ", tax_file_path, fixed = TRUE, ignore.case = TRUE)) {
+  # Move names to the appropriate columns if using the MIDORI database
+  cleaned <- lapply(taxonomies, clean_taxonomy_prefixed)
+} else {
+  cleaned <- lapply(taxonomies, clean_taxonomy)
+}
+
+taxmat <- cleaned %>%
+  bind_rows() %>%
+  as.data.frame() %>%
   select(kingdom, phylum, class, order, family, genus, species)
+
+row.names(taxmat) <- tax_file$rowname
 
 # Collect the highest known taxonomic value to the last column
 taxmat$lastvalue <- as.matrix(taxmat)[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "last"))]
 
 # Add information on the classification approach
+# TODO: remove hard coding
 taxmat$otu_seq_comp_appr <- "bowtie2;2.4.4;ANACAPA-blca;2021"
 
 # Get otu_db name from the input filename
@@ -89,6 +97,7 @@ if (exists("basta_file")) {
   taxmat2$lastvalue <- as.matrix(taxmat2)[cbind(seq(1, nrow(taxmat2)), max.col(!is.na(taxmat2), "last"))]
   # Add also the fields that separate the otu assignment methods
   # Note: read these from the config file?
+  # TODO: remove hard coding
   taxmat2$otu_seq_comp_appr <- "blastn;2.12.0"
   taxmat2$otu_db <- paste0("NCBI-nt;", blast_date)
   rownames(taxmat2) <- taxmat2$rowname
