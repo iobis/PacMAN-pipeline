@@ -125,7 +125,6 @@ matches <- sapply(tax_names, match_name)
 taxmat$lsid <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), matches[[name]]$lsid, NA) })
 taxmat$taxonRank <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), tolower(matches[[name]]$rank), NA) })
 taxmat$specificEpithet <- sapply(taxmat$lastvalue, function(name) {
-  message(name)
   if (!is.null(matches[[name]])) {
     if (!is.na(matches[[name]]$rank) & matches[[name]]$rank == "Species") {
       return(sub(".*\\s", "", matches[[name]]$scientificname))
