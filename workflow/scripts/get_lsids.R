@@ -16,6 +16,8 @@ rep_seqs_path <- args[3]
 if (length(args) == 5) {
     basta_file_path <- args[4]
     blast_date <- args[5]
+} else {
+    basta_file_path <- NULL
 }
 
 ########################### 1. Read input files  ################################################################################################################
@@ -24,9 +26,11 @@ tax_file <- read.csv(tax_file_path, sep = "\t", header = T)
 rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
 
 #If blast was performed on the unknown sequences:
-if (length(args) == 5 & file.size(basta_file_path) > 0) {
-  message("0. Results of Blast annotation read")
-  basta_file <- read.csv(basta_file_path, sep = "\t", header = F)
+if (!is.null(basta_file_path)) {
+  if (file.size(basta_file_path) > 0) {
+    message("0. Results of Blast annotation read")
+    basta_file <- read.csv(basta_file_path, sep = "\t", header = F)
+  }
 }
 
 ########################### 2. Modify tax table for taxonomic ranks, and find all possible worms ids (using worrms package) #####################################
@@ -76,7 +80,7 @@ result <- regmatches(tax_file_path, regexec(pattern, tax_file_path))
 taxmat$otu_db <- result[[1]][2]
 
 # If Blast was performed on unknown sequences and gave results after lca
-if (length(args) == 5 & file.size(basta_file_path) > 0) {
+if (exists("basta_file")) {
   message("1.1 Adding Blast results to taxonomic table")
   colnames(basta_file) <- c("rowname", "sum.taxonomy")
   taxmat2 <- separate(basta_file, "sum.taxonomy", into = c("kingdom", "phylum", "class", "order", "family", "genus", "species"), sep = ";")
@@ -89,12 +93,11 @@ if (length(args) == 5 & file.size(basta_file_path) > 0) {
   taxmat2$otu_db <- paste0("NCBI-nt;", blast_date)
   rownames(taxmat2) <- taxmat2$rowname
   taxmat2 <- subset(taxmat2, select = -c(rowname))
-  
+
   # Combine this taxmat to the original one
   # At the moment the unknowns are there twice! So first remove duplicates before you combine them
   taxmat <- taxmat[!(rownames(taxmat) %in% rownames(taxmat2)),]
   taxmat <- rbind(taxmat, taxmat2)
-
 }
 
 # Add possible remaining unknowns to the taxmat based on asvs in the rep_seqs (keep all ASVs in the final dataset)
