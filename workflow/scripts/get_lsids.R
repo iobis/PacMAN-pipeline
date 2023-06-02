@@ -11,16 +11,22 @@ library(tidyr)
 args <- commandArgs(trailingOnly = T)
 
 outpath <- args[1]
+tax_file_path <- args[2]
+rep_seqs_path <- args[3]
+if (length(args) == 5) {
+    basta_file_path <- args[4]
+    blast_date <- args[5]
+}
 
 ########################### 1. Read input files  ################################################################################################################
 
-tax_file <- read.csv(args[2], sep = "\t", header = T)
-rep_seqs <- Biostrings::readDNAStringSet(args[3])
+tax_file <- read.csv(tax_file_path, sep = "\t", header = T)
+rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
 
 #If blast was performed on the unknown sequences:
-if (length(args) == 5 & file.size(args[4]) > 0) {
+if (length(args) == 5 & file.size(basta_file_path) > 0) {
   message("0. Results of Blast annotation read")
-  basta_file <- read.csv(args[4], sep = "\t", header = F)
+  basta_file <- read.csv(basta_file_path, sep = "\t", header = F)
 }
 
 ########################### 2. Modify tax table for taxonomic ranks, and find all possible worms ids (using worrms package) #####################################
@@ -29,7 +35,7 @@ message("1. Modify tax table for taxonomic ranks, and find all possible worms id
 
 # Move names to the appropriate columns if using the MIDORI database
 
-if (grepl("MIDORI_UNIQ", args[2], fixed = TRUE, ignore.case = TRUE)) {
+if (grepl("MIDORI_UNIQ", tax_file_path, fixed = TRUE, ignore.case = TRUE)) {
 
   taxonomies <- str_split(tax_file$sum.taxonomy, ";")
 
@@ -66,11 +72,11 @@ taxmat$otu_seq_comp_appr <- "bowtie2;2.4.4;ANACAPA-blca;2021"
 
 # Get otu_db name from the input filename
 pattern <- "identity_filtered/\\s*(.*?)\\s*_blca_tax_table"
-result <- regmatches(args[2], regexec(pattern, args[2]))
+result <- regmatches(tax_file_path, regexec(pattern, tax_file_path))
 taxmat$otu_db <- result[[1]][2]
 
 # If Blast was performed on unknown sequences and gave results after lca
-if (length(args) == 5 & file.size(args[4]) > 0) {
+if (length(args) == 5 & file.size(basta_file_path) > 0) {
   message("1.1 Adding Blast results to taxonomic table")
   colnames(basta_file) <- c("rowname", "sum.taxonomy")
   taxmat2 <- separate(basta_file, "sum.taxonomy", into = c("kingdom", "phylum", "class", "order", "family", "genus", "species"), sep = ";")
@@ -80,7 +86,7 @@ if (length(args) == 5 & file.size(args[4]) > 0) {
   # Add also the fields that separate the otu assignment methods
   # Note: read these from the config file?
   taxmat2$otu_seq_comp_appr <- "blastn;2.12.0"
-  taxmat2$otu_db <- paste0("NCBI-nt;", args[5])
+  taxmat2$otu_db <- paste0("NCBI-nt;", blast_date)
   rownames(taxmat2) <- taxmat2$rowname
   taxmat2 <- subset(taxmat2, select = -c(rowname))
   
