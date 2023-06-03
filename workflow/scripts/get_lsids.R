@@ -20,6 +20,8 @@ if (length(args) == 5) {
     basta_file_path <- NULL
 }
 
+RANKS <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
+
 ########################### 1. Read input files  ################################################################################################################
 
 tax_file <- read.csv(tax_file_path, sep = "\t", header = T)
@@ -54,8 +56,7 @@ clean_taxonomy <- function(taxa) {
     return(list(kingdom = NA))
   }
   taxa[taxa %in% c("", "NA", "nan")] <- NA
-  ranks <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
-  taxon_names <- setNames(as.list(taxa), ranks[1:length(taxa)])
+  taxon_names <- setNames(as.list(taxa), RANKS[1:length(taxa)])
   return(taxon_names)
 }
 
@@ -71,12 +72,13 @@ if (grepl("MIDORI_UNIQ", tax_file_path, fixed = TRUE, ignore.case = TRUE)) {
 taxmat <- cleaned %>%
   bind_rows() %>%
   as.data.frame() %>%
-  select(kingdom, phylum, class, order, family, genus, species)
+  select(!!!RANKS)
 
 row.names(taxmat) <- tax_file$rowname
 
+# TODO: remove
 # Collect the highest known taxonomic value to the last column
-taxmat$lastvalue <- as.matrix(taxmat)[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "last"))]
+# taxmat$lastvalue <- as.matrix(taxmat)[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "last"))]
 
 # Add information on the classification approach
 # TODO: remove hard coding
@@ -91,7 +93,7 @@ taxmat$otu_db <- result[[1]][2]
 if (exists("basta_file")) {
   message("1.1 Adding Blast results to taxonomic table")
   colnames(basta_file) <- c("rowname", "sum.taxonomy")
-  taxmat2 <- separate(basta_file, "sum.taxonomy", into = c("kingdom", "phylum", "class", "order", "family", "genus", "species"), sep = ";")
+  taxmat2 <- separate(basta_file, "sum.taxonomy", into = RANKS, sep = ";")
   taxmat2[taxmat2 == ""] <- NA
   taxmat2$species <- gsub("_", " ", taxmat2$species)
   taxmat2$lastvalue <- as.matrix(taxmat2)[cbind(seq(1, nrow(taxmat2)), max.col(!is.na(taxmat2), "last"))]
@@ -114,20 +116,22 @@ rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs)%in%row.names(taxmat),])
 rn <- row.names(taxmat)
 taxmat[nrow(taxmat) + seq_along(rep_seqs_unknown), ] <- NA 
 row.names(taxmat) <- c(rn, rep_seqs_unknown)
-#Fill the original database values on the otu_seq_comp_appr and otu_db for the unknown sequences as well
+# Fill the original database values on the otu_seq_comp_appr and otu_db for the unknown sequences as well
 taxmat[is.na(taxmat$otu_seq_comp_appr), "otu_seq_comp_appr"] <- "bowtie2;2.4.4;ANACAPA-blca;2021"
 taxmat[is.na(taxmat$otu_db), "otu_db"] <- taxmat[1,"otu_db"]
 
+# TODO: put back
 # Because WORMS doesn't recognize Eukaryota, change those that have this in the lastvalue to Biota:
-taxmat$lastvalue <- recode(taxmat$lastvalue, "Eukaryota" = "Biota")
+# taxmat$lastvalue <- recode(taxmat$lastvalue, "Eukaryota" = "Biota")
 
-# Find WoRMS LSID with worrms
-
-tax_names <- unique(na.omit(taxmat$lastvalue))
+# TODO: failing with rate limit, submit in batches
 
 match_name <- function(name) {
+  message(name)
   lsid <- tryCatch({
     res <- wm_records_names(name, marine_only = FALSE)
+    # TODO: fix
+    Sys.sleep(1)
     matches <- res[[1]] %>%
       filter(match_type == "exact" | match_type == "exact_genus" | match_type == "exact_subgenus")
     if (nrow(matches) > 1) {
@@ -135,27 +139,59 @@ match_name <- function(name) {
     }
     return(matches[1,])
   }, error = function(cond) {
+    message(cond)
     return(NULL)
   })
 }
 
+# Taxon names across all ranks
+tax_names <- taxmat %>% select(!!!RANKS) %>% unlist() %>% na.omit() %>% unique() %>% sort()
 matches <- sapply(tax_names, match_name)
-taxmat$lsid <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), matches[[name]]$lsid, NA) })
-taxmat$taxonRank <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), tolower(matches[[name]]$rank), NA) })
-taxmat$specificEpithet <- sapply(taxmat$lastvalue, function(name) {
-  if (!is.null(matches[[name]])) {
-    if (!is.na(matches[[name]]$rank) & matches[[name]]$rank == "Species") {
-      return(sub(".*\\s", "", matches[[name]]$scientificname))
-    }
+lsid_map <- sapply(tax_names, function(x) { matches[[x]]["lsid"][[1]] })
+
+lookup_lsid <- function(input) {
+  lsids <- sapply(input, function(x) { lsid_map[[x]] })
+  lsids[sapply(lsids, is.null)] <- NA
+  return(unlist(lsids))
+}
+
+lsid_table <- taxmat %>%
+  select(!!!RANKS) %>%
+  mutate(across(everything(), lookup_lsid))
+best_column_index <- max.col(!is.na(lsid_table), "last")
+
+taxmat$scientificName <- NA
+taxmat$scientificNameID <- NA
+
+for (i in 1:nrow(taxmat)) {
+  scientificname <- taxmat[i, best_column_index[i]]
+  scientificnameid <- lsid_table[i, best_column_index[i]]
+  if (!is.na(scientificnameid)) {
+      taxmat$scientificName[i] <- scientificname
+      taxmat$scientificNameID[i] <- scientificnameid
   }
-  return(NA)
-})
+}
+
+# Find WoRMS LSID with worrms
+
+# tax_names <- unique(na.omit(taxmat$lastvalue))
+# matches <- sapply(tax_names, match_name)
+# taxmat$lsid <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), matches[[name]]$lsid, NA) })
+# taxmat$taxonRank <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), tolower(matches[[name]]$rank), NA) })
+# taxmat$specificEpithet <- sapply(taxmat$lastvalue, function(name) {
+#   if (!is.null(matches[[name]])) {
+#     if (!is.na(matches[[name]]$rank) & matches[[name]]$rank == "Species") {
+#       return(sub(".*\\s", "", matches[[name]]$scientificname))
+#     }
+#   }
+#   return(NA)
+# })
 
 # Add Biota LSID in case there is no last value
 # Kingdom is used as taxonRank so that "Biota" is also recognized correctly by GBIF
 
-taxmat$lsid[is.na(taxmat$lastvalue)] <- "urn:lsid:marinespecies.org:taxname:1"
-taxmat$taxonRank[is.na(taxmat$lastvalue)] <- "kingdom"
+# taxmat$lsid[is.na(taxmat$lastvalue)] <- "urn:lsid:marinespecies.org:taxname:1"
+# taxmat$taxonRank[is.na(taxmat$lastvalue)] <- "kingdom"
 
 # Names not in WoRMS
 
