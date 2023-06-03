@@ -27,7 +27,7 @@ RANKS <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
 tax_file <- read.csv(tax_file_path, sep = "\t", header = T)
 rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
 
-#If blast was performed on the unknown sequences:
+# If blast was performed on the unknown sequences:
 if (!is.null(basta_file_path)) {
   if (file.size(basta_file_path) > 0) {
     message("0. Results of Blast annotation read")
@@ -72,7 +72,8 @@ if (grepl("MIDORI_UNIQ", tax_file_path, fixed = TRUE, ignore.case = TRUE)) {
 taxmat <- cleaned %>%
   bind_rows() %>%
   as.data.frame() %>%
-  select(!!!RANKS)
+  select(!!!RANKS) %>%
+  mutate(identificationRemarks = tax_file$sum.taxonomy)
 
 row.names(taxmat) <- tax_file$rowname
 
@@ -112,7 +113,7 @@ if (exists("basta_file")) {
 }
 
 # Add possible remaining unknowns to the taxmat based on asvs in the rep_seqs (keep all ASVs in the final dataset)
-rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs)%in%row.names(taxmat),])
+rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs) %in% row.names(taxmat),])
 rn <- row.names(taxmat)
 taxmat[nrow(taxmat) + seq_along(rep_seqs_unknown), ] <- NA 
 row.names(taxmat) <- c(rn, rep_seqs_unknown)
@@ -120,14 +121,9 @@ row.names(taxmat) <- c(rn, rep_seqs_unknown)
 taxmat[is.na(taxmat$otu_seq_comp_appr), "otu_seq_comp_appr"] <- "bowtie2;2.4.4;ANACAPA-blca;2021"
 taxmat[is.na(taxmat$otu_db), "otu_db"] <- taxmat[1,"otu_db"]
 
-# TODO: put back
-# Because WORMS doesn't recognize Eukaryota, change those that have this in the lastvalue to Biota:
-# taxmat$lastvalue <- recode(taxmat$lastvalue, "Eukaryota" = "Biota")
-
 # TODO: failing with rate limit, submit in batches
 
 match_name <- function(name) {
-  message(name)
   lsid <- tryCatch({
     res <- wm_records_names(name, marine_only = FALSE)
     # TODO: fix
@@ -147,92 +143,87 @@ match_name <- function(name) {
 # Taxon names across all ranks
 tax_names <- taxmat %>% select(!!!RANKS) %>% unlist() %>% na.omit() %>% unique() %>% sort()
 matches <- sapply(tax_names, match_name)
-lsid_map <- sapply(tax_names, function(x) { matches[[x]]["lsid"][[1]] })
+lsid_map <- lapply(tax_names, function(x) {
+  list(lsid = matches[[x]]$lsid, scientificname =  matches[[x]]$scientificname, rank =  matches[[x]]$rank)
+})
+names(lsid_map) <- tax_names
 
-lookup_lsid <- function(input) {
-  lsids <- sapply(input, function(x) { lsid_map[[x]] })
-  lsids[sapply(lsids, is.null)] <- NA
-  return(unlist(lsids))
-}
+# lookup_lsid <- function(input) {
+#   lsids <- sapply(input, function(x) { lsid_map[[x]] })
+#   lsids[sapply(lsids, is.null)] <- NA
+#   return(unlist(lsids))
+# }
 
-lsid_table <- taxmat %>%
-  select(!!!RANKS) %>%
-  mutate(across(everything(), lookup_lsid))
-best_column_index <- max.col(!is.na(lsid_table), "last")
+# lsid_table <- taxmat %>%
+#   select(!!!RANKS) %>%
+#   mutate(across(everything(), lookup_lsid))
+# best_column_index <- max.col(!is.na(lsid_table), "last")
 
 taxmat$scientificName <- NA
 taxmat$scientificNameID <- NA
 
 for (i in 1:nrow(taxmat)) {
-  scientificname <- taxmat[i, best_column_index[i]]
-  scientificnameid <- lsid_table[i, best_column_index[i]]
+
+  lsids <- taxmat[i, RANKS] %>%
+    as.character() %>%
+    sapply(function(x) { lsid_map[[x]]$lsid }) %>%
+    sapply(function(x) { ifelse(is.null(x), NA, x) }) %>%
+    unlist()
+  if (all(is.na(lsids))) next
+
+  most_specific_name <- taxmat[i, max(which(!is.na(lsids)))]
+
+  scientificname <- lsid_map[[most_specific_name]]$scientificname
+  scientificnameid <- lsid_map[[most_specific_name]]$lsid
+  rank <- lsid_map[[most_specific_name]]$rank
+
   if (!is.na(scientificnameid)) {
       taxmat$scientificName[i] <- scientificname
       taxmat$scientificNameID[i] <- scientificnameid
+      taxmat$taxonRank[i] <- tolower(rank)
   }
+
 }
-
-# Find WoRMS LSID with worrms
-
-# tax_names <- unique(na.omit(taxmat$lastvalue))
-# matches <- sapply(tax_names, match_name)
-# taxmat$lsid <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), matches[[name]]$lsid, NA) })
-# taxmat$taxonRank <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), tolower(matches[[name]]$rank), NA) })
-# taxmat$specificEpithet <- sapply(taxmat$lastvalue, function(name) {
-#   if (!is.null(matches[[name]])) {
-#     if (!is.na(matches[[name]]$rank) & matches[[name]]$rank == "Species") {
-#       return(sub(".*\\s", "", matches[[name]]$scientificname))
-#     }
-#   }
-#   return(NA)
-# })
 
 # Add Biota LSID in case there is no last value
 # Kingdom is used as taxonRank so that "Biota" is also recognized correctly by GBIF
 
-# taxmat$lsid[is.na(taxmat$lastvalue)] <- "urn:lsid:marinespecies.org:taxname:1"
-# taxmat$taxonRank[is.na(taxmat$lastvalue)] <- "kingdom"
+taxmat$scientificName[is.na(taxmat$scientificName)] <- "Biota"
+taxmat$taxonRank[is.na(taxmat$scientificNameID)] <- "kingdom"
+taxmat$scientificNameID[is.na(taxmat$scientificNameID)] <- "urn:lsid:marinespecies.org:taxname:1"
 
 # Names not in WoRMS
 
 names_not_in_worms <- names(matches)[sapply(matches, is.null)]
 message("Number of species names not recognized in WORMS: ", length(names_not_in_worms))
 
+# TODO: disabled for now, matching already happens at all levels
 # Some of these are common contaminants (e.g. Homo sapiens, Canis lupus)
 # Some of these are not marine species (e.g. insects), that could be found with terrestrial matches
 # Some have a higher taxonomy that can be found in the database
 # Check at genus level:
-
-genus_names <- unique(na.omit(taxmat$genus[is.na(taxmat$lsid)]))
-genus_matches <- sapply(genus_names, match_name)
-missing_lsids <- is.na(taxmat$lsid)
-
-for (i in 1:nrow(taxmat)) {
-  if (is.na(taxmat$lsid[i]) & !is.na(taxmat$genus[i]) & !is.null(genus_matches[[taxmat$genus[i]]])) {
-    taxmat$lsid[i] <- genus_matches[[taxmat$genus[i]]]$lsid
-    taxmat$taxonRank[i] <- "genus"
-  }
-}
-
+# genus_names <- unique(na.omit(taxmat$genus[is.na(taxmat$lsid)]))
+# genus_matches <- sapply(genus_names, match_name)
+# missing_lsids <- is.na(taxmat$lsid)
+# for (i in 1:nrow(taxmat)) {
+#   if (is.na(taxmat$lsid[i]) & !is.na(taxmat$genus[i]) & !is.null(genus_matches[[taxmat$genus[i]]])) {
+#     taxmat$lsid[i] <- genus_matches[[taxmat$genus[i]]]$lsid
+#     taxmat$taxonRank[i] <- "genus"
+#   }
+# }
 # This way unknowns decreases. However, these values should be checked for possible addition to WoRMS?
 # Will require manual inspection
-
-genera_not_in_worms <- names(genus_matches)[sapply(genus_matches, is.null)]
-message("Number of genus names not recognized in WORMS: ", length(genera_not_in_worms))
-message("These taxa can be found in the table: ", outpath, "Taxa_not_in_worms.csv")
-
-not_in_worms <- taxmat[is.na(taxmat$lsid),]
-
-# Add 'Biota' as the name for the unknown sequences
-
-taxmat$lastvalue[is.na(taxmat$lastvalue)] <- "Biota"
+# genera_not_in_worms <- names(genus_matches)[sapply(genus_matches, is.null)]
+# message("Number of genus names not recognized in WORMS: ", length(genera_not_in_worms))
+# message("These taxa can be found in the table: ", outpath, "Taxa_not_in_worms.csv")
+# not_in_worms <- taxmat[is.na(taxmat$lsid),]
 
 # Add sequence to the tax_table slot (linked to each asv)
 taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 
 # Write table of unknown names to make manual inspection easier:
 
-write.table(not_in_worms, paste0(outpath, "Taxa_not_in_worms.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
+write.table(names_not_in_worms, paste0(outpath, "Taxa_not_in_worms.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
 
 # Write tax table
 #taxmat <- apply(taxmat,2,as.character)
