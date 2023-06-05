@@ -11,16 +11,21 @@ library("yaml")
 args <- commandArgs(trailingOnly = T)
 
 outpath <- args[1]
+tax_file_path <- args[3]
+otu_file_path <- args[2]
+rep_seqs_path <- args[4]
+sample_file_path <- args[5]
+config_path <- args[6]
 
 # LOAD data (this will be done from input later on)
 
-tax_file <- read.csv(args[3], sep = "\t", header = T, row.names = 1)
-otu_file <- read.csv(args[2], sep = "\t", header = T, row.names = 1, check.names = F)
-Rep_seqs <- Biostrings::readDNAStringSet(args[4])
-sample_file <- read.csv(args[5], sep = ";", header = T, row.names = 1)
-config <- read_yaml(args[6])
+tax_file <- read.csv(tax_file_path, sep = "\t", header = T, row.names = 1)
+otu_file <- read.csv(otu_file_path, sep = "\t", header = T, row.names = 1, check.names = F)
+Rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
+sample_file <- read.csv(sample_file_path, sep = ";", header = T, row.names = 1)
+config <- read_yaml(config_path)
 
-# Add checks!
+# TODO: Add checks!
 # 1. Make sure that the values are given
 # 2. Make sure that the sample names in the otu-file (the original sample table), and the sample_data match!
 # 3. Make sure the required fields are not empty
@@ -101,15 +106,10 @@ phydf$occurrenceID <- paste(phydf$OTU, phydf$Sample, sep = "_")
 # Change names where necessary
 #names(phydf[names(phydf)=="lastvalue"])="ScientificName"
 phydf <- phydf %>%
-          rename(
-              scientificName = lastvalue,
-              organismQuantity = Abundance,
-              scientificNameID = lsid
-            )
-            # %>%
-            # add_column(organismQuantityType = "DNA Sequence reads") %>%
-            # add_column(sampleSizeUnit = "DNA Sequence reads")
-
+  rename(organismQuantity = Abundance)
+  # %>%
+  # add_column(organismQuantityType = "DNA Sequence reads") %>%
+  # add_column(sampleSizeUnit = "DNA Sequence reads")
 
 # Remove 0 Abundance data (not valuable for us)
 phydf_present <- phydf[phydf$organismQuantity > 0,]
