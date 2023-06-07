@@ -143,21 +143,6 @@ match_name <- function(name) {
 # Taxon names across all ranks
 tax_names <- taxmat %>% select(!!!RANKS) %>% unlist() %>% na.omit() %>% unique() %>% sort()
 matches <- sapply(tax_names, match_name)
-lsid_map <- lapply(tax_names, function(x) {
-  list(lsid = matches[[x]]$lsid, scientificname =  matches[[x]]$scientificname, rank =  matches[[x]]$rank)
-})
-names(lsid_map) <- tax_names
-
-# lookup_lsid <- function(input) {
-#   lsids <- sapply(input, function(x) { lsid_map[[x]] })
-#   lsids[sapply(lsids, is.null)] <- NA
-#   return(unlist(lsids))
-# }
-
-# lsid_table <- taxmat %>%
-#   select(!!!RANKS) %>%
-#   mutate(across(everything(), lookup_lsid))
-# best_column_index <- max.col(!is.na(lsid_table), "last")
 
 taxmat$scientificName <- NA
 taxmat$scientificNameID <- NA
@@ -166,23 +151,23 @@ for (i in 1:nrow(taxmat)) {
 
   lsids <- taxmat[i, RANKS] %>%
     as.character() %>%
-    sapply(function(x) { lsid_map[[x]]$lsid }) %>%
+    sapply(function(x) { matches[[x]]$lsid }) %>%
     sapply(function(x) { ifelse(is.null(x), NA, x) }) %>%
     unlist()
   if (all(is.na(lsids))) next
 
   most_specific_name <- taxmat[i, max(which(!is.na(lsids)))]
+  scientificnameid <- matches[[most_specific_name]]$lsid
 
-  scientificname <- lsid_map[[most_specific_name]]$scientificname
-  scientificnameid <- lsid_map[[most_specific_name]]$lsid
-  rank <- lsid_map[[most_specific_name]]$rank
-
-  if (!is.na(scientificnameid)) {
-      taxmat$scientificName[i] <- scientificname
-      taxmat$scientificNameID[i] <- scientificnameid
-      taxmat$taxonRank[i] <- tolower(rank)
-  }
-
+    taxmat$scientificName[i] <- matches[[most_specific_name]]$scientificname
+    taxmat$scientificNameID[i] <- matches[[most_specific_name]]$lsid
+    taxmat$taxonRank[i] <- tolower(matches[[most_specific_name]]$rank)
+    taxmat$kingdom[i] <- matches[[most_specific_name]]$kingdom
+    taxmat$phylum[i] <- matches[[most_specific_name]]$phylum
+    taxmat$class[i] <- matches[[most_specific_name]]$class
+    taxmat$order[i] <- matches[[most_specific_name]]$order
+    taxmat$family[i] <- matches[[most_specific_name]]$family
+    taxmat$genus[i] <- matches[[most_specific_name]]$genus
 }
 
 # Add Biota LSID in case there is no last value
