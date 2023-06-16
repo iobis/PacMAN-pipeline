@@ -129,7 +129,7 @@ cutResults <- data.frame(TotalReadPairsProcessed = NA, Read1withPrimer = NA, Rea
 if (config$meta$sequencing$lib_layout=="Paired") { 
 print("checking analysis of paired samples")
 for (i in 1:length(sample_ids)) {
-print(sample_ids[i])
+   #print(sample_ids[i])
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_log.txt")
   text <- readLines(cut_report)
   rows <- grep("^===", text)
@@ -143,7 +143,7 @@ print(sample_ids[i])
 print(kable(cutResults))
 
 cutResults_Percentage <- round(cutResults[,c(2:5)] / cutResults[,c(1)] * 100, digits = 2)
-cutResults_Percentage$BasePairsWritten <- round(cutResults[,7] / cutResults[,6] * 100, digits = 2)
+cutResults_Percentage$BasePairsWritten <- round(cutResults[,9] / cutResults[,6] * 100, digits = 2)
 
 kable(cutResults_Percentage)
 }
@@ -192,7 +192,7 @@ for (i in 1:length(sample_ids)) {
     sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
 
     #Not all of the reports list ReadsTooShort, so add for those that don't a 0
-    if (any(!grepl("short", report))) {
+    if (!any(grepl("short", report))) {
       sample <- append(sample, 0, after = 2)
     }
     cutResults[i,] <- sample[!is.na(sample)]
