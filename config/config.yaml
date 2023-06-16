@@ -156,7 +156,7 @@ BLAST:
   tax_db: data/databases/ncbi/taxonomy
   portion_of_hits: 75 #portion of hits used for evaluation, default=100
   percent_identity: 85 #default =80
-  e-value: 5e-13
+  e_value: 5e-13
   alignment_length: 200
   max_hits: 10 #all hits considered = 0
   min_hits: 3

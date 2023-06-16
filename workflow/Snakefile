@@ -452,6 +452,7 @@ if config["BLAST"]["include"] == True:
             o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_unclassified-seqs_cutoff{CUTOFF}.fna",
             o3 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
             #o2 = add information to the sam.blca.out table.
+        threads: 4
         conda:
             "envs/seqs.yaml",
         shell:
@@ -462,11 +463,12 @@ if config["BLAST"]["include"] == True:
             cat {input.rejects} >> {output.o2}; \
             blastn \
             -query {output.o2} \
-            -out {output.o3} \
+            -out {output.o3}  \
             -outfmt 6 \
             -perc_identity {config[BLAST][perc_identity]} \
-            {config[BLAST][database]}"
-            # removed this as can be filtered later: -evalue 5e-13 \
+            -num_threads {threads} \
+            {config[BLAST][database]}" 
+# removed this as can be filtered later: -evalue 5e-13 \
 
 # Here we add those that were completely unclassified (no matches in the provided reference database),
 # As well as those that did not have a good match in the database (lower confidence tha the cutoff value at Kingdom)
@@ -484,7 +486,7 @@ if config["BLAST"]["include"] == True:
                 -p {config[BLAST][portion_of_hits]} \
                 -i {config[BLAST][percent_identity]} \
                 -l {config[BLAST][alignment_length]} \
-                -e {config[BLAST][e-value]} \
+                -e {config[BLAST][e_value]} \
                 -n {config[BLAST][max_hits]} \
                 -m {config[BLAST][min_hits]} \
                 -d {config[BLAST][tax_db]} \
@@ -565,6 +567,7 @@ rule make_dwca:
   output:
     o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.csv",
     o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/DNA_extension_table.csv",
+    o3 = "results/{PROJECT}/runs/{RUN}/05-dwca/phyloseq_object.rds"
   conda:
     "envs/r.yaml"
   shell:
