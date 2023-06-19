@@ -433,17 +433,20 @@ for seqn, info in input_sequences.items():
             else:
                 votes_by_level[level][hit_taxonomy[level]] += 0
 
-    outfile.write(seqn + "\t")
-    for level in levels:
-        levels_votes = votes_by_level[level]
-        outfile.write(level + ":" + na_handler.decode_if_na(max(levels_votes, key=levels_votes.get)) + ";")
-    outfile.write("\t")
-    for level in levels:
-        levels_votes = votes_by_level[level]
-        outfile.write(level + ":" + str(max(levels_votes.values())) + ";")
-    outfile.write("\t" + ";".join(info.hits))
-
-    outfile.write("\n")
+    try:
+        outfile.write(seqn + "\t")
+        for level in levels:
+            levels_votes = votes_by_level[level]
+            outfile.write(level + ":" + na_handler.decode_if_na(max(levels_votes, key=levels_votes.get)) + ";")
+        outfile.write("\t")
+        for level in levels:
+            levels_votes = votes_by_level[level]
+            outfile.write(level + ":" + str(max(levels_votes.values())) + ";")
+        outfile.write("\t" + ";".join(info.hits))
+        outfile.write("\n")
+    except ValueError as e:
+        print(f"ValueError for {seqn}, possibly due to missing votes")
+        outfile.write(seqn + "\tUnclassified\n")
 
 for seqn in rejects:
     outfile.write(seqn + "\tUnclassified\n")
