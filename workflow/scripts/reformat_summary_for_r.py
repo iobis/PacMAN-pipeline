@@ -6,6 +6,15 @@ import argparse
 import shutil
 
 
+def summarize_taxonomy(full_taxonomy, confidences):
+    full_taxonomy = full_taxonomy.rstrip(';')
+    confidences = confidences.rstrip(';')
+    taxonomy_components = [f.split(":") for f in full_taxonomy.split(";")]
+    confidence_components = [c.split(":") for c in confidences.split(";")]
+    summary = ";".join([":".join((t[0], t[1], confidence_components[i][1])) for i, t in enumerate(taxonomy_components)])
+    return summary
+
+
 def truncate_taxonomy(full_taxonomy, confidences, cutoff):
     # the taxonomy and confidences may have an extra semicolon at the end
     full_taxonomy = full_taxonomy.rstrip(';')
@@ -26,7 +35,7 @@ def reformat_summary(summary_file_name, output_file_name, cutoff):
     previous_header = summary[0].strip().split('\t')
     taxonomy_index = previous_header.index('taxonomy')
     confidence_index = previous_header.index('taxonomy_confidence')
-    header = previous_header[:taxonomy_index] + ['sum.taxonomy']
+    header = previous_header[:taxonomy_index] + ['sum.taxonomy', 'taxonomy_confidence']
     output = open(output_file_name + '.tmp', 'w')
     output.write('\t'.join(header) + '\n')
 
@@ -36,9 +45,11 @@ def reformat_summary(summary_file_name, output_file_name, cutoff):
         if ':' in fields[taxonomy_index]:
             taxonomy = truncate_taxonomy(fields[taxonomy_index], fields[confidence_index], cutoff)
             output_taxonomy = [taxonomy.get(level, '') for level in output_levels]
+            taxonomy_summary = summarize_taxonomy(fields[taxonomy_index], fields[confidence_index])
         else:
             output_taxonomy = ''
-        fields_to_write = fields[:taxonomy_index] + [';'.join(output_taxonomy)]
+            taxonomy_summary = ''
+        fields_to_write = fields[:taxonomy_index] + [';'.join(output_taxonomy)] + [taxonomy_summary]
         output.write('\t'.join(fields_to_write) + '\n')
 
     output.close()

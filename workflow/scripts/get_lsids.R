@@ -73,7 +73,7 @@ taxmat <- cleaned %>%
   bind_rows() %>%
   as.data.frame() %>%
   select(!!!RANKS) %>%
-  mutate(identificationRemarks = tax_file$sum.taxonomy)
+  mutate(identificationRemarks = tax_file$taxonomy_confidence)
 
 row.names(taxmat) <- tax_file$rowname
 
