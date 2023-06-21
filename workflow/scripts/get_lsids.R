@@ -92,7 +92,7 @@ taxmat <- cleaned %>%
   bind_rows() %>%
   as.data.frame() %>%
   select(!!!RANKS) %>%
-  mutate(verbatimIdentification = tax_file$taxonomy_confidence)
+  mutate(verbatimIdentification = tax_file$verbatimIdentification)
 
 row.names(taxmat) <- tax_file$rowname
 

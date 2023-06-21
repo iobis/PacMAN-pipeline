@@ -1,6 +1,5 @@
 # Written by Saara Suominen (saara.suominen.work@gmail.com)
 # for OBIS and PacMAN
-#Last update 21.6.2021
 
 library("stringr")
 library("phyloseq")
@@ -8,7 +7,9 @@ library("dplyr")
 library("xml2")
 library("yaml")
 
+# Parse arguments
 args <- commandArgs(trailingOnly = T)
+message("args <- ", capture.output(dput(args))) # output for debugging
 
 outpath <- args[1]
 tax_file_path <- args[3]
@@ -75,7 +76,7 @@ phydata <- phyloseq::merge_phyloseq(phydata, Rep_seqs)
 phydata
 
 # Save the phyloseq rdata object for easier access in the future
-print("Saving the phyloseq -table to an Rdata object, for ease of access for data analysis later")
+print("Saving the phyloseq table to an Rdata object, for ease of access for data analysis later")
 print("The object can be loaded with readRDS, while the phyloseq package and library is loaded")
 print(paste("The saved object can be found here: ", outpath, "phyloseq_object.rds", sep = ""))
 saveRDS(phydata, paste0(outpath, "phyloseq_object.rds"))
@@ -124,14 +125,14 @@ get_dwc_fields <- function(spec_url) {
     xml_attr(attr = "name")
 }
 
-spec_occurrence <- "https://rs.gbif.org/core/dwc_occurrence_2020-07-15.xml"
+spec_occurrence <- "https://rs.gbif.org/core/dwc_occurrence_2022-02-02.xml"
 occurrence_table_fields <- get_dwc_fields(spec_occurrence)
 
 spec_dna <- "https://rs.gbif.org/extension/gbif/1.0/dna_derived_data_2021-07-05.xml"
 DNA_extension_fields <- get_dwc_fields(spec_dna)
 
 occurrence_table <- phydf_present[,colnames(phydf_present) %in% occurrence_table_fields]
-DNA_derived_data_extension <- phydf_present[,colnames(phydf_present) %in% c('occurrenceID', DNA_extension_fields)]
+DNA_derived_data_extension <- phydf_present[,colnames(phydf_present) %in% c("occurrenceID", DNA_extension_fields)]
 
 write.table(occurrence_table, paste0(outpath, "Occurence_table.csv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE, na = "")
 write.table(DNA_derived_data_extension, paste0(outpath, "DNA_extension_table.csv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE, na = "")
