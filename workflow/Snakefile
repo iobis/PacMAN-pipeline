@@ -16,7 +16,7 @@ config_path = workflow.overwrite_configfiles[0] if workflow.overwrite_configfile
 PROJECT = config["PROJECT"]
 RUN = config["RUN"]
 DATABASE = config["DATABASE"]["name"]
-CUTOFF = config["TAXONOMY"]["blca_identity_cutoff"]
+CUTOFF = config["TAXONOMY"]["blca_confidence_cutoff"]
 sample_set = pd.read_csv(config["SAMPLE_SET"], header=0)
 samples = pd.unique(sample_set['sample-id'])
 
@@ -436,7 +436,7 @@ rule filter_taxa:
     python ./workflow/scripts/reformat_summary_for_r.py \
     {output.o1} \
     {output.o2} \
-    {config[TAXONOMY][blca_identity_cutoff]}"
+    {config[TAXONOMY][blca_confidence_cutoff]}"
 
 
 # The remaining unknown sequences from blca are blasted against nt, so that all possible public information is checked.

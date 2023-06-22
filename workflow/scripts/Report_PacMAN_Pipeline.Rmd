@@ -412,7 +412,7 @@ cat("python ./workflow/scripts/blca_from_bowtie.py  -i alignment.sam  -r ", conf
 The provided `cutoff` was then used to filter the blca output for reliable taxonomic assignments:
 
 ```{r, echo=F}
-cat("python ./workflow/scripts/reformat_summary_for_r.py blca.output tax.table   ", config$TAXONOMY$blca_identity_cutoff, sep = "")
+cat("python ./workflow/scripts/reformat_summary_for_r.py blca.output tax.table   ", config$TAXONOMY$blca_confidence_cutoff, sep = "")
 ```
 
 
@@ -424,8 +424,8 @@ The used command was:
 ```{r, echo=F}
 if (config$BLAST$include) {
 
-cat("blastn -query  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blca/", config$DATABASE$name, "_unclassified-seqs_cutoff", config$TAXONOMY$blca_identity_cutoff, ".fna", 
-    " -out " , "results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_identity_cutoff, ".tab", 
+cat("blastn -query  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blca/", config$DATABASE$name, "_unclassified-seqs_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".fna", 
+    " -out " , "results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".tab", 
     " -outfmt 6 -perc_indentity ", config$BLAST$perc_identity, " ", "config$BLAST$database", sep = "")
 
 } else {
@@ -442,8 +442,8 @@ A number of parameters can be chosen for the basta-lca analysis. The following c
 if (config$BLAST$include) {
 
 cat("basta sequence -p ", config$BLAST$portion_of_hits, " -i ", config$BLAST$percent_identity, " -l ", config$BLAST$alignment_length, " -e ", config$BLAST$e_value, " -n ", config$BLAST$max_hits, " -m ", config$BLAST$min_hits, " -d ", config$BLAST$tax_db,
- "  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_identity_cutoff, ".tab   results/", 
- config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_lca_cutoff", config$TAXONOMY$blca_identity_cutoff, ".tab gb", sep="")
+ "  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".tab   results/", 
+ config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_lca_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".tab gb", sep="")
 
 } else {
 

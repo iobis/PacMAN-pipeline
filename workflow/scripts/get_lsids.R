@@ -1,6 +1,5 @@
 # Written by Saara Suominen (saara.suominen.work@gmail.com)
 # for OBIS and PacMAN
-#Last update 21.6.2021
 
 library(worrms)
 library(stringr)
@@ -8,7 +7,15 @@ library(Biostrings)
 library(dplyr)
 library(tidyr)
 
+RANKS <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
+PIPELINE <- "bowtie2;2.4.4;ANACAPA-blca;2021"
+BLAST_VERSION <- "blastn;2.12.0"
+BLAST_DB <- "NCBI-nt;"
+REF_DB_PATTERN <- "identity_filtered/\\s*(.*?)\\s*_blca_tax_table"
+
+# Parse arguments
 args <- commandArgs(trailingOnly = T)
+message("args <- ", capture.output(dput(args))) # output for debugging
 
 outpath <- args[1]
 tax_file_path <- args[2]
@@ -22,14 +29,26 @@ if (length(args) == 5) {
 
 ########################### 1. Read input files  ################################################################################################################
 
-tax_file <- read.csv(tax_file_path, sep = "\t", header = T)
+tax_file <- read.csv(tax_file_path, sep = "\t", header = T) %>%
+  rename("verbatimIdentification" = "taxonomy_confidence")
+# Add annotation pipeline and reference database
+tax_file$otu_seq_comp_appr <- PIPELINE
+result <- regmatches(tax_file_path, regexec(REF_DB_PATTERN, tax_file_path))
+otu_db <- result[[1]][2]
+tax_file$otu_db <- otu_db
+
 rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
 
-#If blast was performed on the unknown sequences:
+# If blast was performed on the unknown sequences:
 if (!is.null(basta_file_path)) {
   if (file.size(basta_file_path) > 0) {
     message("0. Results of Blast annotation read")
     basta_file <- read.csv(basta_file_path, sep = "\t", header = F)
+    colnames(basta_file) <- c("rowname", "sum.taxonomy")
+    basta_file$verbatimIdentification <- basta_file$sum.taxonomy
+    # Add annotation pipeline and reference database
+    basta_file$otu_seq_comp_appr <- BLAST_VERSION
+    basta_file$otu_db <- paste0(BLAST_DB, blast_date)
   }
 }
 
@@ -37,88 +56,61 @@ if (!is.null(basta_file_path)) {
 
 message("1. Modify tax table for taxonomic ranks, and find all possible worms ids (using worrms package)")
 
-# Move names to the appropriate columns if using the MIDORI database
-
-if (grepl("MIDORI_UNIQ", tax_file_path, fixed = TRUE, ignore.case = TRUE)) {
-
-  taxonomies <- str_split(tax_file$sum.taxonomy, ";")
-
-  clean_taxonomy <- function(taxa) {
-    taxa <- taxa[taxa != "" & taxa != "NA"]
-    if (length(taxa) == 0) return(list(kingdom = NA))
+# Clean set of taxon names into taxonomy as a named list
+clean_taxonomy <- function(taxa) {
+  if (all(str_detect(taxa, "([a-z]+)__(.*)_[0-9]"))) {
+    taxa <- taxa[taxa != "" & taxa != "NA" & taxa != "nan"]
+    if (length(taxa) == 0) {
+      return(list(kingdom = NA))
+    }
     parts <- str_match(taxa, "([a-z]+)__(.*)_[0-9]")
     ranks <- recode(parts[,2], "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
     taxon_names <- as.list(parts[,3])
     names(taxon_names) <- ranks
     return(taxon_names)
+  } else {
+    if (length(taxa) == 0) {
+      return(list(kingdom = NA))
+    }
+    taxa[taxa %in% c("", "NA", "nan", "unknown", "Unknown")] <- NA
+    taxon_names <- setNames(as.list(taxa), RANKS[1:length(taxa)])
+    return(taxon_names)
   }
-
-  cleaned <- lapply(taxonomies, clean_taxonomy)
-  taxmat <- as.data.frame(bind_rows(cleaned))
-  row.names(taxmat) <- tax_file$rowname
-
-} else {
-
-  taxmat <- separate(tax_file, "sum.taxonomy", into = c("kingdom", "phylum", "class", "order", "family", "genus", "species"), sep = ";")
-  rownames(taxmat) <- taxmat$rowname
-  taxmat <- subset(taxmat, select = -c(rowname))
-
 }
 
-taxmat <- taxmat %>%
-  select(kingdom, phylum, class, order, family, genus, species)
-
-# Collect the highest known taxonomic value to the last column
-taxmat$lastvalue <- as.matrix(taxmat)[cbind(seq(1, nrow(taxmat)), max.col(!is.na(taxmat), "last"))]
-
-# Add information on the classification approach
-taxmat$otu_seq_comp_appr <- "bowtie2;2.4.4;ANACAPA-blca;2021"
-
-# Get otu_db name from the input filename
-pattern <- "identity_filtered/\\s*(.*?)\\s*_blca_tax_table"
-result <- regmatches(tax_file_path, regexec(pattern, tax_file_path))
-taxmat$otu_db <- result[[1]][2]
-
-# If Blast was performed on unknown sequences and gave results after lca
 if (exists("basta_file")) {
-  message("1.1 Adding Blast results to taxonomic table")
-  colnames(basta_file) <- c("rowname", "sum.taxonomy")
-  taxmat2 <- separate(basta_file, "sum.taxonomy", into = c("kingdom", "phylum", "class", "order", "family", "genus", "species"), sep = ";")
-  taxmat2[taxmat2 == ""] <- NA
-  taxmat2$species <- gsub("_", " ", taxmat2$species)
-  taxmat2$lastvalue <- as.matrix(taxmat2)[cbind(seq(1, nrow(taxmat2)), max.col(!is.na(taxmat2), "last"))]
-  # Add also the fields that separate the otu assignment methods
-  # Note: read these from the config file?
-  taxmat2$otu_seq_comp_appr <- "blastn;2.12.0"
-  taxmat2$otu_db <- paste0("NCBI-nt;", blast_date)
-  rownames(taxmat2) <- taxmat2$rowname
-  taxmat2 <- subset(taxmat2, select = -c(rowname))
-
-  # Combine this taxmat to the original one
-  # At the moment the unknowns are there twice! So first remove duplicates before you combine them
-  taxmat <- taxmat[!(rownames(taxmat) %in% rownames(taxmat2)),]
-  taxmat <- rbind(taxmat, taxmat2)
+  # Remove ASVs present in basta file from tax file
+  tax_file <- tax_file %>% filter(!rowname %in% basta_file$rowname)
+  # Merge
+  tax_file <- bind_rows(tax_file, basta_file)
 }
+
+taxonomies <- str_split(str_replace(tax_file$sum.taxonomy, ";+$", ""), ";")
+cleaned <- lapply(taxonomies, clean_taxonomy)
+
+taxmat <- cleaned %>%
+  bind_rows() %>%
+  as.data.frame() %>%
+  select(!!!RANKS) %>%
+  mutate(verbatimIdentification = tax_file$verbatimIdentification)
+
+row.names(taxmat) <- tax_file$rowname
 
 # Add possible remaining unknowns to the taxmat based on asvs in the rep_seqs (keep all ASVs in the final dataset)
 rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs)%in%row.names(taxmat),])
-rn <- row.names(taxmat)
-taxmat[nrow(taxmat) + seq_along(rep_seqs_unknown), ] <- NA 
-row.names(taxmat) <- c(rn, rep_seqs_unknown)
-#Fill the original database values on the otu_seq_comp_appr and otu_db for the unknown sequences as well
-taxmat[is.na(taxmat$otu_seq_comp_appr), "otu_seq_comp_appr"] <- "bowtie2;2.4.4;ANACAPA-blca;2021"
-taxmat[is.na(taxmat$otu_db), "otu_db"] <- taxmat[1,"otu_db"]
+taxmat_unknown <- data.frame(
+  otu_seq_comp_appr = rep(PIPELINE, length(rep_seqs_unknown)),
+  otu_db = rep(otu_db, length(rep_seqs_unknown))
+)
+row.names(taxmat_unknown) <- rep_seqs_unknown
+taxmat <- bind_rows(taxmat, taxmat_unknown)
 
-# Because WORMS doesn't recognize Eukaryota, change those that have this in the lastvalue to Biota:
-taxmat$lastvalue <- recode(taxmat$lastvalue, "Eukaryota" = "Biota")
-
-# Find WoRMS LSID with worrms
-
-tax_names <- unique(na.omit(taxmat$lastvalue))
-
+# TODO: failing with rate limit, submit in batches with at least version 0.4.3 of worrms (https://anaconda.org/conda-forge/r-worrms)
 match_name <- function(name) {
   lsid <- tryCatch({
     res <- wm_records_names(name, marine_only = FALSE)
+    # TODO: fix
+    Sys.sleep(1)
     matches <- res[[1]] %>%
       filter(match_type == "exact" | match_type == "exact_genus" | match_type == "exact_subgenus")
     if (nrow(matches) > 1) {
@@ -126,69 +118,56 @@ match_name <- function(name) {
     }
     return(matches[1,])
   }, error = function(cond) {
+    message(cond)
     return(NULL)
   })
 }
 
+# Taxon names across all ranks
+tax_names <- taxmat %>% select(!!!RANKS) %>% unlist() %>% na.omit() %>% unique() %>% sort()
 matches <- sapply(tax_names, match_name)
-taxmat$lsid <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), matches[[name]]$lsid, NA) })
-taxmat$taxonRank <- sapply(taxmat$lastvalue, function(name) { ifelse(!is.null(matches[[name]]), tolower(matches[[name]]$rank), NA) })
-taxmat$specificEpithet <- sapply(taxmat$lastvalue, function(name) {
-  if (!is.null(matches[[name]])) {
-    if (!is.na(matches[[name]]$rank) & matches[[name]]$rank == "Species") {
-      return(sub(".*\\s", "", matches[[name]]$scientificname))
-    }
-  }
-  return(NA)
-})
+
+taxmat$scientificName <- NA
+taxmat$scientificNameID <- NA
+
+for (i in 1:nrow(taxmat)) {
+
+  lsids <- taxmat[i, RANKS] %>%
+    as.character() %>%
+    sapply(function(x) { matches[[x]]$lsid }) %>%
+    sapply(function(x) { ifelse(is.null(x), NA, x) }) %>%
+    unlist()
+  if (all(is.na(lsids))) next
+
+  most_specific_name <- taxmat[i, max(which(!is.na(lsids)))]
+  scientificnameid <- matches[[most_specific_name]]$lsid
+
+    taxmat$scientificName[i] <- matches[[most_specific_name]]$scientificname
+    taxmat$scientificNameID[i] <- matches[[most_specific_name]]$lsid
+    taxmat$taxonRank[i] <- tolower(matches[[most_specific_name]]$rank)
+    taxmat$kingdom[i] <- matches[[most_specific_name]]$kingdom
+    taxmat$phylum[i] <- matches[[most_specific_name]]$phylum
+    taxmat$class[i] <- matches[[most_specific_name]]$class
+    taxmat$order[i] <- matches[[most_specific_name]]$order
+    taxmat$family[i] <- matches[[most_specific_name]]$family
+    taxmat$genus[i] <- matches[[most_specific_name]]$genus
+}
 
 # Add Biota LSID in case there is no last value
 # Kingdom is used as taxonRank so that "Biota" is also recognized correctly by GBIF
-
-taxmat$lsid[is.na(taxmat$lastvalue)] <- "urn:lsid:marinespecies.org:taxname:1"
-taxmat$taxonRank[is.na(taxmat$lastvalue)] <- "kingdom"
+taxmat$scientificName[is.na(taxmat$scientificName)] <- "Biota"
+taxmat$taxonRank[is.na(taxmat$scientificNameID)] <- "kingdom"
+taxmat$scientificNameID[is.na(taxmat$scientificNameID)] <- "urn:lsid:marinespecies.org:taxname:1"
 
 # Names not in WoRMS
-
 names_not_in_worms <- names(matches)[sapply(matches, is.null)]
 message("Number of species names not recognized in WORMS: ", length(names_not_in_worms))
-
-# Some of these are common contaminants (e.g. Homo sapiens, Canis lupus)
-# Some of these are not marine species (e.g. insects), that could be found with terrestrial matches
-# Some have a higher taxonomy that can be found in the database
-# Check at genus level:
-
-genus_names <- unique(na.omit(taxmat$genus[is.na(taxmat$lsid)]))
-genus_matches <- sapply(genus_names, match_name)
-missing_lsids <- is.na(taxmat$lsid)
-
-for (i in 1:nrow(taxmat)) {
-  if (is.na(taxmat$lsid[i]) & !is.na(taxmat$genus[i]) & !is.null(genus_matches[[taxmat$genus[i]]])) {
-    taxmat$lsid[i] <- genus_matches[[taxmat$genus[i]]]$lsid
-    taxmat$taxonRank[i] <- "genus"
-  }
-}
-
-# This way unknowns decreases. However, these values should be checked for possible addition to WoRMS?
-# Will require manual inspection
-
-genera_not_in_worms <- names(genus_matches)[sapply(genus_matches, is.null)]
-message("Number of genus names not recognized in WORMS: ", length(genera_not_in_worms))
-message("These taxa can be found in the table: ", outpath, "Taxa_not_in_worms.csv")
-
-not_in_worms <- taxmat[is.na(taxmat$lsid),]
-
-# Add 'Biota' as the name for the unknown sequences
-
-taxmat$lastvalue[is.na(taxmat$lastvalue)] <- "Biota"
 
 # Add sequence to the tax_table slot (linked to each asv)
 taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 
 # Write table of unknown names to make manual inspection easier:
-
-write.table(not_in_worms, paste0(outpath, "Taxa_not_in_worms.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
+write.table(names_not_in_worms, paste0(outpath, "Taxa_not_in_worms.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
 
 # Write tax table
-#taxmat <- apply(taxmat,2,as.character)
 write.table(taxmat, paste0(outpath, "Full_tax_table_with_lsids.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")

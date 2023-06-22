@@ -1,6 +1,5 @@
 # Written by Saara Suominen (saara.suominen.work@gmail.com)
 # for OBIS and PacMAN
-#Last update 21.6.2021
 
 library("stringr")
 library("phyloseq")
@@ -8,19 +7,26 @@ library("dplyr")
 library("xml2")
 library("yaml")
 
+# Parse arguments
 args <- commandArgs(trailingOnly = T)
+message("args <- ", capture.output(dput(args))) # output for debugging
 
 outpath <- args[1]
+tax_file_path <- args[3]
+otu_file_path <- args[2]
+rep_seqs_path <- args[4]
+sample_file_path <- args[5]
+config_path <- args[6]
 
 # LOAD data (this will be done from input later on)
 
-tax_file <- read.csv(args[3], sep = "\t", header = T, row.names = 1)
-otu_file <- read.csv(args[2], sep = "\t", header = T, row.names = 1, check.names = F)
-Rep_seqs <- Biostrings::readDNAStringSet(args[4])
-sample_file <- read.csv(args[5], sep = ";", header = T, row.names = 1)
-config <- read_yaml(args[6])
+tax_file <- read.csv(tax_file_path, sep = "\t", header = T, row.names = 1)
+otu_file <- read.csv(otu_file_path, sep = "\t", header = T, row.names = 1, check.names = F)
+Rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
+sample_file <- read.csv(sample_file_path, sep = ";", header = T, row.names = 1)
+config <- read_yaml(config_path)
 
-# Add checks!
+# TODO: Add checks!
 # 1. Make sure that the values are given
 # 2. Make sure that the sample names in the otu-file (the original sample table), and the sample_data match!
 # 3. Make sure the required fields are not empty
@@ -70,7 +76,7 @@ phydata <- phyloseq::merge_phyloseq(phydata, Rep_seqs)
 phydata
 
 # Save the phyloseq rdata object for easier access in the future
-print("Saving the phyloseq -table to an Rdata object, for ease of access for data analysis later")
+print("Saving the phyloseq table to an Rdata object, for ease of access for data analysis later")
 print("The object can be loaded with readRDS, while the phyloseq package and library is loaded")
 print(paste("The saved object can be found here: ", outpath, "phyloseq_object.rds", sep = ""))
 saveRDS(phydata, paste0(outpath, "phyloseq_object.rds"))
@@ -101,15 +107,10 @@ phydf$occurrenceID <- paste(phydf$OTU, phydf$Sample, sep = "_")
 # Change names where necessary
 #names(phydf[names(phydf)=="lastvalue"])="ScientificName"
 phydf <- phydf %>%
-          rename(
-              scientificName = lastvalue,
-              organismQuantity = Abundance,
-              scientificNameID = lsid
-            )
-            # %>%
-            # add_column(organismQuantityType = "DNA Sequence reads") %>%
-            # add_column(sampleSizeUnit = "DNA Sequence reads")
-
+  rename(organismQuantity = Abundance)
+  # %>%
+  # add_column(organismQuantityType = "DNA Sequence reads") %>%
+  # add_column(sampleSizeUnit = "DNA Sequence reads")
 
 # Remove 0 Abundance data (not valuable for us)
 phydf_present <- phydf[phydf$organismQuantity > 0,]
@@ -124,14 +125,14 @@ get_dwc_fields <- function(spec_url) {
     xml_attr(attr = "name")
 }
 
-spec_occurrence <- "https://rs.gbif.org/core/dwc_occurrence_2020-07-15.xml"
+spec_occurrence <- "https://rs.gbif.org/core/dwc_occurrence_2022-02-02.xml"
 occurrence_table_fields <- get_dwc_fields(spec_occurrence)
 
 spec_dna <- "https://rs.gbif.org/extension/gbif/1.0/dna_derived_data_2021-07-05.xml"
 DNA_extension_fields <- get_dwc_fields(spec_dna)
 
 occurrence_table <- phydf_present[,colnames(phydf_present) %in% occurrence_table_fields]
-DNA_derived_data_extension <- phydf_present[,colnames(phydf_present) %in% c('occurrenceID', DNA_extension_fields)]
+DNA_derived_data_extension <- phydf_present[,colnames(phydf_present) %in% c("occurrenceID", DNA_extension_fields)]
 
 write.table(occurrence_table, paste0(outpath, "Occurence_table.csv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE, na = "")
 write.table(DNA_derived_data_extension, paste0(outpath, "DNA_extension_table.csv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE, na = "")
