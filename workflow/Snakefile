@@ -408,6 +408,7 @@ rule blca:
     f1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_local.sam",
   output:
     o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.out",
+    o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.votes.jsonlines",
   log:
     f1 = "results/{PROJECT}/runs/{RUN}/06-report/blca/blca_{DATABASE}_log.txt"
   conda:
@@ -423,7 +424,8 @@ rule blca:
     -m {config[TAXONOMY][match_score]} \
     -f {config[TAXONOMY][mismatch_penalty]} \
     -g {config[TAXONOMY][gap_penalty]} \
-    -o {output.o1} "
+    -o {output.o1} \
+    -v {output.o2} "
 
 rule filter_taxa:
   input:

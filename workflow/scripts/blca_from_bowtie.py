@@ -25,6 +25,7 @@ import subprocess
 import re
 from collections import namedtuple, defaultdict
 import argparse
+import json
 
 '''
 BLCA Core annotation tool
@@ -104,7 +105,7 @@ class SamEntry(object):
 class NotAvailableHandler(object):
     def __init__(self):
         self.count = 0
-        self.na_forms = {'na', 'NA', 'Not Available', 'not available', 'Not available'}
+        self.na_forms = {'na', 'NA', 'Not Available', 'not available', 'Not available', 'nan'}
         self.encoded_na_form = 'NA;;'
 
     def encode_if_na(self, taxon):
@@ -146,6 +147,7 @@ optional = parser.add_argument_group('other arguments')
 optional.add_argument('-p', '--muscle', help='Path to call muscle default: muscle', default='muscle')
 
 optional.add_argument("-o","--outfile",help="output file name. Default: <fasta>.blca.out",type=str)
+optional.add_argument("-v","--votesfile",help="votes file name. Default: <fasta>.blca.votes.jsonlines",type=str)
 optional.add_argument('--continue_mode', help="continue from a previous run by appending to the same output file", action='store_true')
 optional.add_argument("--muscle_use_diags", help="pass the diag argument to muscle", action='store_true')
 optional.add_argument("--muscle_max_iterations", help="set the max number of iterations for muscle", type=int, default=16)
@@ -164,6 +166,7 @@ mismatch = args.mismatch  # mismatch penalty
 min_length = args.length
 sam_file_name = args.sam
 outfile_name = args.outfile or (sam_file_name + '.blca.out')
+votesfile_name = args.votesfile or (sam_file_name + '.blca.votes.jsonlines')
 reference_fasta = args.reference
 tax = args.tax
 muscle_path = args.muscle
@@ -345,6 +348,7 @@ print("> 3 > Read in bowtie2 output!")
 
 count = 0
 outfile = open(outfile_name, 'w')
+votesfile = open(votesfile_name, 'w')
 
 for seqn, info in input_sequences.items():
     count += 1
@@ -432,6 +436,8 @@ for seqn, info in input_sequences.items():
                 votes_by_level[level][hit_taxonomy[level]] += pervote[hit]
             else:
                 votes_by_level[level][hit_taxonomy[level]] += 0
+ 
+    votesfile.write(json.dumps({"seqn": seqn, "votes": votes_by_level}) + "\n")
 
     try:
         outfile.write(seqn + "\t")
@@ -452,3 +458,4 @@ for seqn in rejects:
     outfile.write(seqn + "\tUnclassified\n")
 
 outfile.close()
+votesfile.close()
