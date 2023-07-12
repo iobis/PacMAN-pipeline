@@ -167,7 +167,7 @@ message("Number of species names not recognized in WORMS: ", length(names_not_in
 taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 
 # Write table of unknown names to make manual inspection easier:
-write.table(names_not_in_worms, paste0(outpath, "Taxa_not_in_worms.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
+write.table(names_not_in_worms, paste0(outpath, "Taxa_not_in_worms.tsv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
 
 # Write tax table
-write.table(taxmat, paste0(outpath, "Full_tax_table_with_lsids.csv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
+write.table(taxmat, paste0(outpath, "Full_tax_table_with_lsids.tsv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")

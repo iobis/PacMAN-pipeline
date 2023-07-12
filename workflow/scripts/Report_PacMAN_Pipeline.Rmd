@@ -548,7 +548,7 @@ if (nsamples(pseq_rel) > 2) {
 
 Finally, the results of this analysis were collected in a Darwin Core Occurrence table and DNA-derived data extension, to facilitate submitting the data to OBIS.
 
-First, lsids for the assigned taxa were collected based on names in the WoRMS database. Occurrences that are not included in the final tables are mostly known taxa that are not marine. These occurrences are listed in the table 05-dwca/Taxa_not_in_worms.csv. This table also potentially has marine species that are not recognized by WoRMS yet, and therefore it is recommended to manually review this table.
+First, lsids for the assigned taxa were collected based on names in the WoRMS database. Occurrences that are not included in the final tables are mostly known taxa that are not marine. These occurrences are listed in the table 05-dwca/Taxa_not_in_worms.tsv. This table also potentially has marine species that are not recognized by WoRMS yet, and therefore it is recommended to manually review this table.
 
 All unknown sequences that did not have a taxonomic assignment are added in the occurrence table as 'Biota', however in the future more checks will be made to filter out sequences that were not from the target gene region or are likely not marine.
 
@@ -557,20 +557,20 @@ In addition, if there was a control sample which was labelled in the original sa
 The final tables can be found at:
 
 ```{r, echo=F, results='asis'}
-cat("- results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/Occurrence_table.csv  \n", sep = "")
-cat("- results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/DNA_extension_table.csv  \n  \n", sep = "")
+cat("- results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/Occurrence_table.tsv  \n", sep = "")
+cat("- results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/DNA_extension_table.tsv  \n  \n", sep = "")
 ```
 
 From this analysis run there were
 
 ```{r, echo=F, results='asis'}
-occ_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurence_table.csv")
+occ_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurence_table.tsv")
 occ_table <- read.table(occ_path, header = TRUE, sep = "\t")
 
 cat("The total number of occurrences was", nrow(occ_table), ".  \n")
 cat("Of which", sum(occ_table$scientificName!="Biota"), "were known, and therefore", sum(occ_table$scientificName=="Biota"), "or", sum(occ_table$scientificName=="Biota") / nrow(occ_table) * 100, "% remained unknown.  \n  \nThe sequences of these occurrences can nevertheless be added to the database, and it is possible that their taxonomy will be defined when reference databases develop.  \n  \n")
 
-notinworms_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Taxa_not_in_worms.csv")
+notinworms_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Taxa_not_in_worms.tsv")
 notinworms_table <- read.table(notinworms_path, header=TRUE, sep = "\t")
 
 cat("The number of names not found in the marine records of WoRMS was", nrow(notinworms_table), ".")
