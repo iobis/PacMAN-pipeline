@@ -87,14 +87,25 @@ for (i in 1:length(sample_ids)) {
   #sample=scan(trim_report,sep="\n",what="char(0)",skip=7, nlines=1)
   file <- file(trim_report, "r")
   line <- readLines(file, 1)
-  while (!grepl("Input Read Pairs", line)) {
-    line <- readLines(file, 1)
-  }
+  #while(!grepl("Input Read Pairs", line)) {
+  #  line <- readLines(file, 1)
+ # } 
+
+while (length(line) > 0 && !grepl("Input Read Pairs", line)) {
+  line <- readLines(file, 1)
+}
+
+if (length(line)==0){
+
+  results <- rep(0, 5)
+  trimResults[i,] <- results
+  rownames(trimResults)[i] <- sample_ids[i]
+} else {
 
   results <- line %>% str_extract_all("\\(?[0-9,.]+\\)?") %>% unlist %>% as.numeric
   trimResults[i,] <- results[!is.na(results)]
   rownames(trimResults)[i] <- sample_ids[i]
-}
+}}
 
 kable(trimResults)
 

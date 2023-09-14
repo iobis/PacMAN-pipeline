@@ -103,6 +103,7 @@ if ("absent" %in% sample_data$occurrenceStatus) {
 }
 
 phydf$occurrenceID <- paste(phydf$OTU, phydf$Sample, sep = "_")
+phydf$materialSampleID <- phydf$Sample
 
 # Change names where necessary
 #names(phydf[names(phydf)=="lastvalue"])="ScientificName"
