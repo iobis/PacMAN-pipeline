@@ -92,7 +92,9 @@ taxmat <- cleaned %>%
   bind_rows() %>%
   as.data.frame() %>%
   select(!!!RANKS) %>%
-  mutate(verbatimIdentification = tax_file$verbatimIdentification)
+  mutate(verbatimIdentification = tax_file$verbatimIdentification)%>%
+  mutate(otu_seq_comp_appr = tax_file$otu_seq_comp_appr)%>%
+  mutate(otu_db = tax_file$otu_db)
 
 row.names(taxmat) <- tax_file$rowname
 
@@ -153,11 +155,9 @@ for (i in 1:nrow(taxmat)) {
     taxmat$genus[i] <- matches[[most_specific_name]]$genus
 }
 
-# Add Biota LSID in case there is no last value
-# Kingdom is used as taxonRank so that "Biota" is also recognized correctly by GBIF
-taxmat$scientificName[is.na(taxmat$scientificName)] <- "Biota"
-taxmat$taxonRank[is.na(taxmat$scientificNameID)] <- "kingdom"
-taxmat$scientificNameID[is.na(taxmat$scientificNameID)] <- "urn:lsid:marinespecies.org:taxname:1"
+# Add Incertae sedis LSID in case there is no last value
+taxmat$scientificName[is.na(taxmat$scientificName)] <- "Incertae sedis"
+taxmat$scientificNameID[is.na(taxmat$scientificNameID)] <- "urn:lsid:marinespecies.org:taxname:12"
 
 # Names not in WoRMS
 names_not_in_worms <- names(matches)[sapply(matches, is.null)]
