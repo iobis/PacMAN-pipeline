@@ -575,7 +575,7 @@ cat("- results/", config$PROJECT, "/runs/", config$RUN, "/05-dwca/DNA_extension_
 From this analysis run there were
 
 ```{r, echo=F, results='asis'}
-occ_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurence_table.tsv")
+occ_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Occurrence_table.tsv")
 occ_table <- read.table(occ_path, header = TRUE, sep = "\t")
 
 cat("The total number of occurrences was", nrow(occ_table), ".  \n")

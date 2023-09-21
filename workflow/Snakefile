@@ -70,7 +70,7 @@ rule all:
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab",
                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
-        expand("results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.tsv",
+        expand("results/{PROJECT}/runs/{RUN}/05-dwca/Occurrence_table.tsv",
                PROJECT=PROJECT, RUN=RUN),
         expand("results/{PROJECT}/runs/{RUN}/06-report/report.html",
                PROJECT=PROJECT, RUN=RUN)
@@ -567,7 +567,7 @@ rule make_dwca:
     f2 = "results/{PROJECT}/runs/{RUN}/05-dwca/Full_tax_table_with_lsids.tsv",
     f3 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
   output:
-    o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.tsv",
+    o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Occurrence_table.tsv",
     o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/DNA_extension_table.tsv",
     o3 = "results/{PROJECT}/runs/{RUN}/05-dwca/phyloseq_object.rds"
   conda:
@@ -587,7 +587,7 @@ rule make_dwca:
 
 rule reporting:
   input:
-    "results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.tsv",
+    "results/{PROJECT}/runs/{RUN}/05-dwca/Occurrence_table.tsv",
   conda:
     "envs/r.yaml"
   output:
