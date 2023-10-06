@@ -3,8 +3,9 @@
 # Except this file
 !.gitignore
 # Add results of one of the runs
-./eDNAexpeditions/*
-!./eDNAexpeditions/runs
-./eDNAexpeditions/runs/*
-!./eDNAexpeditions/runs/Trial_allSamples_MiFish/
-
+!/eDNAexpeditions
+/eDNAexpeditions/*
+!/eDNAexpeditions/runs
+/eDNAexpeditions/runs/*
+!/eDNAexpeditions/runs/Trial_allSamples_MiFish-UE/
+!/eDNAexpeditions/runs/Trial_allSamples_MiFish-UE/*
