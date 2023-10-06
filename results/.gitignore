@@ -1,7 +1,0 @@
-# Ignore everything in this directory
-*
-# Except this file
-!.gitignore
-# Add results of one of the runs
-/eDNAexpeditions/*
-/eDNAexpeditions/runs/*
