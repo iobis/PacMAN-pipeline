@@ -2,3 +2,4 @@
 *
 # Except this file
 !.gitignore
+!./eDNAexpeditions/runs/Trial_allSamples_MiFish-UE
