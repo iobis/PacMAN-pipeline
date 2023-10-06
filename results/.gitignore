@@ -2,4 +2,9 @@
 *
 # Except this file
 !.gitignore
-!./eDNAexpeditions/runs/Trial_allSamples_MiFish-UE
+# Add results of one of the runs
+./eDNAexpeditions/*
+!./eDNAexpeditions/runs
+./eDNAexpeditions/runs/*
+!./eDNAexpeditions/runs/Trial_allSamples_MiFish/
+
