@@ -56,14 +56,6 @@ try:
 except:
     separator = " "    
     
-# Make sure that the users path work as output paths
-if not path_to_pairds.endswith("/"):
-  path_to_pairds = path_to_pairds+"/"
-if not path_to_forwards.endswith("/"):
-  path_to_forwards = path_to_forwards+"/"
-if not path_to_reverses.endswith("/"):
-  path_to_reverses = path_to_reverses+"/"
-
 # Defining classes
 class Fastq(object):
     """Fastq object with name and sequence
@@ -129,15 +121,21 @@ if __name__ == "__main__":
       os.makedirs(path_to_reverses)
 
     if in1.endswith('.gz'): 
-    	outSuffix='.fastq.gz'
+        outSuffix='.fastq.gz'
     else:
-    	outSuffix='.fastq'
+        outSuffix='.fastq'
 
     # Write the output files
-    with myopen(path_to_pairds+os.path.basename(in1), "w") as out1:
-        with myopen(path_to_pairds+os.path.basename(in2), "w") as out2:
-            with myopen(path_to_forwards+os.path.basename(in1).replace(outSuffix,"").replace("1P", "1U") + outSuffix, "w") as out3:
-              with myopen(path_to_reverses+os.path.basename(in2).replace(outSuffix,"").replace("2P", "2U") + outSuffix, "w") as out4:
+
+    out1_path = os.path.join(path_to_pairds, os.path.basename(in1))
+    out2_path = os.path.join(path_to_pairds, os.path.basename(in2))
+    out3_path = os.path.join(path_to_forwards, os.path.basename(in1).replace("1P", "1U"))
+    out4_path = os.path.join(path_to_reverses, os.path.basename(in2).replace("2P", "2U"))
+
+    with myopen(out1_path, "w") as out1:
+        with myopen(out2_path, "w") as out2:
+            with myopen(out3_path, "w") as out3:
+              with myopen(out4_path, "w") as out4:
 
                 while not (s1_finished and s2_finished):
                     try:
