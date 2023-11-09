@@ -300,42 +300,54 @@ if (config$DADA2$mergePairs$include) {
 
   seqtab <- makeSequenceTable(mergers)
 
-  # When merging is done with returnRejects=TRUE, the abundance of the rejected merges is returned, but not the sequence
+# When merging is done with returnRejects=TRUE, the abundance of the rejected merges is returned, but not the sequence
   # We want to collect also these single sequences and add them to the seqtab (to avoid loosing ANY data)
   if (config$DADA2$mergePairs$returnRejects == TRUE) {
-
+    
     unmerged_f <- list()
     unmerged_r <- list()
-    concatenated <- list()
-
+    unknown_f <- list()
+    unknown_r <- list()
+    
     for (i in 1:length(sample.names)) {
       unmerged_f[[i]] <- dadas[[1]][[sample.names[i]]]$sequence[mergers[[sample.names[i]]]$forward[!mergers[[sample.names[i]]]$accept]]
-      unmerged_r[[i]] <- dadas[[2]][[sample.names[i]]]$sequence[mergers[[sample.names[i]]]$reverse[!mergers[[sample.names[i]]]$accept]]
       # Here for the rejected reads (!merger$sample$accept) the indices are collected (merger$sample$forward, merger$sample$reverse)
       # The sequences are sourced from the original dada-file (dadaF$sample$denoised, dadaR$sample$denoised)
-      # It seems that concatenating these reads and keeping them for further analyses can result in better taxonomic coverage (Dacey et al. 2021 https://doi.org/10.1186/s12859-021-04410-2)
-      # Abundances for these reads is taken from the merged abundances.
+      sequence <- unmerged_f[[i]]
+      abundance_f[[i]]<- dadas[[1]][[sample.names[i]]]$denoised[mergers[[sample.names[i]]]$forward[!mergers[[sample.names[i]]]$accept]]
+      abundance <- abundance_f[[i]]
+      abundance <- abundance[!is.na(abundance)]
+      unknown_f[[i]] <- tibble(sequence, abundance)
+    }
+    
+    for (i in 1:length(sample.names)) {
+      unmerged_r[[i]] <- dadas[[2]][[sample.names[i]]]$sequence[mergers[[sample.names[i]]]$reverse[!mergers[[sample.names[i]]]$accept]]
       # reverse complement reverse reads so that the following taxonomic assignment will work optimally.
       unmerged_r[[i]] <- sapply(sapply(sapply(unmerged_r[[i]], DNAString), Biostrings::reverseComplement), toString)
-      sequence <- paste0(unmerged_f[[i]], unmerged_r[[i]])
-      abundance <- mergers[[sample.names[i]]]$abundance[!mergers[[sample.names[i]]]$accept]
-      concatenated[[i]] <- tibble(sequence, abundance)
+      
+      sequence <- unmerged_r[[i]]
+      abundance_r[[i]]<- dadas[[2]][[sample.names[i]]]$denoised[mergers[[sample.names[i]]]$forward[!mergers[[sample.names[i]]]$accept]]
+      abundance <- abundance_r[[i]]
+      abundance <- abundance[!is.na(abundance)]
+      sequence <- sequence[names(abundance)]
+      unknown_r[[i]] <- tibble(sequence, abundance)
     }
-    names(concatenated) <- sample.names
+    names(unknown_f) <- sample.names
+    names(unknown_r) <- sample.names
     #names(unmerged_r)=sample.names
-
+    
     # Make sequence table
-    seqtab_unmerged <- makeSequenceTable(concatenated)
-
+    seqtab_unmerged_f <- makeSequenceTable(unknown_f)
+    seqtab_unmerged_r <- makeSequenceTable(unknown_r)
     # The merged returnrejects = T seqtab also contains a column with an empty header,
     # This is all rejected (non-merged) abundances combined.
     # This column messes with future steps, so we want to remove it.
     # We have instead collected the abundances of the unmerged reads to add to the table with sequences.
     #seqtab <- seqtab[,-which(colnames(seqtab) == "")]
-
+    
     # Merge with paired reads and format for the next steps (integer matrix)
-    seqtab <- merge_format_seqtab(seqtab, seqtab_unmerged)
-
+    seqtab <- merge_format_seqtab(seqtab, seqtab_unmerged_f)
+    seqtab <- merge_format_seqtab(seqtab, seqtab_unmerged_r)
   }
 
 } else {
@@ -372,6 +384,19 @@ if (length(files_exist[[4]])!=0) {
 # In their case they are looking at equal length reads, possibly the single reads and paired reads should not be combined for chimera removal?
 
 message("removing chimeras")
+
+#removeBimeraDenovo requires all sequences to be unique. Due to the combination of many different sets,
+#we may have non-unique columns. So combine first duplicated sequences (and sum the values in the rows)
+
+if (length(sample.names)==1&!config$DADA2$mergePairs$include){
+  seqtab = tapply(seqtab, colnames(seqtab), sum)
+  seqtab = t(as.data.frame(seqtab))
+  row.names(seqtab)=sample.names
+
+} else if (!config$DADA2$mergePairs$include) {
+seqtab=sapply(unique(colnames(seqtab)), function(x) RowSums(seqtab[,grepl(x, colnames(seqtab))]))
+}
+
 seqtab.nochim <- removeBimeraDenovo(seqtab,
                                     method = config$DADA2$removeBimeraDenovo$method,
                                     multithread = config$DADA2$learnERRORS$multithread,

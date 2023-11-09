@@ -29,12 +29,14 @@ if (length(args) == 5) {
 
 ########################### 1. Read input files  ################################################################################################################
 
-tax_file <- read.csv(tax_file_path, sep = "\t", header = T) %>%
-  rename("verbatimIdentification" = "taxonomy_confidence")
+tax_file <- read.csv(tax_file_path, sep = "\t", header = T) #%>%
+  #rename("verbatimIdentification" = "taxonomy_confidence")
+
 # Add annotation pipeline and reference database
 tax_file$otu_seq_comp_appr <- PIPELINE
-result <- regmatches(tax_file_path, regexec(REF_DB_PATTERN, tax_file_path))
-otu_db <- result[[1]][2]
+#result <- regmatches(tax_file_path, regexec(REF_DB_PATTERN, tax_file_path))
+#otu_db <- result[[1]][2]
+otu_db="COI_terrimporter_5.1"
 tax_file$otu_db <- otu_db
 
 rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
@@ -94,7 +96,7 @@ taxmat <- cleaned %>%
   select(!!!RANKS) %>%
   mutate(verbatimIdentification = tax_file$verbatimIdentification)
 
-row.names(taxmat) <- tax_file$rowname
+row.names(taxmat) <- tax_file$asv
 
 # Add possible remaining unknowns to the taxmat based on asvs in the rep_seqs (keep all ASVs in the final dataset)
 rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs)%in%row.names(taxmat),])
@@ -127,6 +129,8 @@ match_name <- function(name) {
 tax_names <- taxmat %>% select(!!!RANKS) %>% unlist() %>% na.omit() %>% unique() %>% sort()
 matches <- sapply(tax_names, match_name)
 
+message("2. Matched names across all ranks")
+
 taxmat$scientificName <- NA
 taxmat$scientificNameID <- NA
 
@@ -155,19 +159,26 @@ for (i in 1:nrow(taxmat)) {
 
 # Add Biota LSID in case there is no last value
 # Kingdom is used as taxonRank so that "Biota" is also recognized correctly by GBIF
-taxmat$scientificName[is.na(taxmat$scientificName)] <- "Biota"
-taxmat$taxonRank[is.na(taxmat$scientificNameID)] <- "kingdom"
-taxmat$scientificNameID[is.na(taxmat$scientificNameID)] <- "urn:lsid:marinespecies.org:taxname:1"
+taxmat$scientificName[is.na(taxmat$scientificName)] <- "Incertae sedis"
+#taxmat$taxonRank[is.na(taxmat$scientificNameID)] <- "kingdom"
+taxmat$scientificNameID[is.na(taxmat$scientificNameID)] <- "urn:lsid:marinespecies.org:taxname:12"
 
 # Names not in WoRMS
 names_not_in_worms <- names(matches)[sapply(matches, is.null)]
 message("Number of species names not recognized in WORMS: ", length(names_not_in_worms))
 
 # Add sequence to the tax_table slot (linked to each asv)
+message("Add sequences to table")
 taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 
+#Add identificationRemarks, containing also vsearch annotation results
+taxmat$identificationRemarks <- tax_file[row.names(taxmat), "identificationRemarks"]
+message(paste("The taxonomy file contains the following fields:", colnames(tax_file), head(tax_file)))
+
 # Write table of unknown names to make manual inspection easier:
+message("Write names not recognized in worrms to separate file")
 write.table(names_not_in_worms, paste0(outpath, "Taxa_not_in_worms.tsv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")
 
 # Write tax table
+message("Write tax table")
 write.table(taxmat, paste0(outpath, "Full_tax_table_with_lsids.tsv"), sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE, na = "")

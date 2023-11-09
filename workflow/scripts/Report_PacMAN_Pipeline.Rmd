@@ -390,23 +390,23 @@ kable(dada2_stats)
 
 ## Assigning taxonomy
 
-### Bowtie2-blca
+### RDP
 
-Next, taxonomy was assigned to the inferred reads. The sequences were aligned to the provided reference database using bowtie2. Because of this the bowtie2 database was also built (if not already provided), from the reference sequences.
+Next, taxonomy was assigned to the inferred reads using rdp
 
 The command used for the alignment was the following:
 
-```{r, echo=F}
-cat("bowtie2 -x bowtie2-database -f -U representative_seqs -S alignment.sam --no-hd --no-sq --very-sensitive --local --no-unal -p ",config$TAXONOMY$threads," -k " ,config$TAXONOMY$distinct_alignments," --un rejects.fasta", sep="")
-```
+#```{r, echo=F}
+#cat("bowtie2 -x bowtie2-database -f -U representative_seqs -S alignment.sam --no-hd --no-sq --very-sensitive --local --no-unal -p ",config$TAXONOMY$threads," -k " ,config$TAXONOMY$distinct_alignments," --un rejects.fasta", sep="")
+#```
 
 The amount of alignments that were made to the provided database:
 
-```{R}
+#```{R}
 
 cat(readLines(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/bowtie2/bowtie2_", config$DATABASE$name, "_log.txt")), sep = '\n')
 
-```
+#```
 
 Note, all alignments are treated as unpaired as any merging of reads would have happened in the dada2 pipeline. 
 

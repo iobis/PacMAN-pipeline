@@ -123,25 +123,33 @@ DADA2:
 
 # DATABASE
 DATABASE:
-  # The location of the bowtie2 database must be with the basename of the index FILES
-  # Taxa and fasta files must be unzipped
-  location_bowtie2: #resources/bowtie2_dbs/MIDORI_UNIQ_GB246_CO1/MIDORI_UNIQ_GB246_CO1
-  name: MIDORI_UNIQ_GB246_CO1
-  taxa: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.taxon
-  fasta: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.fasta
+  # # The location of the bowtie2 database must be with the basename of the index FILES
+  # # Taxa and fasta files must be unzipped
+  # location_bowtie2: #resources/bowtie2_dbs/MIDORI_UNIQ_GB246_CO1/MIDORI_UNIQ_GB246_CO1
+  # name: MIDORI_UNIQ_GB246_CO1
+  # taxa: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.taxon
+  # fasta: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.fasta
+  vsearch_db_name: MIDORI_UNIQ_GB246_CO1
+  location_vsearch_udb: #resources/bowtie2_dbs/MIDORI_UNIQ_GB246_CO1/MIDORI_UNIQ_GB246_CO1
+  # name: MIDORI_UNIQ_GB246_CO1
+   taxa: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.taxon
+   fasta: data/databases/midori/MIDORI_UNIQ_SP_NUC_GB246_CO1_QIIME.fasta
+  location_rdp_ref: /home/ubuntu/data/databases/COI_terrimporter/mydata/rRNAClassifier.properties
+  location_vsearch_ref:
+  name: COI_terrimporterv5.1.0
 
 # Taxonomy
-TAXONOMY:
-  threads: 3
-  distinct_alignments: 100
-  min_identity: 0.8
-  min_length: 0.8
-  #muscle: /Users/saara/Documents/OBIS_work/github/bioinformatics/PacMAN-pipeline/scripts/muscle
-  bootstrap_no: 100
-  match_score: 1
-  mismatch_penalty: -2.5
-  gap_penalty: -2
-  blca_identity_cutoff: 100
+# TAXONOMY:
+#   threads: 3
+#   distinct_alignments: 100
+#   min_identity: 0.8
+#   min_length: 0.8
+#   #muscle: /Users/saara/Documents/OBIS_work/github/bioinformatics/PacMAN-pipeline/scripts/muscle
+#   bootstrap_no: 100
+#   match_score: 1
+#   mismatch_penalty: -2.5
+#   gap_penalty: -2
+#   blca_identity_cutoff: 100
 
 # Blast against the ncbi nt database, if blast should be run remotely, add "-remote -db nt" to the database field
 # However Blast should not be run remotely unless there are few sequences (<50)
@@ -149,16 +157,16 @@ TAXONOMY:
 # In most cases this would be ncbi-nt and mappings for this.
 # Instructions for downloading these can be found in the BASTA documentation
 BLAST:
-  include: True
-  perc_identity: 85
-  database: -db data/databases/ncbi/nt/20211125/nt #-remote -db nt #
-  database_date: 2021-11-25
-  tax_db: data/databases/ncbi/taxonomy
-  portion_of_hits: 75 #portion of hits used for evaluation, default=100
-  percent_identity: 85 #default =80
-  e_value: 5e-13
-  alignment_length: 200
-  max_hits: 10 #all hits considered = 0
-  min_hits: 3
+   include: False
+#   perc_identity: 85
+#   database: -db data/databases/ncbi/nt/20211125/nt #-remote -db nt #
+#   database_date: 2021-11-25
+#   tax_db: data/databases/ncbi/taxonomy
+#   portion_of_hits: 75 #portion of hits used for evaluation, default=100
+#   percent_identity: 85 #default =80
+#   e_value: 5e-13
+#   alignment_length: 200
+#   max_hits: 10 #all hits considered = 0
+#   min_hits: 3
 
 # Darwin_core Formatting

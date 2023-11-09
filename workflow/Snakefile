@@ -10,13 +10,14 @@ import os
 
 DEFAULT_CONFIG = "config/config.yaml"
 
-configfile: DEFAULT_CONFIG
+#configfile: DEFAULT_CONFIG
 config_path = workflow.overwrite_configfiles[0] if workflow.overwrite_configfiles else os.path.abspath(DEFAULT_CONFIG)
 
 PROJECT = config["PROJECT"]
 RUN = config["RUN"]
-DATABASE = config["DATABASE"]["name"]
-CUTOFF = config["TAXONOMY"]["blca_confidence_cutoff"]
+DATABASE_rdp = config["Rdp"]["rdp_ref_name"]
+DATABASE_vsearch=config["Vsearch"]["vsearch_db_name"]
+#CUTOFF = config["TAXONOMY"]["blca_confidence_cutoff"]
 sample_set = pd.read_csv(config["SAMPLE_SET"], header=0)
 samples = pd.unique(sample_set['sample-id'])
 
@@ -45,7 +46,15 @@ rule all:
         expand("results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip",
                PROJECT=PROJECT, samples=samples),
         expand("results/{PROJECT}/samples/multiqc_{RUN}.html",
-               PROJECT=PROJECT, RUN=RUN),
+               PROJECT=PROJECT, RUN=RUN), 
+        expand("results/{PROJECT}/samples/{samples}/fastp/{samples}_1P.fastq.gz",
+               PROJECT=PROJECT, RUN=RUN, samples=samples),
+        expand("results/{PROJECT}/samples/{samples}/fastp/{samples}_2P.fastq.gz",
+               PROJECT=PROJECT, RUN=RUN, samples=samples),       
+        expand("results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
+               PROJECT=PROJECT, RUN=RUN, samples=samples), 
+        expand("results/{PROJECT}/samples/{samples}/fastp/{samples}_2U.fastq.gz",
+               PROJECT=PROJECT, RUN=RUN, samples=samples),      
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
                PROJECT=PROJECT, RUN=RUN, samples=samples),
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
@@ -54,22 +63,20 @@ rule all:
                PROJECT=PROJECT, RUN=RUN, samples=samples),
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
                PROJECT=PROJECT, RUN=RUN, samples=samples),
-        expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
-               PROJECT=PROJECT, RUN=RUN),
-        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_local.sam",
-               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE),
-        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_rejects.fasta",
-               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE),
-        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.out",
-               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE),
-        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
-               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
-#        expand("results/{PROJECT}/runs/{RUN}/06-report/taxonomy/{DATABASE}_blca_tax_table_{CUTOFF}_report.txt",
-#               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
-        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
-               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
-        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab",
-               PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
+        expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1P.fastq.gz",
+                PROJECT=PROJECT, RUN=RUN, samples=samples),
+        expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", 
+                PROJECT=PROJECT, RUN=RUN, samples=samples),
+        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/rdp_vsearch_results.txt",
+                PROJECT=PROJECT, RUN=RUN),
+        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/vsearch/{DATABASE_vsearch}_vsearch_lcaout.tab",
+                PROJECT=PROJECT, RUN=RUN, DATABASE_vsearch=DATABASE_vsearch),
+        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results.tab",
+               PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
+        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab",
+               PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
+        expand("results/{PROJECT}/runs/{RUN}/05-dwca/Full_tax_table_with_lsids.tsv",
+              PROJECT=PROJECT, RUN=RUN),
         expand("results/{PROJECT}/runs/{RUN}/05-dwca/Occurence_table.tsv",
                PROJECT=PROJECT, RUN=RUN),
         expand("results/{PROJECT}/runs/{RUN}/06-report/report.html",
@@ -81,12 +88,12 @@ rule all:
 # For future expansions of the pipeline, use if statements. Now we are using library (input folder), and paired end reads with no demultiplexing
 #if len(config["LIBRARY"])==1 and config["demultiplexing"]["demultiplex"] == "T" and len(config["input_files"])<2 and config["LIBRARY_LAYOUT"] != "SE":
 
-rule init_structure:
+rule init_structure:  
     input:
         config["SAMPLE_SET"]
     output:
         r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
-        r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz"
+        r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz",
     conda:
         "envs/init.yaml"
     shell:
@@ -105,12 +112,12 @@ rule fast_qc:
     """
     input:
         r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
-        r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz"
+        r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz",
     output:
         o1 = "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.html",
         o2 = "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.html",
         s1 = "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip",
-        s2 = "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip"
+        s2 = "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip",
     conda:
         "envs/qc.yaml"
     shell:
@@ -124,170 +131,147 @@ rule fast_qc:
 rule multiqc:
   input:
     raw_qc_fw = expand(
-      "results/{{PROJECT}}/samples/{samples}/qc/fw_fastqc.zip", samples=samples),
+      "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip", samples=samples, PROJECT=PROJECT),
     raw_qc_rv = expand(
-      "results/{{PROJECT}}/samples/{samples}/qc/rv_fastqc.zip", samples=samples),
+      "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip", samples=samples, PROJECT=PROJECT),
   output:
     raw_multi_html = "results/{PROJECT}/samples/multiqc_{RUN}.html"
   conda:
     "envs/qc.yaml"
   shell:
     "multiqc -dd 2 -n {output.raw_multi_html} {input.raw_qc_fw} {input.raw_qc_rv}"
-    #"multiqc -dd 2 --pdf -n {output.raw_multi_pdf} {input.raw_qc_fw} {input.raw_qc_rv}"
+
 # Note: there is an automatic pdf report, but this requires the installation of latex
 
 # RULES: SEQUENCE TRIMMING ----------------------------------------------------------------
 
-# Apparently when running trimmomatic like this, it searches only in the current folder.
-# adapters manually added to the project folders
-
-rule trimmomatic_pe:
+# Fastp https://github.com/OpenGene/fastp was chosen as it 
+# automatically trims illumina adapters as well as poly-G tails from NovaSeq datasets
+# This is added to the samples/ folder (shared by all runs)
+rule fastp:
   input:
     r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
-    r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz"
+    r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz",
   output:
-    p1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1P.fastq.gz",
-    u1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1U.fastq.gz",
-    p2 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_2P.fastq.gz",
-    u2 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_2U.fastq.gz",
+    p1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1P.fastq.gz",
+    p2 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2P.fastq.gz",
+    u1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
+    u2 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2U.fastq.gz",
+    h = "results/{PROJECT}/samples/{samples}/fastp/fastp.html",
+    j = "results/{PROJECT}/samples/{samples}/fastp/fastp.json",
   log:
-    f1 = "results/{PROJECT}/runs/{RUN}/06-report/trimmomatic/{samples}_log.txt",
+    f1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_log.txt",
   conda:
     "envs/trim.yaml"
   shell:
-    "trimmomatic PE \
-    {input}  \
-    {output} \
-    ILLUMINACLIP:{config[trimmomatic][ILLUMINACLIP]} \
-    MAXINFO:{config[trimmomatic][MAXINFO]} \
-    LEADING:{config[trimmomatic][LEADING]} \
-    TRAILING:{config[trimmomatic][TRAILING]} \
-    {config[trimmomatic][extra_params]} \
-    2> {log.f1}"
+    "fastp -i {input.r1} -I {input.r2} -o {output.p1} -O {output.p2} \
+    --unpaired1 {output.u1} --unpaired2 {output.u2} \
+    -h {output.h} -j {output.j} 2> {log.f1}"
 
-# Repeat quality control here also?
-# Reverse complement primers (MBARI-BOG)
-# Somehow reverse complements added as input!
-#PRIMER1RC=$( echo ${PRIMER1} | tr "[ABCDGHMNRSTUVWXYabcdghmnrstuvwxy]" "[TVGHCDKNYSAABWXRtvghcdknysaabwxr]" | rev )
-#PRIMER2RC=$( echo ${PRIMER2} | tr "[ABCDGHMNRSTUVWXYabcdghmnrstuvwxy]" "[TVGHCDKNYSAABWXRtvghcdknysaabwxr]" | rev )
-if config["meta"]["sequencing"]["lib_layout"] == "Paired":
-    rule cutadapt_paired:
-      input:
-        p1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1P.fastq.gz",
-        p2 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_2P.fastq.gz",
-      output:
-        o1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
-        o2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
-        #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
-      log:
-        f1 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_log.txt",
-      conda:
-        "envs/trim.yaml"
-      shell:
-        "cutadapt  \
-        -g {config[cutadapt][forward_primer]} \
-        -G {config[cutadapt][reverse_primer]} \
-        -A {config[cutadapt][rc_forward_primer]} \
-        -a {config[cutadapt][rc_reverse_primer]} \
-        -o {output.o1} -p {output.o2} \
-        {input.p1} {input.p2} \
-        --minimum-length 1 \
-        {config[cutadapt][extra_params]} \
-        1> {log.f1}"
-else: 
-    rule cutadapt_paired: #This is for the specific case that the sequencing files are paired (1P and 2P), 
-                          #but the full marker sequence is found in each sequence file (i.e. the sequencing kit is longer than the marker) 
-      input:
-        p1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1P.fastq.gz",
-        p2 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_2P.fastq.gz",
-      output:
-        o1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
-        o2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
-        #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
-      log:
-        f1 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1P_log.txt",
-        f2 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2P_log.txt",
-      conda:
-        "envs/trim.yaml"
-      shell:
-         "cutadapt \
-        -g {config[cutadapt][forward_primer]} \
-        -a {config[cutadapt][rc_reverse_primer]} \
-        -o {output.o1} \
-        {input.p1} \
-        --minimum-length 1 \
-        {config[cutadapt][se_extra_params]} \
-        1> {log.f1}; \
-        cutadapt \
-        -g {config[cutadapt][reverse_primer]} \
-        -a {config[cutadapt][rc_forward_primer]} \
-        -o {output.o2} \
-        {input.p2} \
-        --minimum-length 1 \
-        {config[cutadapt][se_extra_params]} \
-        1> {log.f2}"
+# RULES: ADAPTER TRIMMING ----------------------------------------------------------------
 
+#Run cutadapt separately for both files, as cutadapt paired-end will automatically
+#discard any reads that do not have a pair. Run also for any remaining unpaired reads.
 
-# Reverse primers in place with: 'echo {config[cutadapt][forward_primer]} | tr ACGTacgt TGCAtgca | rev'
-# But check also for all special characters!
-
-rule cutadapt_unpaired:
+rule cutadapt_forward: 
   input:
-    u1 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_1U.fastq.gz",
-    u2 = "results/{PROJECT}/runs/{RUN}/01-trimmed/{samples}/{samples}_2U.fastq.gz",
+    p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1P.fastq.gz",
   output:
-    o1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
-    o2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
+    o = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
+    #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
   log:
-    f1 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_unpaired1_log.txt",
-    f2 = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_unpaired2_log.txt",
+    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1P_log.txt",
   conda:
     "envs/trim.yaml"
   shell:
-      "cutadapt \
-        -g {config[cutadapt][forward_primer]} \
-        -a {config[cutadapt][rc_reverse_primer]} \
-        -o {output.o1} \
-        {input.u1} \
-        --minimum-length 1 \
-        {config[cutadapt][se_extra_params]} \
-        1> {log.f1}; \
-        cutadapt \
-        -g {config[cutadapt][reverse_primer]} \
-        -a {config[cutadapt][rc_forward_primer]} \
-        -o {output.o2} \
-        {input.u2} \
-        --minimum-length 1 \
-        {config[cutadapt][se_extra_params]} \
-        1> {log.f2}"
+    "cutadapt \
+    -g {config[cutadapt][forward_primer]} \
+    -a {config[cutadapt][rc_reverse_primer]} \
+    -o {output.o} \
+    --minimum-length 1 \
+    --rc \
+    {config[cutadapt][se_extra_params]} \
+    {input.p} \
+    1> {log.f} "
 
-# Repeat quality control
-# Then we may want to have a rule that checks the results of the multiqc for any big problems.
-# dada2 has its own quality control steps, maybe I can use those?
+#To use the same rule with other inputs/outputs etc: 
+#use rule a as b with:
+    #output:
+        #"test2.out"
 
-# RULES: ASV INFERENCE WITH DADA2----------------------------------------------------------------
+use rule cutadapt_forward as cutadapt_reverse with: 
+  input:
+    p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2P.fastq.gz",
+  output:
+    o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
+  log:
+    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2P_log.txt"
 
-# In this section we run the dada2 pipeline, both paired and single reads are analysed and added to the final tables.
+use rule cutadapt_forward as cutadapt_forward_single with: 
+  input:
+    p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
+  output:
+    o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
+  log:
+    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1U_log.txt"
 
-#if config["meta"]["sequencing"]["lib_layout"] == "Paired": This not used here, also single-end works 
+use rule cutadapt_reverse as cutadapt_reverse_single with: 
+  input:
+    p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2U.fastq.gz",
+  output:
+    o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
+  log:
+    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2U_log.txt"
+
+
+#Dada2 requires reads to be in the right paired sequence, therefore the pairing is checked
+#if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+rule check_paired:
+  input: 
+    f1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
+    f2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
+  output:
+    p =  directory("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}"),
+    p1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1P.fastq.gz",
+    p2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2P.fastq.gz",
+    u1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1U.fastq.gz",
+    u2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2U.fastq.gz",
+  shell:
+    "python workflow/scripts/check_paired.py {input.f1} {input.f2} {output.p} {output.p} {output.p}"
+
+#To keep all single reads, concatenate reads that were leftover from fastp and analysed by cutadapt separately
+#However, this requires a change in the file structure (1P, 2P, 1U, and 2U) files should be in the same folder
+#For the following steps, and this messes up with snakemake.
+
+#rule cat_single_reads_f:
+#    input:
+#      ua = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1U.fastq.gz",
+#      ub = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
+#    output:
+#      o = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1U.fastq.gz",
+#    shell:
+#      "cat  {input.ua} {input.ub} > {output.o}"
+
+#use rule cat_single_reads_f as cat_single_reads_r with: 
+#    input:
+#      ua = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2U.fastq.gz",
+#      ub = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
+#    output:
+ #     o = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2U.fastq.gz"
+
+# RULES: ASV INFERENCE ----------------------------------------------------------------
+
 rule dada2_filter:
     input:
-        #files = expand("{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/", PROJECT=PROJECT, RUN=RUN, samples=samples),
-        f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
+        f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1P.fastq.gz",
                         PROJECT=PROJECT, RUN=RUN, samples=samples),
-        f2 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
-                        PROJECT=PROJECT, RUN=RUN, samples=samples),
-        f3 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
-                        PROJECT=PROJECT, RUN=RUN, samples=samples),
-        f4 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
+        f2 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2P.fastq.gz",
                         PROJECT=PROJECT, RUN=RUN, samples=samples),
     output:
         FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
                            PROJECT=PROJECT, RUN=RUN, samples=samples),
         FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
                            PROJECT=PROJECT, RUN=RUN, samples=samples),
-        #directory(expand("{PROJECT}/runs/{RUN}/dada2/filtered/{samples}/"), PROJECT=PROJECT, RUN=RUN, samples=samples),
-        #stats="{PROJECT}/runs/{RUN}/dada2/dada2_filtering_stats.txt",
     conda:
         "envs/dada2.yaml"
     shell:
@@ -305,7 +289,6 @@ rule dada2_ASV:
     output:
         o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
         o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
-        #o4 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/mapping/{samples}/{samples}_mapping.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
     log:
         o1 = expand("results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
     conda:
@@ -316,171 +299,88 @@ rule dada2_ASV:
         "+config_path+" \
         {input.FiltF}"
 
+# RULES: TAXONOMIC ASSIGNMENTS ----------------------------------------------------------------
 
-# RULES: TAXONOMIC ASSIGNMENT ----------------------------------------------------------------
+#Vsearch is used to find the IDs of sequences with very high similarity in the ref database
+rule vsearch:
+    input:
+        rep_seqs = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
+        vsearch_db=config["Vsearch"]["location_vsearch_db"],
+    output:
+        o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/vsearch/{DATABASE_vsearch}_vsearch_blast.b6",
+        o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/vsearch/{DATABASE_vsearch}_vsearch_lcaout.tab",
+        log = "results/{PROJECT}/runs/{RUN}/06-report/vsearch/vsearch_{DATABASE_vsearch}.log",
+    conda:
+        "envs/vsearch.yaml"
+    shell:
+        "vsearch --usearch_global {input.rep_seqs}  --db {input.vsearch_db} --id {config[Vsearch][pident]} \
+        --blast6out {output.o1} --threads 4  --output_no_hits --query_cov {config[Vsearch][query_cov]}\
+        --maxaccepts 100 --maxrejects 100 --maxhits 10 \
+        --lcaout {output.o2} --lca_cutoff 0.6 --notrunclabels \
+        2> {output.log}"
 
-# In this part we will perform the taxonomic assignment of the reads with bowtie2 and blca
-# Following the strategy of the ANACAPA pipeline
+#RDP is used as the main assignment method
+rule rdp_class:
+    input:
+      rep_seqs = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
+    output:
+      o1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/rdp/{DATABASE}_rdp.output", PROJECT=PROJECT, RUN=RUN, samples=samples, DATABASE=DATABASE_rdp),
+    conda:
+      "envs/rdp.yaml"
+    shell:
+      "rdp_classifier -Xmx16g classify \
+      -t {config[Rdp][location_rdp_ref]}  \
+      -o {output.o1} \
+      -q {input.rep_seqs}"
 
-# First we will build the bowtie2 database if it is not given in the config file:
-if config["DATABASE"]["location_bowtie2"] == None:
-    rule bowtie2_build:
-        input:
-          fasta = config["DATABASE"]["fasta"],
-          #prefix=expand("resources/bowtie2_dbs/{DATABASE}/{DATABASE}", DATABASE=DATABASE),
-        output:
-          expand("resources/bowtie2_dbs/{DATABASE}/{DATABASE}.{index}.bt2",
-                 DATABASE=DATABASE, index=range(1, 5)),
-          expand("resources/bowtie2_dbs/{DATABASE}/{DATABASE}.rev.{index}.bt2",
-                 DATABASE=DATABASE, index=range(1, 3))
-        #params:
-          #prefix="resources/bowtie2_dbs/{DATABASE}/{DATABASE}",
-          #tmp_dir=config['global_tmp_dir']
-        conda:
-          "envs/bowtie2.yaml"
-        shell:
-          "bowtie2-build {input.fasta} resources/bowtie2_dbs/" + \
-            config["DATABASE"]["name"]+"/"+config["DATABASE"]["name"]
-
-
-# Input for bowtie2 depends on if the mapping was given or not: now if statement, could be changed to something else?
-
-if config["DATABASE"]["location_bowtie2"] != None:
-    rule bowtie2:
-      input:
-        rep_seqs = expand(
-          "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
-      output:
-        o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_local.sam",
-        o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_rejects.fasta",
-      log:
-        f1 = "results/{PROJECT}/runs/{RUN}/06-report/bowtie2/bowtie2_{DATABASE}_log.txt"
-      conda:
-        "envs/bowtie2.yaml"
-      shell:
-        "bowtie2 -x {config[DATABASE][location_bowtie2]} \
-        -f -U {input.rep_seqs} \
-        -S {output.o1} \
-        --no-hd \
-        --no-sq \
-        --very-sensitive \
-        --local \
-        --no-unal \
-        -p {config[TAXONOMY][threads]} \
-        -k {config[TAXONOMY][distinct_alignments]} \
-        --un {output.o2} \
-        2> {log.f1}"
-else:
-    rule bowtie2:
-      input:
-        expand("resources/bowtie2_dbs/{DATABASE}/{DATABASE}.{index}.bt2",
-               DATABASE=DATABASE, index=range(1, 5)),
-        expand("resources/bowtie2_dbs/{DATABASE}/{DATABASE}.rev.{index}.bt2",
-               DATABASE=DATABASE, index=range(1, 3)),
-        rep_seqs = expand(
-          "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
-      output:
-        o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_local.sam",
-        o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_rejects.fasta",
-      log:
-        f1 = "results/{PROJECT}/runs/{RUN}/06-report/bowtie2/bowtie2_{DATABASE}_log.txt"
-      params:
-        ref_idx_base = "resources/bowtie2_dbs/{DATABASE}/{DATABASE}",
-      conda:
-        "envs/bowtie2.yaml",
-      shell:
-        "bowtie2 -x {params.ref_idx_base} \
-        -f -U {input.rep_seqs} \
-        -S {output.o1} \
-        --no-hd \
-        --no-sq \
-        --very-sensitive \
-        --local \
-        --no-unal \
-        -p {config[TAXONOMY][threads]} \
-        -k {config[TAXONOMY][distinct_alignments]} \
-        --un {output.o2} \
-        2> {log.f1}"
-
-
-rule blca:
-  input:
-    f1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_local.sam",
-  output:
-    o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.out",
-    o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.votes.jsonlines",
-  log:
-    f1 = "results/{PROJECT}/runs/{RUN}/06-report/blca/blca_{DATABASE}_log.txt"
-  conda:
-    "envs/blca.yaml"
-  shell:
-    "python ./workflow/scripts/blca_from_bowtie.py \
-    -i {input.f1} \
-    -r {config[DATABASE][taxa]} \
-    -q {config[DATABASE][fasta]} \
-    -b {config[TAXONOMY][min_identity]} \
-    -l {config[TAXONOMY][min_length]} \
-    -n {config[TAXONOMY][bootstrap_no]} \
-    -m {config[TAXONOMY][match_score]} \
-    -f {config[TAXONOMY][mismatch_penalty]} \
-    -g {config[TAXONOMY][gap_penalty]} \
-    -o {output.o1} \
-    -v {output.o2} "
-
+#RDP results are filtered based on the specified cutoff, and the assignments are combined 
 rule filter_taxa:
-  input:
-    f1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.out",
-  output:
-    o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local_cutoff{CUTOFF}.sam.blca.out.mod",
-    o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
-  shell:
-    "sed -e '1s/^/rowname\ttaxonomy\ttaxonomy_confidence\taccessions\\n/' {input.f1} > {output.o1}; \
-    python ./workflow/scripts/reformat_summary_for_r.py \
-    {output.o1} \
-    {output.o2} \
-    {config[TAXONOMY][blca_confidence_cutoff]}"
+    input: 
+      vsearch = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/vsearch/{DATABASE_vsearch}_vsearch_blast.b6", PROJECT=PROJECT, RUN=RUN, DATABASE_vsearch=DATABASE_vsearch),
+      vsearch_lca = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/vsearch/{DATABASE_vsearch}_vsearch_lcaout.tab", PROJECT=PROJECT, RUN=RUN, DATABASE_vsearch=DATABASE_vsearch),
+      rdp = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/rdp/{DATABASE_rdp}_rdp.output",PROJECT=PROJECT, RUN=RUN, DATABASE_rdp=DATABASE_rdp),
+    output: 
+      o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/rdp_vsearch_results.txt",
+      o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/unknown_asvs.txt",
+    conda:
+      "envs/r.yaml"
+    shell: 
+        "Rscript ./workflow/scripts/Compare_taxa.R \
+        results/{config[PROJECT]}/runs/{config[RUN]}/ \
+        "+config_path+" \
+        {input.rdp}    \
+        {input.vsearch} \
+        {input.vsearch_lca}"
 
 
-# The remaining unknown sequences from blca are blasted against nt, so that all possible public information is checked.
+#The remaining fully unknown sequences from rdp are blasted against nt, so that all possible public information is checked.
 if config["BLAST"]["include"] == True:
     rule blast_unknown:
         input:
-            taxa = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local.sam.blca.out",
-            filtered = "results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
+            unknowns = "results/{PROJECT}/runs/{RUN}/04-taxonomy/unknown_asvs.txt",
             fasta = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
-            rejects= "results/{PROJECT}/runs/{RUN}/04-taxonomy/bowtie2/{DATABASE}_bowtie2_rejects.fasta",
         output:
-            o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_bowtie2_local_unknowns_cutoff{CUTOFF}.sam.blca.out",
-            o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blca/{DATABASE}_unclassified-seqs_cutoff{CUTOFF}.fna",
-            o3 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
-            #o2 = add information to the sam.blca.out table.
+            o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/unclassified-seqs.fna",
+            o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results.tab",
         threads: 4
         conda:
             "envs/seqs.yaml",
         shell:
-            "awk '/Unclassified/ {{print $1}}' {input.taxa} > {output.o1}; \
-            awk '/;;;;;;/ {{print $1}}' {input.filtered} | cat >> {output.o1}; \
-            sort -t . -k 2n -o {output.o1} {output.o1}; \
-            seqtk subseq {input.fasta} {output.o1}  > {output.o2}; \
-            cat {input.rejects} >> {output.o2}; \
+            "seqtk subseq {input.fasta} {input.unknowns}  > {output.o1}; \
             blastn \
-            -query {output.o2} \
-            -out {output.o3}  \
+            -query {output.o1} \
+            -out {output.o2}  \
             -outfmt 6 \
-            -perc_identity {config[BLAST][perc_identity]} \
+            -perc_identity {config[BLAST][percent_identity]} \
             -num_threads {threads} \
             {config[BLAST][database]}" 
-# removed this as can be filtered later: -evalue 5e-13 \
-
-# Here we add those that were completely unclassified (no matches in the provided reference database),
-# As well as those that did not have a good match in the database (lower confidence tha the cutoff value at Kingdom)
 
     if config["BLAST"]["tax_db"] != None:
         rule lca_blast:
             input:
-                blast_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
+                blast_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results.tab",
             output:
-                basta_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab"
+                basta_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab"
             conda:
                 "envs/seqs.yaml"
             shell:
@@ -488,7 +388,7 @@ if config["BLAST"]["include"] == True:
                 -p {config[BLAST][portion_of_hits]} \
                 -i {config[BLAST][percent_identity]} \
                 -l {config[BLAST][alignment_length]} \
-                -e {config[BLAST][e_value]} \
+                -e {config[BLAST][e-value]} \
                 -n {config[BLAST][max_hits]} \
                 -m {config[BLAST][min_hits]} \
                 -d {config[BLAST][tax_db]} \
@@ -498,9 +398,9 @@ if config["BLAST"]["include"] == True:
     else:
         rule lca_blast:
             input:
-                blast_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_cutoff{CUTOFF}.tab",
+                blast_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results.tab",
             output:
-                basta_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab"
+                basta_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab"
             conda:
                 "envs/seqs.yaml"
             shell:
@@ -517,37 +417,15 @@ if config["BLAST"]["include"] == True:
                 {output.basta_results} \
                 gb"
 
-
-# RULES: DATA PACKAGING? ----------------------------------------------------------------
-
-# Package files into a darwin core archive (but optional, should be possible to run the pipeline without it.)
-# Occurrence core: csv
-# DNA-derived data extension: csv
-
-# Add required metadata through the config file? e.g. submitter name, sequencing platform, long-lat
-
-# Taxa file: "{PROJECT}/{RUN}/taxonomy/identity_filtered/{DATABASE}_blca_tax_table_100.txt" = taxonomy
-# Reference sequences: "{PROJECT}/{RUN}/dada2/rep-seqs.fna" = sequence
-# ASV table: "{PROJECT}/{RUN}/dada2/seqtab-nochim.txt" = abundance
-
-print("\n-------------    There are three main output files of this run:     -------------\n")
-print("1. The otu table at: ", PROJECT, "/runs/",
-      RUN, "/dada2/seqtab-nochim.txt", sep='')
-print("2. The taxa table at: ", PROJECT, "/runs/", RUN,
-      "/taxonomy/identity_filtered/", DATABASE, "_blca_tax_table_", CUTOFF, ".txt", sep='')
-print("3. The reference sequences at: ", PROJECT,
-      "/runs/", RUN, "/dada2/rep-seqs.fna\n", sep='')
-
-
-# Retrieve LSIDs using R. Append LSIDs and the linked DNA sequences to the tax table:
+# RULES: FORMAT DATA ----------------------------------------------------------------
 
 rule get_lsids:
   input:
-    f1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/identity_filtered/{DATABASE}_blca_tax_table_{CUTOFF}.txt",
-                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF),
+    f1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/rdp_vsearch_results.txt",
+                PROJECT=PROJECT, RUN=RUN),
     f2 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
-    f3 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/{DATABASE}_unclassified_blast_results_lca_cutoff{CUTOFF}.tab",
-                PROJECT=PROJECT, RUN=RUN, DATABASE=DATABASE, CUTOFF=CUTOFF) if config["BLAST"]["include"] else [],
+    f3 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab",
+                PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
   output:
     o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Taxa_not_in_worms.tsv",
     o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/Full_tax_table_with_lsids.tsv"
@@ -560,6 +438,7 @@ rule get_lsids:
     {input.f2} \
     {input.f3} \
     {config[BLAST][database_date]}"
+
 
 rule make_dwca:
   input:
@@ -583,7 +462,7 @@ rule make_dwca:
 
 
 # Make here also a simple overview image to be added to the report?
-
+# RULES: MAKE REPORT ----------------------------------------------------------------
 
 rule reporting:
   input:
