@@ -59,7 +59,7 @@ confidence_threshold <- config$Rdp$cutoff
 process_rdp_taxonomy <- function(row) {
   taxa <- row[seq(6, ncol(row), 3)]
   ranks <- row[seq(7, ncol(row), 3)]
-  confidences <- row[seq(8, length(values), 3)]
+  confidences <- row[seq(8, ncol(row), 3)]
   retained <- which(confidences >= confidence_threshold)
   rdp_taxonomy <- paste0(taxa, collapse=";")
   rdp_confidences <- paste0(confidences, collapse=";")
