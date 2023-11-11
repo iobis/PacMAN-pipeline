@@ -199,13 +199,27 @@ rule cutadapt_forward:
     #output:
         #"test2.out"
 
-use rule cutadapt_forward as cutadapt_reverse with: 
+rule cutadapt_reverse: 
   input:
     p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2P.fastq.gz",
   output:
-    o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
+    o = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
+    #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
   log:
-    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2P_log.txt"
+    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2P_log.txt",
+  conda:
+    "envs/trim.yaml"
+  shell:
+    "cutadapt \
+    -g {config[cutadapt][reverse_primer]} \
+    -a {config[cutadapt][rc_forward_primer]} \
+    -o {output.o} \
+    --minimum-length 1 \
+    --rc \
+    {config[cutadapt][se_extra_params]} \
+    {input.p} \
+    1> {log.f} "
+
 
 use rule cutadapt_forward as cutadapt_forward_single with: 
   input:
