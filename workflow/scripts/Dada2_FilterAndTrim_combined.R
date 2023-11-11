@@ -96,7 +96,7 @@ for (i in 1:4) {
     ggsave(paste0(outpath,"06-report/dada2/aggregate_quality_profiles_", names(allfiles)[i], ".png"), dpi = 300, width = 10, height = 10, units = "cm")
 
     #Create path and file names for filtered samples"
-    filts[[i]] <- gsub("02-cutadapt/checked", "03-dada2/filtered/", files_exist[[i]])
+    filts[[i]] <- gsub("02-cutadapt/checked/", "03-dada2/filtered/", files_exist[[i]])
 
     #assign names to files
     names(filts[[i]]) <- sample.names[[i]]
@@ -340,8 +340,9 @@ if (file.exists("Rplots.pdf")) {
   ## are written in this case. Check for the output files, and if they
   ## don't exist, create empty ones.
  
- for (i in 1:length(filts)) {
-  for(fn in filts[[i]]){
+ for (i in 1:length(allfiles)) {
+  for(fn in allfiles[[i]]){
+    fn <- gsub("02-cutadapt/checked", "03-dada2/filtered",fn)
     if(!file.exists(fn)){
       cat(gettextf('creating empty file %s\n', fn))
       gzf = gzfile(fn)

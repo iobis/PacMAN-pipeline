@@ -120,7 +120,6 @@ dadas <- list()
 seqtab <- list()
 files_exist <- list()
 
-
 for (i in 1:4) {
 
   message("Check that files are not empty")
@@ -142,64 +141,66 @@ for (i in 1:4) {
 }
 
 # Update sample names with existing paired files
-sample.names<-names(files_exist[[1]])
+sample.names <- names(files_exist[[1]])
 
 # Loop through all file types (forward, reverse, unpaired forward, unpaired reverse) for learning errors and dereplicating
 for (i in 1:4) {
 
-  if (length(files_exist[[i]])!=0) {        #any(file.exists(files_exist[[i]]))
+  if (length(files_exist[[i]]) != 0) {        #any(file.exists(files_exist[[i]]))
 
     message(paste("learning error rates of files:", i, ": (1) forward paired (2) reverse paired (3) forward single and (4) reverse single " , sep=" "))
 
     #Add here a more generic character matching
-    if (config$meta$sequencing$seq_meth=="NovaSeq6000"){ 
-    message("learning error rates using a modified error model for NovaSeq data")
+    if (config$meta$sequencing$seq_meth == "NovaSeq6000") {
+      message("learning error rates using a modified error model for NovaSeq data")
 
-    errs[[i]] <- learnErrors(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
-                            multithread = config$DADA2$learnERRORS$multithread,
-                            nbases = as.numeric(config$DADA2$learnERRORS$nbases),
-                            randomize = config$DADA2$learnERRORS$randomize,
-                            MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
-                            OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
-                            verbose = config$DADA2$learnERRORS$verbose,
-                            errorEstimationFunction = loessErrfun_mod4,
-                            )
-
+      errs[[i]] <- dada2::learnErrors(
+        files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
+        multithread = config$DADA2$learnERRORS$multithread,
+        nbases = as.numeric(config$DADA2$learnERRORS$nbases),
+        randomize = config$DADA2$learnERRORS$randomize,
+        MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
+        OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
+        verbose = config$DADA2$learnERRORS$verbose,
+        errorEstimationFunction = loessErrfun_mod4,
+      )
 
     } else {
-    
-    
-    errs[[i]] <- learnErrors(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
-                            multithread = config$DADA2$learnERRORS$multithread,
-                            nbases = as.numeric(config$DADA2$learnERRORS$nbases),
-                            randomize = config$DADA2$learnERRORS$randomize,
-                            MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
-                            OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
-                            verbose = config$DADA2$learnERRORS$verbose)
+
+      errs[[i]] <- dada2::learnErrors(
+        files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
+        multithread = config$DADA2$learnERRORS$multithread,
+        nbases = as.numeric(config$DADA2$learnERRORS$nbases),
+        randomize = config$DADA2$learnERRORS$randomize,
+        MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
+        OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
+        verbose = config$DADA2$learnERRORS$verbose
+      )
 
     }
 
     message("Making error estimation plots of reads")
     png(filename = paste0(outpath, "06-report/dada2/error_profile_", names(allfiles)[i], ".png"))
-      p_ERR <- plotErrors(
-        errs[[i]],
-        nti = nti,
-        ntj = ntj,
-        obs = config$DADA2$plotERRORS$obs,
-        err_out = config$DADA2$plotERRORS$err_out,
-        err_in = config$DADA2$plotERRORS$err_in,
-        nominalQ = config$DADA2$plotERRORS$nominalQ)
-      print(p_ERR)
+    p_ERR <- dada2::plotErrors(
+      errs[[i]],
+      nti = nti,
+      ntj = ntj,
+      obs = config$DADA2$plotERRORS$obs,
+      err_out = config$DADA2$plotERRORS$err_out,
+      err_in = config$DADA2$plotERRORS$err_in,
+      nominalQ = config$DADA2$plotERRORS$nominalQ
+    )
+    print(p_ERR)
     dev.off()
 
     message("Running dereplication of reads")
     #print(paste("files that exist:", files_exist[[i]]))
-    dereps[[i]] <- derepFastq(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
+    dereps[[i]] <- dada2::derepFastq(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
                               n = as.numeric(config$DADA2$derepFastq$num),
                               config$DADA2$learnERRORS$verbose)
 
     message("Running dada on reads")
-    dadas[[i]] <- dada(dereps[[i]],
+    dadas[[i]] <- dada2::dada(dereps[[i]],
                       errs[[i]],
                       selfConsist = config$DADA2$dada$selfConsist,
                       pool = config$DADA2$dada$pool,
@@ -405,7 +406,7 @@ if (length(sample.names)==1&!config$DADA2$mergePairs$include){
   row.names(seqtab)=sample.names
 
 } else if (!config$DADA2$mergePairs$include) {
-seqtab=sapply(unique(colnames(seqtab)), function(x) RowSums(seqtab[,grepl(x, colnames(seqtab))]))
+seqtab=sapply(unique(colnames(seqtab)), function(x) rowSums(seqtab[,grepl(x, colnames(seqtab))]))
 }
 
 seqtab.nochim <- removeBimeraDenovo(seqtab,
