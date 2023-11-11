@@ -36,7 +36,7 @@ tax_file <- read.csv(tax_file_path, sep = "\t", header = T) #%>%
 tax_file$otu_seq_comp_appr <- PIPELINE
 #result <- regmatches(tax_file_path, regexec(REF_DB_PATTERN, tax_file_path))
 #otu_db <- result[[1]][2]
-otu_db="COI_terrimporter_5.1"
+otu_db <- "COI_terrimporter_5.1"
 tax_file$otu_db <- otu_db
 
 rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
@@ -60,17 +60,18 @@ message("1. Modify tax table for taxonomic ranks, and find all possible worms id
 
 # Clean set of taxon names into taxonomy as a named list
 clean_taxonomy <- function(taxa) {
-  if (all(str_detect(taxa, "([a-z]+)__(.*)_[0-9]"))) {
+  if (all(str_detect(taxa, "([a-z]+)__(.*)"))) {
     taxa <- taxa[taxa != "" & taxa != "NA" & taxa != "nan"]
-    if (length(taxa) == 0) {
-      return(list(kingdom = NA))
-    }
-    parts <- str_match(taxa, "([a-z]+)__(.*)_[0-9]")
-    ranks <- recode(parts[,2], "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
+    parts <- str_match(taxa, "([a-z]+)__(.*)")
+    ranks <- recode(parts[,2], "sk" = "superkingdom", "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
     taxon_names <- as.list(parts[,3])
     names(taxon_names) <- ranks
-    return(taxon_names)
-  } else {
+    accepted_ranks <- intersect(ranks, RANKS)
+    if (length(accepted_ranks) == 0) {
+      return(list(kingdom = NA))
+    }
+    return(taxon_names[accepted_ranks])
+  } else { # TODO: fix, this fallback will only work for some reference databases
     if (length(taxa) == 0) {
       return(list(kingdom = NA))
     }
@@ -97,9 +98,10 @@ taxmat <- cleaned %>%
   mutate(verbatimIdentification = tax_file$verbatimIdentification)
 
 row.names(taxmat) <- tax_file$asv
+row.names(tax_file) <- tax_file$asv
 
 # Add possible remaining unknowns to the taxmat based on asvs in the rep_seqs (keep all ASVs in the final dataset)
-rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs)%in%row.names(taxmat),])
+rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs) %in% row.names(taxmat),])
 taxmat_unknown <- data.frame(
   otu_seq_comp_appr = rep(PIPELINE, length(rep_seqs_unknown)),
   otu_db = rep(otu_db, length(rep_seqs_unknown))
@@ -133,9 +135,9 @@ message("2. Matched names across all ranks")
 
 taxmat$scientificName <- NA
 taxmat$scientificNameID <- NA
+taxmat$taxonRank <- NA
 
 for (i in 1:nrow(taxmat)) {
-
   lsids <- taxmat[i, RANKS] %>%
     as.character() %>%
     sapply(function(x) { matches[[x]]$lsid }) %>%
@@ -146,21 +148,21 @@ for (i in 1:nrow(taxmat)) {
   most_specific_name <- taxmat[i, max(which(!is.na(lsids)))]
   scientificnameid <- matches[[most_specific_name]]$lsid
 
-    taxmat$scientificName[i] <- matches[[most_specific_name]]$scientificname
-    taxmat$scientificNameID[i] <- matches[[most_specific_name]]$lsid
-    taxmat$taxonRank[i] <- tolower(matches[[most_specific_name]]$rank)
-    taxmat$kingdom[i] <- matches[[most_specific_name]]$kingdom
-    taxmat$phylum[i] <- matches[[most_specific_name]]$phylum
-    taxmat$class[i] <- matches[[most_specific_name]]$class
-    taxmat$order[i] <- matches[[most_specific_name]]$order
-    taxmat$family[i] <- matches[[most_specific_name]]$family
-    taxmat$genus[i] <- matches[[most_specific_name]]$genus
+  taxmat$scientificName[i] <- matches[[most_specific_name]]$scientificname
+  taxmat$scientificNameID[i] <- matches[[most_specific_name]]$lsid
+  taxmat$taxonRank[i] <- tolower(matches[[most_specific_name]]$rank)
+  taxmat$kingdom[i] <- matches[[most_specific_name]]$kingdom
+  taxmat$phylum[i] <- matches[[most_specific_name]]$phylum
+  taxmat$class[i] <- matches[[most_specific_name]]$class
+  taxmat$order[i] <- matches[[most_specific_name]]$order
+  taxmat$family[i] <- matches[[most_specific_name]]$family
+  taxmat$genus[i] <- matches[[most_specific_name]]$genus
 }
 
 # Add Biota LSID in case there is no last value
 # Kingdom is used as taxonRank so that "Biota" is also recognized correctly by GBIF
 taxmat$scientificName[is.na(taxmat$scientificName)] <- "Incertae sedis"
-#taxmat$taxonRank[is.na(taxmat$scientificNameID)] <- "kingdom"
+taxmat$taxonRank[is.na(taxmat$scientificNameID)] <- "kingdom"
 taxmat$scientificNameID[is.na(taxmat$scientificNameID)] <- "urn:lsid:marinespecies.org:taxname:12"
 
 # Names not in WoRMS
