@@ -335,6 +335,7 @@ if (config$DADA2$mergePairs$include) {
 
       #$denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
       #https://rdrr.io/bioc/dada2/man/dada-class.html
+      #However the abundances that I get with this are not correct, so something is off. 
       abundance_r<- dadas[[2]][[i]]$denoised[rejects.fwd.seq]
       
       # reverse complement reverse reads so that the following taxonomic assignment will work optimally.
@@ -405,7 +406,7 @@ if (length(sample.names)==1&!config$DADA2$mergePairs$include){
   seqtab = t(as.data.frame(seqtab))
   row.names(seqtab)=sample.names
 
-} else if (!config$DADA2$mergePairs$include) {
+} else if (!config$DADA2$mergePairs$include&any(duplicated(colnames(seqtab)))) {
 seqtab=sapply(unique(colnames(seqtab)), function(x) rowSums(seqtab[,grepl(x, colnames(seqtab))]))
 }
 
