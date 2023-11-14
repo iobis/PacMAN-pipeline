@@ -88,10 +88,10 @@ results <- rdp_mod %>%
   left_join(vsearch_combined, by = "asv") %>%
   mutate(
     rdp = glue("Identification based on the RDP classifier at the confidence level {config$Rdp$cutoff}: taxonomy {rdp_taxonomy}, confidences {rdp_confidences}."),
-    vsearch = glue("Confirmation with VSEARCH against the {config$Vsearch$vsearch_db_name} database at 97% similarity: hits {vsearch_seqid}, identities {vsearch_pident}, taxonomy {vsearch_taxonomy}, consensus {vsearch_consensus}.")
+    vsearch = glue("Confirmation with VSEARCH against the {config$Vsearch$vsearch_db_name} database at {config$Vsearch$pident} similarity: hits {vsearch_seqid}, identities {vsearch_pident}, taxonomy {vsearch_taxonomy}, consensus {vsearch_consensus}.")
   ) %>%
   mutate(
-    identificationRemarks = ifelse(!is.na(vsearch_pident), glue("{rdp} {vsearch}"), glue("{rdp} No VSEARCH hits."))
+    identificationRemarks = ifelse(!is.na(vsearch_pident), glue("{rdp} {vsearch}"), glue("{rdp} No VSEARCH hits at {config$Vsearch$pident} identity."))
   ) %>%
   select(asv, sum.taxonomy = rdp_consensus, identificationRemarks)
 
