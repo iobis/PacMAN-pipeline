@@ -46,7 +46,7 @@ if (!is.null(basta_file_path)) {
   if (file.size(basta_file_path) > 0) {
     message("0. Results of Blast annotation read")
     basta_file <- read.csv(basta_file_path, sep = "\t", header = F)
-    colnames(basta_file) <- c("rowname", "sum.taxonomy")
+    colnames(basta_file) <- c("asv", "sum.taxonomy")
     basta_file$verbatimIdentification <- basta_file$sum.taxonomy
     # Add annotation pipeline and reference database
     basta_file$otu_seq_comp_appr <- BLAST_VERSION
@@ -83,7 +83,8 @@ clean_taxonomy <- function(taxa) {
 
 if (exists("basta_file")) {
   # Remove ASVs present in basta file from tax file
-  tax_file <- tax_file %>% filter(!rowname %in% basta_file$rowname)
+  #tax_file <- tax_file %>% filter(!asv %in% basta_file$rowname)
+  tax_file <- tax_file[!tax_file$asv%in%basta_file$asv,]
   # Merge
   tax_file <- bind_rows(tax_file, basta_file)
 }
