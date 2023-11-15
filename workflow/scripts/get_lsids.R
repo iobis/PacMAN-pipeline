@@ -7,10 +7,6 @@ library(Biostrings)
 library(dplyr)
 library(tidyr)
 
-RANKS <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
-PIPELINE <- "bowtie2;2.4.4;ANACAPA-blca;2021"
-BLAST_VERSION <- "blastn;2.12.0"
-BLAST_DB <- "NCBI-nt;"
 REF_DB_PATTERN <- "identity_filtered/\\s*(.*?)\\s*_blca_tax_table"
 
 # Parse arguments
@@ -29,15 +25,7 @@ if (length(args) == 5) {
 
 ########################### 1. Read input files  ################################################################################################################
 
-tax_file <- read.csv(tax_file_path, sep = "\t", header = T) #%>%
-  #rename("verbatimIdentification" = "taxonomy_confidence")
-
-# Add annotation pipeline and reference database
-tax_file$otu_seq_comp_appr <- PIPELINE
-#result <- regmatches(tax_file_path, regexec(REF_DB_PATTERN, tax_file_path))
-#otu_db <- result[[1]][2]
-otu_db <- "COI_terrimporter_5.1"
-tax_file$otu_db <- otu_db
+tax_file <- read.csv(tax_file_path, sep = "\t", header = T)
 
 rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
 
@@ -48,9 +36,6 @@ if (!is.null(basta_file_path)) {
     basta_file <- read.csv(basta_file_path, sep = "\t", header = F)
     colnames(basta_file) <- c("asv", "sum.taxonomy")
     basta_file$verbatimIdentification <- basta_file$sum.taxonomy
-    # Add annotation pipeline and reference database
-    basta_file$otu_seq_comp_appr <- BLAST_VERSION
-    basta_file$otu_db <- paste0(BLAST_DB, blast_date)
   }
 }
 
@@ -59,53 +44,74 @@ if (!is.null(basta_file_path)) {
 message("1. Modify tax table for taxonomic ranks, and find all possible worms ids (using worrms package)")
 
 # Clean set of taxon names into taxonomy as a named list
-clean_taxonomy <- function(taxa) {
-  if (all(str_detect(taxa, "([a-z]+)__(.*)"))) {
+clean_taxonomy <- function(taxa, prefixed, ranks) {
+  if (prefixed) {
     taxa <- taxa[taxa != "" & taxa != "NA" & taxa != "nan"]
     parts <- str_match(taxa, "([a-z]+)__(.*)")
-    ranks <- recode(parts[,2], "sk" = "superkingdom", "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
+    recoded_ranks <- recode(parts[,2], "sk" = "superkingdom", "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
     taxon_names <- as.list(parts[,3])
-    names(taxon_names) <- ranks
-    accepted_ranks <- intersect(ranks, RANKS)
-    if (length(accepted_ranks) == 0) {
-      return(list(kingdom = NA))
+    names(taxon_names) <- recoded_ranks
+    exported_ranks <- intersect(recoded_ranks, ranks)
+    if (length(exported_ranks) == 0) {
+      return(setNames(list(NA), ranks[1]))
     }
-    return(taxon_names[accepted_ranks])
-  } else { # TODO: fix, this fallback will only work for some reference databases
+    return(taxon_names[exported_ranks])
+  } else {
     if (length(taxa) == 0) {
-      return(list(kingdom = NA))
+      return(setNames(list(NA), ranks[1]))
     }
     taxa[taxa %in% c("", "NA", "nan", "unknown", "Unknown")] <- NA
-    taxon_names <- setNames(as.list(taxa), RANKS[1:length(taxa)])
+    taxon_names <- setNames(as.list(taxa), ranks[1:length(taxa)])
     return(taxon_names)
   }
 }
 
 if (exists("basta_file")) {
   # Remove ASVs present in basta file from tax file
-  #tax_file <- tax_file %>% filter(!asv %in% basta_file$rowname)
-  tax_file <- tax_file[!tax_file$asv%in%basta_file$asv,]
+  tax_file <- tax_file[!tax_file$asv %in% basta_file$asv,]
   # Merge
   tax_file <- bind_rows(tax_file, basta_file)
 }
 
 taxonomies <- str_split(str_replace(tax_file$sum.taxonomy, ";+$", ""), ";")
-cleaned <- lapply(taxonomies, clean_taxonomy)
+
+# Make educated guess about taxonomy format and clean taxonomies
+# TODO: fix, this logic will only work for some reference databases
+
+max_taxonomy_length <- max(sapply(taxonomies, length))
+most_frequent_names <- names(head(sort(table(unlist(taxonomies)), decreasing = TRUE, na.last = TRUE)))
+most_frequent_names <- most_frequent_names[most_frequent_names != ""]
+frequent_names_prefixed <- all(str_detect(most_frequent_names, "([a-z]+)__(.*)"))
+
+if (frequent_names_prefixed) {
+  prefixed <- TRUE
+} else {
+  prefixed <- FALSE
+}
+
+if (max_taxonomy_length == 8 | "Metazoa" %in% most_frequent_names) {
+  ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
+} else if (max_taxonomy_length == 7) {
+  ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+}
+
+cleaned <- lapply(taxonomies, clean_taxonomy, prefixed = prefixed, ranks = ranks)
+
+# Create output table
 
 taxmat <- cleaned %>%
   bind_rows() %>%
   as.data.frame() %>%
-  select(!!!RANKS) %>%
+  select(!!!ranks) %>%
   mutate(verbatimIdentification = tax_file$verbatimIdentification)
 
 row.names(taxmat) <- tax_file$asv
 row.names(tax_file) <- tax_file$asv
 
-# Add possible remaining unknowns to the taxmat based on asvs in the rep_seqs (keep all ASVs in the final dataset)
 rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs) %in% row.names(taxmat),])
 taxmat_unknown <- data.frame(
-  otu_seq_comp_appr = rep(PIPELINE, length(rep_seqs_unknown)),
-  otu_db = rep(otu_db, length(rep_seqs_unknown))
+  otu_seq_comp_appr = rep(NA, length(rep_seqs_unknown)),
+  otu_db = rep(NA, length(rep_seqs_unknown))
 )
 row.names(taxmat_unknown) <- rep_seqs_unknown
 taxmat <- bind_rows(taxmat, taxmat_unknown)
@@ -129,7 +135,7 @@ match_name <- function(name) {
 }
 
 # Taxon names across all ranks
-tax_names <- taxmat %>% select(!!!RANKS) %>% unlist() %>% na.omit() %>% unique() %>% sort()
+tax_names <- taxmat %>% select(!!!ranks) %>% unlist() %>% na.omit() %>% unique() %>% sort()
 matches <- sapply(tax_names, match_name)
 
 message("2. Matched names across all ranks")
@@ -139,7 +145,7 @@ taxmat$scientificNameID <- NA
 taxmat$taxonRank <- NA
 
 for (i in 1:nrow(taxmat)) {
-  lsids <- taxmat[i, RANKS] %>%
+  lsids <- taxmat[i, ranks] %>%
     as.character() %>%
     sapply(function(x) { matches[[x]]$lsid }) %>%
     sapply(function(x) { ifelse(is.null(x), NA, x) }) %>%
@@ -174,7 +180,7 @@ message("Number of species names not recognized in WORMS: ", length(names_not_in
 message("Add sequences to table")
 taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 
-#Add identificationRemarks, containing also vsearch annotation results
+# Add identificationRemarks, containing also vsearch annotation results
 taxmat$identificationRemarks <- tax_file[row.names(taxmat), "identificationRemarks"]
 message(paste("The taxonomy file contains the following fields:", colnames(tax_file), head(tax_file)))
 
