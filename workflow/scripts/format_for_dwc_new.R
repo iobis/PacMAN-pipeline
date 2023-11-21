@@ -135,5 +135,5 @@ DNA_extension_fields <- get_dwc_fields(spec_dna)
 occurrence_table <- phydf_present[,colnames(phydf_present) %in% occurrence_table_fields]
 DNA_derived_data_extension <- phydf_present[,colnames(phydf_present) %in% c("occurrenceID", DNA_extension_fields)]
 
-write.table(occurrence_table, paste0(outpath, "Occurence_table.tsv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE, na = "")
+write.table(occurrence_table, paste0(outpath, "Occurrence_table.tsv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE, na = "")
 write.table(DNA_derived_data_extension, paste0(outpath, "DNA_extension_table.tsv"), sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE, na = "")
