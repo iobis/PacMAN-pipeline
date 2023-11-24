@@ -362,19 +362,75 @@ kable(dada2_stats)
 
 ### RDP
 
-Next, taxonomy was assigned to the inferred reads using rdp
+Next, taxonomy was assigned to the inferred reads using rdp. It's important to note that 
 
-The command used for the alignment was the following:
+The command used for the rdp search was the following:
+
+```{r, echo=F}
+
+cat("rdp_classifier -Xmx16g classify -t", config$Rdp$location_rdp_ref, " -o  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/rdp/" , config$Rdp$rdp_ref_name, "_rdp.output",
+    " -q results/", config$PROJECT, "/runs/", config$RUN, "/03-dada2/rep-seqs.fna", sep = "")
+
+```
+
+Additionally a vsearch local alignment was made to a reference database to find matches and their ids.
+
+```{r, echo=F}
+ cat("vsearch --usearch_global results/", config$PROJECT, "/runs/", config$RUN, "/03-dada2/rep-seqs.fna  --db", config$Vsearch$location_vsearch_db, " --id ", config$Vsearch$pident,
+        " --blast6out results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/vsearch/", config$Vsearch$vsearch_db_name, "_vsearch_blast.b6 --threads 4  --output_no_hits --query_cov ", config$Vsearch$query_cov,
+        " --maxaccepts 100 --maxrejects 100 --maxhits 10 ",
+        " --lcaout results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/vsearch/", config$Vsearch$vsearch_db_name, "_vsearch_lcaout.tab  --lca_cutoff 0.6 --notrunclabels ",
+        "2> --lcaout results/", config$PROJECT, "/runs/", config$RUN, "/06-report/vsearch/vsearch_", config$Vsearch$vsearch_db_name, ".log ", sep = "")
+
+```
+
+This command indicates that from a maximum of 10 hits that all meet the criteria (identity and query coverage), the final result is a consensus taxonomy that over 60% of these hits agree on. 
+This lca workflow is meant to filter out hits, were there are multiple conflicting high-identity hits.
+
+The vsearch log indicates how many matches were made with this search:
+
+```{r, echo=F}
+
+  vsearch_log <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/vsearch/vsearch_", config$Vsearch$vsearch_db_name, ".log" )
+
+  file <- file(vsearch_log, "r")
+  line <- readLines(file)
+
+  total_matches<- line[grep(pattern="Matching unique query sequences:", line)]
+
+ cat(total_matches, "with an identity cutoff of", config$Vsearch$pident, "a query coverage of", config$Vsearch$query_cov, "and an lca cutoff of 0.6")
+```
 
 
-For this step the user defines the cutoff value used for accepting a taxonomic assignment (what is the likelihood that it is correct based on the 100 alignments made).
+Finally all results are stored in the output files after a filtering step.
 
+```{r, echo=F}
+ cat("The rdp results were then filtered based off of the user defined probability cutoff:", config$Rdp$cutoff)
 
+```
+
+The rdp results after filtering are stored as the taxonomic lineage, while the full results with probability, and the vsearch hits are stored in the field "identificationRemarks", and are included in the final Darwin Core files.
 
 
 ### Blast against the full ncbi-nt
 
-If chosen by the user (Blast: include: TRUE in the config file) the unknown sequences that did not align with the defined reference database, as well as those that did not have a match based on the blca analysis were aligned against the full ncbi-nt database. 
+If chosen by the user (Blast: include: TRUE in the config file) the unknown sequences that did not have a match (results either "", or only "Eukaryota"), were further analysed with blastn.
+
+```{R, echo=F}
+
+cat("The unknown sequences defined in this way can be found in: /results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/unknown_asvs.txt", sep="")
+
+unknown_asvs_loc=paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/unknown_asvs.txt")
+all_asvs_loc=paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/03-dada2/rep-seqs.fna")
+
+n_unknown <- system(paste('grep -c "asv." ',unknown_asvs_loc), intern=T)
+n_asvs=system(paste('grep -c "^>" ',all_asvs_loc), intern=T)
+
+cat("In total there were ", n_unknown, " asvs, from a total of ", n_asvs)
+
+```
+
+
 The used command was:
 
 ```{r, echo=F}

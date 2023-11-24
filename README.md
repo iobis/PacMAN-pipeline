@@ -146,7 +146,7 @@ Taxonomy is annotated using two different methods. Annotation using the naive ba
 
 To confirm the results with a local alignment to the reference database, also vsearch is used. The parameters of vsearch can be defined by the user. We use it to find matches with very high sequence similarity to the query (97-100%), to confirm the results of rdp as well as detect any disrepancies, or unclear results in the reference database. The top 10 hits are filtered with a built-in lca algorithm, to find the consensus taxonomy. The reference database format required for this process is the sintax format.
 
-
+**Note** As two different taxonomic assignment methods are used to enable confirmation of the results, two different reference database formats are also necessary.
 
 ### 5. Blast and lca (optional)
 
