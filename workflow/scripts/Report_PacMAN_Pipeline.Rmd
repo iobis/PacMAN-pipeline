@@ -558,11 +558,11 @@ if (nsamples(pseq_rel) > 2) {
 
 ## Darwin core archive tables
 
-Finally, the results of this analysis were collected in a Darwin Core Occurrence table and DNA-derived data extension, to facilitate submitting the data to OBIS.
+Finally, the results of this analysis were collected in a Darwin Core Occurrence table and DNA-derived data extension, to facilitate submitting the data to OBIS.  
 
 First, lsids for the assigned taxa were collected based on names in the WoRMS database. Occurrences that are not included in the final tables are mostly known taxa that are not marine. These occurrences are listed in the table 05-dwca/Taxa_not_in_worms.tsv. This table also potentially has marine species that are not recognized by WoRMS yet, and therefore it is recommended to manually review this table.
 
-All unknown sequences that did not have a taxonomic assignment are added in the occurrence table as 'Biota', however in the future more checks will be made to filter out sequences that were not from the target gene region or are likely not marine.
+All unknown sequences that did not have a taxonomic assignment are added in the occurrence table as 'Incertae sedis' (urn:lsid:marinespecies.org:taxname:12), however in the future more checks will be made to filter out sequences that were not from the target gene region or are likely not marine.
 
 In addition, if there was a control sample which was labelled in the original sample as OccurrenceStatus; "absent", any occurrences of the taxa found in this sample were removed from all samples.
 
@@ -580,7 +580,7 @@ occ_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-d
 occ_table <- read.table(occ_path, header = TRUE, sep = "\t")
 
 cat("The total number of occurrences was", nrow(occ_table), ".  \n")
-cat("Of which", sum(occ_table$scientificName!="Biota"), "were known, and therefore", sum(occ_table$scientificName=="Biota"), "or", sum(occ_table$scientificName=="Biota") / nrow(occ_table) * 100, "% remained unknown.  \n  \nThe sequences of these occurrences can nevertheless be added to the database, and it is possible that their taxonomy will be defined when reference databases develop.  \n  \n")
+cat("Of which", sum(occ_table$scientificName!="Incertae sedis"), "were known, and therefore", sum(occ_table$scientificName=="Incertae sedis"), "or", sum(occ_table$scientificName=="Incertae sedis") / nrow(occ_table) * 100, "% remained unknown.  \n  \nThe sequences of these occurrences can nevertheless be added to the database, and it is possible that their taxonomy will be defined when reference databases develop.  \n  \n")
 
 notinworms_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Taxa_not_in_worms.tsv")
 notinworms_table <- read.table(notinworms_path, header=TRUE, sep = "\t")
