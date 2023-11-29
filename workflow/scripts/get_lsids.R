@@ -1,4 +1,4 @@
-# Written by Saara Suominen (saara.suominen.work@gmail.com)
+# Written by Saara Suominen and Pieter Provoost (saara.suominen.work@gmail.com)
 # for OBIS and PacMAN
 
 library(worrms)
@@ -35,7 +35,7 @@ if (!is.null(basta_file_path)) {
     message("0. Results of Blast annotation read")
     basta_file <- read.csv(basta_file_path, sep = "\t", header = F)
     colnames(basta_file) <- c("asv", "sum.taxonomy")
-    basta_file$verbatimIdentification <- basta_file$sum.taxonomy
+    #basta_file$identificationRemarks <- basta_file$sum.taxonomy
   }
 }
 
@@ -61,16 +61,11 @@ clean_taxonomy <- function(taxa, prefixed, ranks) {
       return(setNames(list(NA), ranks[1]))
     }
     taxa[taxa %in% c("", "NA", "nan", "unknown", "Unknown")] <- NA
+    taxa[grepl("uncultured", taxa, ignore.case = TRUE)] <- NA
+    taxa[grepl("sp.", taxa, ignore.case = TRUE)] <- NA
     taxon_names <- setNames(as.list(taxa), ranks[1:length(taxa)])
     return(taxon_names)
   }
-}
-
-if (exists("basta_file")) {
-  # Remove ASVs present in basta file from tax file
-  tax_file <- tax_file[!tax_file$asv %in% basta_file$asv,]
-  # Merge
-  tax_file <- bind_rows(tax_file, basta_file)
 }
 
 taxonomies <- str_split(str_replace(tax_file$sum.taxonomy, ";+$", ""), ";")
@@ -107,6 +102,47 @@ taxmat <- cleaned %>%
 
 row.names(taxmat) <- tax_file$asv
 row.names(tax_file) <- tax_file$asv
+
+#Clean separately basta file and add to taxmat together
+
+if (exists("basta_file")) {
+taxonomies <- str_split(str_replace(basta_file$sum.taxonomy, ";+$", ""), ";")
+
+max_taxonomy_length <- max(sapply(taxonomies, length))
+most_frequent_names <- names(head(sort(table(unlist(taxonomies)), decreasing = TRUE, na.last = TRUE)))
+most_frequent_names <- most_frequent_names[most_frequent_names != ""]
+frequent_names_prefixed <- all(str_detect(most_frequent_names, "([a-z]+)__(.*)"))
+
+if (frequent_names_prefixed) {
+  prefixed <- TRUE
+} else {
+  prefixed <- FALSE
+}
+
+if (max_taxonomy_length == 8 | "Metazoa" %in% most_frequent_names) {
+  ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
+} else if (max_taxonomy_length == 7) {
+  ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+}
+
+cleaned_basta <- lapply(taxonomies, clean_taxonomy, prefixed = prefixed, ranks = ranks)
+
+taxmat_basta <- cleaned_basta %>%
+  bind_rows() %>%
+  as.data.frame() %>%
+  select(!!!ranks) #%>%
+  #mutate(verbatimIdentification = tax_file$verbatimIdentification)
+
+row.names(taxmat_basta) <- basta_file$asv
+row.names(basta_file) <- basta_file$asv
+
+  # Remove ASVs present in basta file from tax file
+taxmat <- taxmat[!rownames(taxmat) %in% rownames(taxmat_basta),]
+
+  # Merge
+taxmat <- bind_rows(taxmat, taxmat_basta)
+
+}
 
 rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs) %in% row.names(taxmat),])
 taxmat_unknown <- data.frame(
@@ -145,6 +181,14 @@ taxmat$scientificNameID <- NA
 taxmat$taxonRank <- NA
 
 for (i in 1:nrow(taxmat)) {
+  
+  #The taxonomy info can be different lengths now? 
+  if (length(taxmat[i,])==13) {
+  ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
+} else {
+  ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+}
+  
   lsids <- taxmat[i, ranks] %>%
     as.character() %>%
     sapply(function(x) { matches[[x]]$lsid }) %>%
@@ -166,8 +210,7 @@ for (i in 1:nrow(taxmat)) {
   taxmat$genus[i] <- matches[[most_specific_name]]$genus
 }
 
-# Add Biota LSID in case there is no last value
-# Kingdom is used as taxonRank so that "Biota" is also recognized correctly by GBIF
+# Add Incertae LSID in case there is no last value
 taxmat$scientificName[is.na(taxmat$scientificName)] <- "Incertae sedis"
 taxmat$taxonRank[is.na(taxmat$scientificNameID)] <- "kingdom"
 taxmat$scientificNameID[is.na(taxmat$scientificNameID)] <- "urn:lsid:marinespecies.org:taxname:12"
