@@ -450,6 +450,7 @@ rule get_lsids:
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
     {input.f1} \
     {input.f2} \
+    "+config_path+" \
     {input.f3} \
     {config[BLAST][database_date]}"
 

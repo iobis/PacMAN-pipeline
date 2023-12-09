@@ -6,6 +6,7 @@ library(stringr)
 library(Biostrings)
 library(dplyr)
 library(tidyr)
+library(yaml)
 
 REF_DB_PATTERN <- "identity_filtered/\\s*(.*?)\\s*_blca_tax_table"
 
@@ -16,9 +17,11 @@ message("args <- ", capture.output(dput(args))) # output for debugging
 outpath <- args[1]
 tax_file_path <- args[2]
 rep_seqs_path <- args[3]
-if (length(args) == 5) {
-    basta_file_path <- args[4]
-    blast_date <- args[5]
+config_path <- args[4]
+
+if (length(args) == 6) {
+    basta_file_path <- args[5]
+    blast_date <- args[6]
 } else {
     basta_file_path <- NULL
 }
@@ -28,6 +31,8 @@ if (length(args) == 5) {
 tax_file <- read.csv(tax_file_path, sep = "\t", header = T)
 
 rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
+
+config <- read_yaml(config_path)
 
 # If blast was performed on the unknown sequences:
 if (!is.null(basta_file_path)) {
@@ -98,7 +103,7 @@ taxmat <- cleaned %>%
   bind_rows() %>%
   as.data.frame() %>%
   select(!!!ranks) %>%
-  mutate(verbatimIdentification = tax_file$verbatimIdentification)
+  mutate(verbatimIdentification = tax_file$identificationRemarks)
 
 row.names(taxmat) <- tax_file$asv
 row.names(tax_file) <- tax_file$asv
@@ -130,8 +135,8 @@ cleaned_basta <- lapply(taxonomies, clean_taxonomy, prefixed = prefixed, ranks =
 taxmat_basta <- cleaned_basta %>%
   bind_rows() %>%
   as.data.frame() %>%
-  select(!!!ranks) #%>%
-  #mutate(verbatimIdentification = tax_file$verbatimIdentification)
+  select(!!!ranks) %>%
+  mutate(verbatimIdentification = paste("Identification based on blastn against the full nt database (downloaded on", blast_date, "), and with basta-lca with filtering on:", config$BLAST$percent_identity, "percent identity,", config$BLAST$"e-value", "e-value, and", config$BLAST$alignment_length, "alignment length"))
 
 row.names(taxmat_basta) <- basta_file$asv
 row.names(basta_file) <- basta_file$asv
@@ -186,7 +191,7 @@ for (i in 1:nrow(taxmat)) {
   message(paste("round", i))
 
   #The taxonomy info can be different lengths now? 
-  if (length(taxmat[i,])==13) {
+  if (length(taxmat[i,])==14) {
   ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
     } else {
   ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
@@ -231,7 +236,7 @@ message("Add sequences to table")
 taxmat$DNA_sequence <- as.character(rep_seqs[row.names(taxmat)])
 
 # Add identificationRemarks, containing also vsearch annotation results
-taxmat$identificationRemarks <- tax_file[row.names(taxmat), "identificationRemarks"]
+#taxmat$identificationRemarks <- tax_file[row.names(taxmat), "identificationRemarks"]
 message(paste("The taxonomy file contains the following fields:", colnames(tax_file), head(tax_file)))
 
 # Write table of unknown names to make manual inspection easier:
