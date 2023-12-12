@@ -7,6 +7,7 @@ library(Biostrings)
 library(dplyr)
 library(tidyr)
 library(yaml)
+library(purrr)
 
 REF_DB_PATTERN <- "identity_filtered/\\s*(.*?)\\s*_blca_tax_table"
 
@@ -108,45 +109,44 @@ taxmat <- cleaned %>%
 row.names(taxmat) <- tax_file$asv
 row.names(tax_file) <- tax_file$asv
 
-#Clean separately basta file and add to taxmat together
+# Clean separately basta file and add to taxmat together
 
 if (exists("basta_file")) {
-taxonomies <- str_split(str_replace(basta_file$sum.taxonomy, ";+$", ""), ";")
+    taxonomies <- str_split(str_replace(basta_file$sum.taxonomy, ";+$", ""), ";")
 
-max_taxonomy_length <- max(sapply(taxonomies, length))
-most_frequent_names <- names(head(sort(table(unlist(taxonomies)), decreasing = TRUE, na.last = TRUE)))
-most_frequent_names <- most_frequent_names[most_frequent_names != ""]
-frequent_names_prefixed <- all(str_detect(most_frequent_names, "([a-z]+)__(.*)"))
+    max_taxonomy_length <- max(sapply(taxonomies, length))
+    most_frequent_names <- names(head(sort(table(unlist(taxonomies)), decreasing = TRUE, na.last = TRUE)))
+    most_frequent_names <- most_frequent_names[most_frequent_names != ""]
+    frequent_names_prefixed <- all(str_detect(most_frequent_names, "([a-z]+)__(.*)"))
 
-if (frequent_names_prefixed) {
-  prefixed <- TRUE
-} else {
-  prefixed <- FALSE
-}
+    if (frequent_names_prefixed) {
+      prefixed <- TRUE
+    } else {
+      prefixed <- FALSE
+    }
 
-if (max_taxonomy_length == 8 | "Metazoa" %in% most_frequent_names) {
-  ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
-} else if (max_taxonomy_length == 7) {
-  ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
-}
+    if (max_taxonomy_length == 8 | "Metazoa" %in% most_frequent_names) {
+      ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
+    } else if (max_taxonomy_length == 7) {
+      ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+    }
 
-cleaned_basta <- lapply(taxonomies, clean_taxonomy, prefixed = prefixed, ranks = ranks)
+    cleaned_basta <- lapply(taxonomies, clean_taxonomy, prefixed = prefixed, ranks = ranks)
 
-taxmat_basta <- cleaned_basta %>%
-  bind_rows() %>%
-  as.data.frame() %>%
-  select(!!!ranks) %>%
-  mutate(verbatimIdentification = paste("Identification based on blastn against the full nt database (downloaded on", blast_date, "), and with basta-lca with filtering on:", config$BLAST$percent_identity, "percent identity,", config$BLAST$"e-value", "e-value, and", config$BLAST$alignment_length, "alignment length"))
+    taxmat_basta <- cleaned_basta %>%
+      bind_rows() %>%
+      as.data.frame() %>%
+      select(!!!ranks) %>%
+      mutate(verbatimIdentification = paste("Identification based on blastn against the full nt database (downloaded on", blast_date, "), and with basta-lca with filtering on:", config$BLAST$percent_identity, "percent identity,", config$BLAST$"e-value", "e-value, and", config$BLAST$alignment_length, "alignment length"))
 
-row.names(taxmat_basta) <- basta_file$asv
-row.names(basta_file) <- basta_file$asv
+    row.names(taxmat_basta) <- basta_file$asv
+    row.names(basta_file) <- basta_file$asv
 
-  # Remove ASVs present in basta file from tax file
-taxmat <- taxmat[!rownames(taxmat) %in% rownames(taxmat_basta),]
+    # Remove ASVs present in basta file from tax file
+    taxmat <- taxmat[!rownames(taxmat) %in% rownames(taxmat_basta),]
 
-  # Merge
-taxmat <- bind_rows(taxmat, taxmat_basta)
-
+    # Merge
+    taxmat <- bind_rows(taxmat, taxmat_basta)
 }
 
 rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs) %in% row.names(taxmat),])
@@ -157,45 +157,51 @@ taxmat_unknown <- data.frame(
 row.names(taxmat_unknown) <- rep_seqs_unknown
 taxmat <- bind_rows(taxmat, taxmat_unknown)
 
-# TODO: failing with rate limit, submit in batches with at least version 0.4.3 of worrms (https://anaconda.org/conda-forge/r-worrms)
-match_name <- function(name) {
-  lsid <- tryCatch({
-    res <- wm_records_names(name, marine_only = FALSE)
-    # TODO: fix
-    Sys.sleep(1)
-    matches <- res[[1]] %>%
-      filter(match_type == "exact" | match_type == "exact_genus" | match_type == "exact_subgenus")
-    if (nrow(matches) > 1) {
-      message(paste0("Multiple matches for ", name))
-    }
-    return(matches[1,])
-  }, error = function(cond) {
-    message(cond)
-    return(NULL)
-  })
-}
+# Match distinct names
 
-# Taxon names across all ranks
 tax_names <- taxmat %>% select(!!!ranks) %>% unlist() %>% na.omit() %>% unique() %>% sort()
-matches <- sapply(tax_names, match_name)
+
+name_batches <- split(tax_names, as.integer((seq_along(tax_names) - 1) / 50))
+get_matches <- insistently(function(batch) {
+  res <- worrms::wm_records_names(batch, marine_only = FALSE, on_error = warning)
+  if (is.null(res)) {
+    # worrms returns NULL if any other error than 204
+    stop("Error trying to match names")
+  }
+  res
+}, quiet = FALSE)
+matched_batches <- purrr::map(name_batches, function(batch) {
+  res <- get_matches(batch)
+  names(res) <- batch
+  df <- bind_rows(res, .id = "input")
+  if (nrow(df) > 0) {
+    df <- df %>%
+      filter(match_type == "exact" | match_type == "exact_genus" | match_type == "exact_subgenus") %>%
+      mutate(priority = ifelse(status == "accepted", 1, 0)) %>%
+      group_by(input) %>%
+      arrange(desc(priority)) %>%
+      filter(row_number() == 1)
+  }
+  df
+})
+matches <- bind_rows(matched_batches) %>%
+  split(f = .$input)
 
 message("2. Matched names across all ranks")
 
 taxmat$scientificName <- NA
 taxmat$scientificNameID <- NA
 taxmat$taxonRank <- NA
-taxmat2<-taxmat
+taxmat2 <- taxmat
 
 for (i in 1:nrow(taxmat)) {
   
-  message(paste("round", i))
-
   #The taxonomy info can be different lengths now? 
   if (length(taxmat[i,])==14) {
-  ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
-    } else {
-  ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
-    }
+    ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
+  } else {
+    ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+  }
   
   lsids <- taxmat[i, ranks] %>%
     as.character() %>%
