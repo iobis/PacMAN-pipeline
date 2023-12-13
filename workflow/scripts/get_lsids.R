@@ -68,7 +68,7 @@ clean_taxonomy <- function(taxa, prefixed, ranks) {
     }
     taxa[taxa %in% c("", "NA", "nan", "unknown", "Unknown")] <- NA
     taxa[grepl("uncultured", taxa, ignore.case = TRUE)] <- NA
-    taxa[grepl("sp.", taxa, ignore.case = TRUE)] <- NA
+    taxa[grepl("sp\\.", taxa, ignore.case = TRUE)] <- NA
     taxon_names <- setNames(as.list(taxa), ranks[1:length(taxa)])
     return(taxon_names)
   }
