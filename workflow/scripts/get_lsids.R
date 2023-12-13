@@ -192,16 +192,8 @@ message("2. Matched names across all ranks")
 taxmat$scientificName <- NA
 taxmat$scientificNameID <- NA
 taxmat$taxonRank <- NA
-taxmat2 <- taxmat
 
 for (i in 1:nrow(taxmat)) {
-  
-  #The taxonomy info can be different lengths now? 
-  if (length(taxmat[i,])==14) {
-    ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
-  } else {
-    ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
-  }
   
   lsids <- taxmat[i, ranks] %>%
     as.character() %>%
@@ -211,22 +203,20 @@ for (i in 1:nrow(taxmat)) {
   if (all(is.na(lsids))) next
 
   most_specific_name <- taxmat[i, max(which(!is.na(lsids)))]
-  scientificnameid <- matches[[most_specific_name]]$lsid
-
-  #Don't change the original taxmat, because of the ranks issue
-  
-  taxmat2$scientificName[i] <- matches[[most_specific_name]]$scientificname
-  taxmat2$scientificNameID[i] <- matches[[most_specific_name]]$lsid
-  taxmat2$taxonRank[i] <- tolower(matches[[most_specific_name]]$rank)
-  taxmat2$kingdom[i] <- matches[[most_specific_name]]$kingdom
-  taxmat2$phylum[i] <- matches[[most_specific_name]]$phylum
-  taxmat2$class[i] <- matches[[most_specific_name]]$class
-  taxmat2$order[i] <- matches[[most_specific_name]]$order
-  taxmat2$family[i] <- matches[[most_specific_name]]$family
-  taxmat2$genus[i] <- matches[[most_specific_name]]$genus
+  best_match <- as.data.frame(matches[[most_specific_name]])
+  taxmat$scientificName[i] <- best_match$scientificname
+  taxmat$scientificNameID[i] <- best_match$lsid
+  taxmat$taxonRank[i] <- tolower(best_match$rank)
+  for (rank in ranks) {
+    if (rank == "species" & best_match$rank == "Species") {
+      taxmat[i, rank] <- best_match$scientificname
+    } else if (rank %in% names(best_match)) {
+      taxmat[i, rank] <- best_match[,rank]
+    } else {
+      taxmat[i, rank] <- NA
+    }
+  }
 }
-
-taxmat <- taxmat2
 
 # Add Incertae LSID in case there is no last value
 taxmat$scientificName[is.na(taxmat$scientificName)] <- "Incertae sedis"
