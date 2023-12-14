@@ -74,71 +74,53 @@ clean_taxonomy <- function(taxa, prefixed, ranks) {
   }
 }
 
-taxonomies <- str_split(str_replace(tax_file$sum.taxonomy, ";+$", ""), ";")
+taxonomy_to_taxmat <- function(taxonomy) {
+  # Make educated guess about taxonomy format and clean taxonomies
+  # TODO: fix, this logic will only work for some reference databases
 
-# Make educated guess about taxonomy format and clean taxonomies
-# TODO: fix, this logic will only work for some reference databases
+  taxonomies <- str_split(str_replace(taxonomy, ";+$", ""), ";")
 
-max_taxonomy_length <- max(sapply(taxonomies, length))
-most_frequent_names <- names(head(sort(table(unlist(taxonomies)), decreasing = TRUE, na.last = TRUE)))
-most_frequent_names <- most_frequent_names[most_frequent_names != ""]
-frequent_names_prefixed <- all(str_detect(most_frequent_names, "([a-z]+)__(.*)"))
+  max_taxonomy_length <- max(sapply(taxonomies, length))
+  most_frequent_names <- names(head(sort(table(unlist(taxonomies)), decreasing = TRUE, na.last = TRUE)))
+  most_frequent_names <- most_frequent_names[most_frequent_names != ""]
+  frequent_names_prefixed <- all(str_detect(most_frequent_names, "([a-z]+)__(.*)"))
 
-if (frequent_names_prefixed) {
-  prefixed <- TRUE
-} else {
-  prefixed <- FALSE
+  if (frequent_names_prefixed) {
+    prefixed <- TRUE
+  } else {
+    prefixed <- FALSE
+  }
+
+  if (max_taxonomy_length == 8 | "Metazoa" %in% most_frequent_names) {
+    ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
+  } else if (max_taxonomy_length == 7) {
+    ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+  }
+
+  cleaned <- lapply(taxonomies, clean_taxonomy, prefixed = prefixed, ranks = ranks)
+
+  taxmat <- cleaned %>%
+    bind_rows() %>%
+    as.data.frame() %>%
+    select(!!!ranks)
+
+  return(list(taxmat = taxmat, ranks = ranks))
 }
 
-if (max_taxonomy_length == 8 | "Metazoa" %in% most_frequent_names) {
-  ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
-} else if (max_taxonomy_length == 7) {
-  ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
-}
-
-cleaned <- lapply(taxonomies, clean_taxonomy, prefixed = prefixed, ranks = ranks)
-
-# Create output table
-
-taxmat <- cleaned %>%
-  bind_rows() %>%
-  as.data.frame() %>%
-  select(!!!ranks) %>%
-  mutate(verbatimIdentification = tax_file$identificationRemarks)
-
+taxmat_result <- taxonomy_to_taxmat(tax_file$sum.taxonomy)
+ranks <- taxmat_result$ranks
+taxmat <- taxmat_result$taxmat %>%
+    mutate(verbatimIdentification = tax_file$identificationRemarks)
 row.names(taxmat) <- tax_file$asv
 row.names(tax_file) <- tax_file$asv
 
 # Clean separately basta file and add to taxmat together
 
 if (exists("basta_file")) {
-    taxonomies <- str_split(str_replace(basta_file$sum.taxonomy, ";+$", ""), ";")
-
-    max_taxonomy_length <- max(sapply(taxonomies, length))
-    most_frequent_names <- names(head(sort(table(unlist(taxonomies)), decreasing = TRUE, na.last = TRUE)))
-    most_frequent_names <- most_frequent_names[most_frequent_names != ""]
-    frequent_names_prefixed <- all(str_detect(most_frequent_names, "([a-z]+)__(.*)"))
-
-    if (frequent_names_prefixed) {
-      prefixed <- TRUE
-    } else {
-      prefixed <- FALSE
-    }
-
-    if (max_taxonomy_length == 8 | "Metazoa" %in% most_frequent_names) {
-      ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
-    } else if (max_taxonomy_length == 7) {
-      ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
-    }
-
-    cleaned_basta <- lapply(taxonomies, clean_taxonomy, prefixed = prefixed, ranks = ranks)
-
-    taxmat_basta <- cleaned_basta %>%
-      bind_rows() %>%
-      as.data.frame() %>%
-      select(!!!ranks) %>%
+    taxmat_result_basta <- taxonomy_to_taxmat(basta_file$sum.taxonomy)
+    ranks_basta <- taxmat_result_basta$ranks
+    taxmat_basta <- taxmat_result_basta$taxmat %>%
       mutate(verbatimIdentification = paste("Identification based on blastn against the full nt database (downloaded on", blast_date, "), and with basta-lca with filtering on:", config$BLAST$percent_identity, "percent identity,", config$BLAST$"e-value", "e-value, and", config$BLAST$alignment_length, "alignment length"))
-
     row.names(taxmat_basta) <- basta_file$asv
     row.names(basta_file) <- basta_file$asv
 
@@ -147,6 +129,7 @@ if (exists("basta_file")) {
 
     # Merge
     taxmat <- bind_rows(taxmat, taxmat_basta)
+    ranks <- unique(c(ranks, ranks_basta))
 }
 
 rep_seqs_unknown <- names(rep_seqs[!names(rep_seqs) %in% row.names(taxmat),])
