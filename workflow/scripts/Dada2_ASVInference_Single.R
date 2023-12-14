@@ -120,7 +120,6 @@ dadas <- list()
 seqtab <- list()
 files_exist <- list()
 
-
 for (i in 1:4) {
 
   message("Check that files are not empty")
@@ -129,7 +128,7 @@ for (i in 1:4) {
 
   for (j in 1:length(allfiles[[i]])) {
     info <- file.info(allfiles[[i]][j])
-    if (!is.na(info$size) & info$size > 20) { # 20 is the size of an empty .gz file
+    if (!is.na(info$size) & info$size > 36) { # 36 is the size of an empty .gz file
       files_loop <- c(files_loop, allfiles[[i]][j])
     }
   }
@@ -142,64 +141,66 @@ for (i in 1:4) {
 }
 
 # Update sample names with existing paired files
-sample.names<-names(files_exist[[1]])
+sample.names <- names(files_exist[[1]])
 
 # Loop through all file types (forward, reverse, unpaired forward, unpaired reverse) for learning errors and dereplicating
 for (i in 1:4) {
 
-  if (length(files_exist[[i]])!=0) {        #any(file.exists(files_exist[[i]]))
+  if (length(files_exist[[i]]) != 0) {        #any(file.exists(files_exist[[i]]))
 
     message(paste("learning error rates of files:", i, ": (1) forward paired (2) reverse paired (3) forward single and (4) reverse single " , sep=" "))
 
     #Add here a more generic character matching
-    if (config$meta$sequencing$seq_meth=="NovaSeq6000"){ 
-    message("learning error rates using a modified error model for NovaSeq data")
+    if (config$meta$sequencing$seq_meth == "NovaSeq6000") {
+      message("learning error rates using a modified error model for NovaSeq data")
 
-    errs[[i]] <- learnErrors(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
-                            multithread = config$DADA2$learnERRORS$multithread,
-                            nbases = as.numeric(config$DADA2$learnERRORS$nbases),
-                            randomize = config$DADA2$learnERRORS$randomize,
-                            MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
-                            OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
-                            verbose = config$DADA2$learnERRORS$verbose,
-                            errorEstimationFunction = loessErrfun_mod4,
-                            )
-
+      errs[[i]] <- dada2::learnErrors(
+        files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
+        multithread = config$DADA2$learnERRORS$multithread,
+        nbases = as.numeric(config$DADA2$learnERRORS$nbases),
+        randomize = config$DADA2$learnERRORS$randomize,
+        MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
+        OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
+        verbose = config$DADA2$learnERRORS$verbose,
+        errorEstimationFunction = loessErrfun_mod4,
+      )
 
     } else {
-    
-    
-    errs[[i]] <- learnErrors(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
-                            multithread = config$DADA2$learnERRORS$multithread,
-                            nbases = as.numeric(config$DADA2$learnERRORS$nbases),
-                            randomize = config$DADA2$learnERRORS$randomize,
-                            MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
-                            OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
-                            verbose = config$DADA2$learnERRORS$verbose)
+
+      errs[[i]] <- dada2::learnErrors(
+        files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
+        multithread = config$DADA2$learnERRORS$multithread,
+        nbases = as.numeric(config$DADA2$learnERRORS$nbases),
+        randomize = config$DADA2$learnERRORS$randomize,
+        MAX_CONSIST = as.numeric(config$DADA2$learnERRORS$MAX_CONSIST),
+        OMEGA_C = as.numeric(config$DADA2$learnERRORS$OMEGA_C),
+        verbose = config$DADA2$learnERRORS$verbose
+      )
 
     }
 
     message("Making error estimation plots of reads")
     png(filename = paste0(outpath, "06-report/dada2/error_profile_", names(allfiles)[i], ".png"))
-      p_ERR <- plotErrors(
-        errs[[i]],
-        nti = nti,
-        ntj = ntj,
-        obs = config$DADA2$plotERRORS$obs,
-        err_out = config$DADA2$plotERRORS$err_out,
-        err_in = config$DADA2$plotERRORS$err_in,
-        nominalQ = config$DADA2$plotERRORS$nominalQ)
-      print(p_ERR)
+    p_ERR <- dada2::plotErrors(
+      errs[[i]],
+      nti = nti,
+      ntj = ntj,
+      obs = config$DADA2$plotERRORS$obs,
+      err_out = config$DADA2$plotERRORS$err_out,
+      err_in = config$DADA2$plotERRORS$err_in,
+      nominalQ = config$DADA2$plotERRORS$nominalQ
+    )
+    print(p_ERR)
     dev.off()
 
     message("Running dereplication of reads")
     #print(paste("files that exist:", files_exist[[i]]))
-    dereps[[i]] <- derepFastq(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
+    dereps[[i]] <- dada2::derepFastq(files_exist[[i]], #allfiles[[i]][file.exists(allfiles[[i]])]
                               n = as.numeric(config$DADA2$derepFastq$num),
                               config$DADA2$learnERRORS$verbose)
 
     message("Running dada on reads")
-    dadas[[i]] <- dada(dereps[[i]],
+    dadas[[i]] <- dada2::dada(dereps[[i]],
                       errs[[i]],
                       selfConsist = config$DADA2$dada$selfConsist,
                       pool = config$DADA2$dada$pool,
@@ -300,42 +301,66 @@ if (config$DADA2$mergePairs$include) {
 
   seqtab <- makeSequenceTable(mergers)
 
-  # When merging is done with returnRejects=TRUE, the abundance of the rejected merges is returned, but not the sequence
+# When merging is done with returnRejects=TRUE, the abundance of the rejected merges is returned, but not the sequence
   # We want to collect also these single sequences and add them to the seqtab (to avoid loosing ANY data)
   if (config$DADA2$mergePairs$returnRejects == TRUE) {
 
-    unmerged_f <- list()
-    unmerged_r <- list()
-    concatenated <- list()
+    unknown_f <- list()
+    unknown_r <- list()
 
+    #Forward reads:
     for (i in 1:length(sample.names)) {
-      unmerged_f[[i]] <- dadas[[1]][[sample.names[i]]]$sequence[mergers[[sample.names[i]]]$forward[!mergers[[sample.names[i]]]$accept]]
-      unmerged_r[[i]] <- dadas[[2]][[sample.names[i]]]$sequence[mergers[[sample.names[i]]]$reverse[!mergers[[sample.names[i]]]$accept]]
-      # Here for the rejected reads (!merger$sample$accept) the indices are collected (merger$sample$forward, merger$sample$reverse)
-      # The sequences are sourced from the original dada-file (dadaF$sample$denoised, dadaR$sample$denoised)
-      # It seems that concatenating these reads and keeping them for further analyses can result in better taxonomic coverage (Dacey et al. 2021 https://doi.org/10.1186/s12859-021-04410-2)
-      # Abundances for these reads is taken from the merged abundances.
-      # reverse complement reverse reads so that the following taxonomic assignment will work optimally.
-      unmerged_r[[i]] <- sapply(sapply(sapply(unmerged_r[[i]], DNAString), Biostrings::reverseComplement), toString)
-      sequence <- paste0(unmerged_f[[i]], unmerged_r[[i]])
-      abundance <- mergers[[sample.names[i]]]$abundance[!mergers[[sample.names[i]]]$accept]
-      concatenated[[i]] <- tibble(sequence, abundance)
+      
+      #The most simple way to get the rejected sequences:
+      #https://github.com/benjjneb/dada2/issues/354
+      rejects <- mergers[[i]][!mergers[[i]]$accept,]
+      rejects.fwd.seq <- dadas[[1]][[i]]$sequence[rejects$forward]
+
+      #$denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
+      #https://rdrr.io/bioc/dada2/man/dada-class.html
+      abundance_f<- dadas[[1]][[i]]$denoised[rejects.fwd.seq]
+
+      #Make sequence table requires the correct names
+      unknown_f[[i]] <- tibble(rejects.fwd.seq, abundance)
+      colnames(unknown_f[[i]]) <- c("sequence", "abundance")
     }
-    names(concatenated) <- sample.names
+    
+    #Reverse reads
+    for (i in 1:length(sample.names)) {
+      
+      #The most simple way to get the rejected sequences:
+      #https://github.com/benjjneb/dada2/issues/354
+      rejects <- mergers[[i]][!mergers[[i]]$accept,]
+      rejects.rev.seq <- dadas[[1]][[i]]$sequence[rejects$reverse]
+
+      #$denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
+      #https://rdrr.io/bioc/dada2/man/dada-class.html
+      #However the abundances that I get with this are not correct, so something is off. 
+      abundance_r<- dadas[[2]][[i]]$denoised[rejects.fwd.seq]
+      
+      # reverse complement reverse reads so that the following taxonomic assignment will work optimally.
+      rejects.rev.seq <- sapply(sapply(sapply(rejects.rev.seq, DNAString), Biostrings::reverseComplement), toString)
+      
+      unknown_r[[i]] <- tibble(rejects.rev.seq, abundance)
+      colnames(unknown_r[[i]]) <- c("sequence", "abundance")
+    }
+
+    names(unknown_f) <- sample.names
+    names(unknown_r) <- sample.names
     #names(unmerged_r)=sample.names
-
+    
     # Make sequence table
-    seqtab_unmerged <- makeSequenceTable(concatenated)
-
+    seqtab_unmerged_f <- makeSequenceTable(unknown_f)
+    seqtab_unmerged_r <- makeSequenceTable(unknown_r)
     # The merged returnrejects = T seqtab also contains a column with an empty header,
     # This is all rejected (non-merged) abundances combined.
     # This column messes with future steps, so we want to remove it.
     # We have instead collected the abundances of the unmerged reads to add to the table with sequences.
     #seqtab <- seqtab[,-which(colnames(seqtab) == "")]
-
+    
     # Merge with paired reads and format for the next steps (integer matrix)
-    seqtab <- merge_format_seqtab(seqtab, seqtab_unmerged)
-
+    seqtab <- merge_format_seqtab(seqtab, seqtab_unmerged_f)
+    seqtab <- merge_format_seqtab(seqtab, seqtab_unmerged_r)
   }
 
 } else {
@@ -372,6 +397,19 @@ if (length(files_exist[[4]])!=0) {
 # In their case they are looking at equal length reads, possibly the single reads and paired reads should not be combined for chimera removal?
 
 message("removing chimeras")
+
+#removeBimeraDenovo requires all sequences to be unique. Due to the combination of many different sets,
+#we may have non-unique columns. So combine first duplicated sequences (and sum the values in the rows)
+
+if (length(sample.names)==1&!config$DADA2$mergePairs$include){
+  seqtab = tapply(seqtab, colnames(seqtab), sum)
+  seqtab = t(as.data.frame(seqtab))
+  row.names(seqtab)=sample.names
+
+} else if (!config$DADA2$mergePairs$include&any(duplicated(colnames(seqtab)))) {
+seqtab=sapply(unique(colnames(seqtab)), function(x) rowSums(seqtab[,grepl(x, colnames(seqtab))]))
+}
+
 seqtab.nochim <- removeBimeraDenovo(seqtab,
                                     method = config$DADA2$removeBimeraDenovo$method,
                                     multithread = config$DADA2$learnERRORS$multithread,

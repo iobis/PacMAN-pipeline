@@ -58,7 +58,7 @@ for (i in 1:4) {
 
   for (j in 1:length(allfiles[[i]])) {
     info <- file.info(allfiles[[i]][j])
-    if (!is.na(info$size) & info$size > 20) { # 20 is the size of an empty .gz file
+    if (!is.na(info$size) & info$size > 36) { # 36 is the size of an empty .gz file
       files_loop <- c(files_loop, allfiles[[i]][j])
     }
   }
@@ -73,13 +73,14 @@ for (i in 1:4) {
     message(paste("making quality plots of raw reads:", i, ": (1) forward paired (2) reverse paired (3) forward single and (4) reverse single " , sep = " "))
 
     sample.names[[i]] <- gsub("_1P.fastq.gz", "", basename(files_exist[[i]]))
+    sample.names[[i]] <- gsub("/checked", "", sample.names[[i]])
     sample.names[[i]] <- gsub("_2P.fastq.gz", "", sample.names[[i]])
     sample.names[[i]] <- gsub("_1U.fastq.gz", "", sample.names[[i]])
     sample.names[[i]] <- gsub("_2U.fastq.gz", "", sample.names[[i]])
 
     message(paste(names(allfiles)[i], "reads of sample", sample.names[[i]], "will be analysed", collapse = "\n"))
 
-    quals[[i]] <- gsub("02-cutadapt/", "03-dada2/quality/", files_exist[[i]])
+    quals[[i]] <- gsub("02-cutadapt/checked/", "03-dada2/quality/", files_exist[[i]])
     quals[[i]] <- gsub(".fastq.gz", ".png", quals[[i]])
 
     plot_list <- list()
@@ -95,7 +96,7 @@ for (i in 1:4) {
     ggsave(paste0(outpath,"06-report/dada2/aggregate_quality_profiles_", names(allfiles)[i], ".png"), dpi = 300, width = 10, height = 10, units = "cm")
 
     #Create path and file names for filtered samples"
-    filts[[i]] <- gsub("02-cutadapt/", "03-dada2/filtered/", files_exist[[i]])
+    filts[[i]] <- gsub("02-cutadapt/checked/", "03-dada2/filtered/", files_exist[[i]])
 
     #assign names to files
     names(filts[[i]]) <- sample.names[[i]]
@@ -339,8 +340,9 @@ if (file.exists("Rplots.pdf")) {
   ## are written in this case. Check for the output files, and if they
   ## don't exist, create empty ones.
  
- for (i in 1:length(filts)) {
-  for(fn in filts[[i]]){
+ for (i in 1:length(allfiles)) {
+  for(fn in allfiles[[i]]){
+    fn <- gsub("02-cutadapt/checked", "03-dada2/filtered",fn)
     if(!file.exists(fn)){
       cat(gettextf('creating empty file %s\n', fn))
       gzf = gzfile(fn)

@@ -1,22 +1,22 @@
 # PacMAN-pipeline
 ## Bioinformatics pipeline for the PacMAN project *UNDER DEVELOPMENT*
 
-This is the bioinformatics pipeline developed for the PacMAN (Pacific Islands Marine Bioinvasions Alert Network). This pipeline cleans and classifies sequences from eDNA samples. The PacMAN-pipeline is still under development with a first production release planned in 2023. The steps in this pipeline are compiled from publicly available bioinformatic pipelines like [ANACAPA](https://github.com/limey-bean/Anacapa), [tourmaline](https://github.com/lukenoaa/tourmaline), [tagseq-qiime2-snakemake](https://github.com/shu251/tagseq-qiime2-snakemake), [pema](https://github.com/hariszaf/pema), [CASCABEL](https://github.com/AlejandroAb/CASCABEL) and [MBARI-BOG](https://github.com/MBARI-BOG/BOG-Banzai-Dada2-Pipeline). The pipeline is based on the snakemake workflow management system. At first, we will develop this pipeline only keeping in mind CO1 data, but we want to expand the process to other barcodes as well, so that in the future it could be used for OBIS datasets broadly.
+This is the bioinformatics pipeline developed for the PacMAN (Pacific Islands Marine Bioinvasions Alert Network). This pipeline cleans and classifies sequences from eDNA samples. The PacMAN-pipeline is still under development with a first production release planned in 2023. The steps in this pipeline are compiled from publicly available bioinformatic pipelines like [ANACAPA](https://github.com/limey-bean/Anacapa), [tourmaline](https://github.com/lukenoaa/tourmaline), [tagseq-qiime2-snakemake](https://github.com/shu251/tagseq-qiime2-snakemake), [pema](https://github.com/hariszaf/pema), [CASCABEL](https://github.com/AlejandroAb/CASCABEL) and [MBARI-BOG](https://github.com/MBARI-BOG/BOG-Banzai-Dada2-Pipeline). The pipeline is based on the snakemake workflow management system.
 
 The initial pipeline has the following steps:
 
-  1. **Trimmomatic**
-     - Quality trimming and removal of sequencing adapters
+  1. **fastp**
+     - Quality trimming and removal of sequencing adapters, chosen for the possibilty to work with NovaSeq data
   2. **Cutadapt**
      - Removal of primers
   3. **dada2**
      - ASV inference
-  4. **Bowtie2**
-     - sequence alignment with a reference database
-  5. **BLCA**
-     - Bayesian-based last common ancestor inference
+  4. **rdp**
+     - taxonomic assignment with a bayesian based probability method
+  5. **vsearch**
+     - search and print out high-confidence local alignments for confirmation of rdp results
   6. **BLAST**
-     - Blast search of remaining unknown sequences agains the NCBI nt database
+     - Optional: blast search of remaining unknown sequences agains the NCBI nt database
   6. **Data formatting**
      - Export to DwC-A compatible tables
 
@@ -25,7 +25,6 @@ Steps that still need to be added to the pipeline:
   1. Data quality checkpoints for the scripts
   2. Automatic revese complement of primer sequences.
   3. Simplify use of default parameters for dada2?
-  4. Either make downstream formatting from taxonomic assignment more broad, or make separate downstream rules for other taxonomic classification methods.
 
 
 ## Preparation for the run:
@@ -47,8 +46,8 @@ What is needed:
    - **Note!** control samples can be marked by adding `occurrenceStatus` as `absent`.  
    --> The ASVs from these samples will be removed from all samples, before the occurrence table is made
 3. Make sure you have the ***reference database*** of choice
-   - The fasta file with all sequences,
-   - And the taxa file where the fasta-ids are linked to the taxonomic information
+   - for rdp: a trained classifier like those available here, or build by following this tutorial
+   - for vsearch: a fasta file in the sintax format
 4. Change the ***config.yaml*** file for the specific run.
    - `PROJECT` name: Usually a specific sample set
    - `RUN` name: the run with a specific combination of samples and/or parameters for the analysis
@@ -105,8 +104,11 @@ The run will first initiate a folder structure in the results folder as follows
 PROJECT
 ├── samples
 |      ├── sample_1
-|      │   ├── forward (link to sample file)
-|      │   └── reverse (link to sample file)
+|      │   ├── fastp
+|      │   ├── qc
+|      │   └── rawdata
+|      │       ├── forward (link to sample file)
+|      │       └── reverse (link to sample file)
 |      ├── sample_2
 |      ├── sample_3
 |      |     .
@@ -116,7 +118,7 @@ PROJECT
 |      └── multiqc_RUN.html
 └── runs
        └── RUN
-           ├── 01-trimmed
+           ├── 02-cutadapt
            ├── 03-dada2
            ├── 04-taxonomy
            ├── 05-dwca
@@ -128,8 +130,8 @@ All quality files of the raw sequence files will be summarized with multiqc, and
 
 ### 1. Trimming and 2. removing primers
 
-The sequences are trimmed and primers are removed utilising trimmomatic and cutadapt.
-Different illumina adapters are available through the trimmomatic pipeline in the resources folder (custom adapters can also be added).
+The sequences are trimmed and primers are removed utilising fastp and cutadapt.
+fastp automatically recognizes and removes illumina adapters. fastp is used as it also detects common artifacts of NovaSeq datasets. 
 The primers must be added to the config file in both forward and reverse (reverse complement) directions.
 
 ### 3. dada2
@@ -140,15 +142,11 @@ dada2 returns the ASV-table (`03-dada2/seqtab-nochim.txt`), as well as the seque
 
 ### 4. taxonomy
 
-Because the taxonomic classification uses bowtie2 alignment, the reference database must first be built using bowtie2 build (if not already available).
-This will take a while, but will be available for all future runs with the same reference database. The database files are added to the resources folder of the PacMAN pipeline.
+Taxonomy is annotated using two different methods. Annotation using the naive bayesian classifier rdp is the main method, and the results are filtered based on a user-defined probability threshold (i.e. 0.8). The output provides a confidence threshold for each taxonomic level. For rdp a trained classifier is required. Many trained classifiers can be found already online (see for example https://github.com/terrimporter/CO1Classifier), but a classifier can also be built from a custom reference database by following the steps in the tutorial of [John Quensen](https://john-quensen.com/tutorials/training-the-rdp-classifier/). 
 
-Taxonomy assignment proceeds as in the ANACAPA pipeline.
-The sequences are first aligned to the reference database with bowtie2, and the best 100 alignments are chosen.
-From these alignments the taxonomy is classified based on the bowtie2-blca algorithm. Each assigned taxonomic level receives a confidence score between 0-100.
-In the next step the user can decide which cutoff will be used for the final taxonomic assignments.
+To confirm the results with a local alignment to the reference database, also vsearch is used. The parameters of vsearch can be defined by the user. We use it to find matches with very high sequence similarity to the query (97-100%), to confirm the results of rdp as well as detect any disrepancies, or unclear results in the reference database. The top 10 hits are filtered with a built-in lca algorithm, to find the consensus taxonomy. The reference database format required for this process is the sintax format.
 
-The tax table returned by BLCA is then filtered based on this cutoff, and returned in the `04-taxonomy/identity_filtered/` folder
+**Note** As two different taxonomic assignment methods are used to enable confirmation of the results, two different reference database formats are also necessary.
 
 ### 5. Blast and lca (optional)
 
@@ -162,13 +160,12 @@ In the final steps of the pipeline LSIDs are defined for the assigned taxonomic 
 
 This step also returns a table `05-dwca/Taxa_not_in_worms.csv`, containing the taxonomic names and linked asvs that were not given an lsid. This table will require manual inspection, and possibly contacting the WoRMS team.
 
-In this step the unknown sequences are given the ID for 'Biota'. Non-marine species (most taxa with no lsid), and ASVs found in the control sample(s) are not added to the final dwca-tables. All of these can still be found in the table `05-dwca/Full_tax_table_with_lsids` as well as the `05-dwca/phyloseq_object.rds`, which can be read with the phyloseq R package for further analysis and visualization.
+In this step the unknown sequences are given the ID for 'Incertae sedis'. Non-marine species (most taxa with no lsid), and ASVs found in the control sample(s) (marked by occurrenceStatus: absent) are not added to the final dwca-tables. All of these can still be found in the table `05-dwca/Full_tax_table_with_lsids` as well as the `05-dwca/phyloseq_object.rds`, which can be read with the phyloseq R package for further analysis and visualization.
 
-**Note!** With this strategy, sequences that are known but not marine, are not included in the occurrence tables, while sequences that are not known are always included (as 'Biota').
+**Note!** With this strategy, sequences that are known but not marine, are not included in the occurrence tables, while sequences that are not known are always included (as 'Incertae sedis').
 
 Fields that also still need to be added/modified based on the genetic data guidelines are:
 
-  - `identificationRemarks`: The report of the analysis run
   - `identificationReferences`: Website of this pipeline
 
 ### 6. Reporting

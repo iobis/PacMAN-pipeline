@@ -4,3 +4,4 @@ channels:
 dependencies:
  - trimmomatic=0.39
  - cutadapt=3.4
+ - fastp=0.23.4
