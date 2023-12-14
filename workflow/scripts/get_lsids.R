@@ -120,7 +120,7 @@ if (exists("basta_file")) {
     taxmat_result_basta <- taxonomy_to_taxmat(basta_file$sum.taxonomy)
     ranks_basta <- taxmat_result_basta$ranks
     taxmat_basta <- taxmat_result_basta$taxmat %>%
-      mutate(verbatimIdentification = paste("Identification based on blastn against the full nt database (downloaded on", blast_date, "), and with basta-lca with filtering on:", config$BLAST$percent_identity, "percent identity,", config$BLAST$"e-value", "e-value, and", config$BLAST$alignment_length, "alignment length"))
+      mutate(verbatimIdentification = glue("Identification based on blastn against the full nt database (downloaded on {blast_date}), and with basta-lca with filtering on: {config$BLAST$percent_identity} percent identity, {config$BLAST$`e-value`} e-value, and {config$BLAST$alignment_length} alignment length"))
     row.names(taxmat_basta) <- basta_file$asv
     row.names(basta_file) <- basta_file$asv
 
