@@ -8,6 +8,7 @@ library(dplyr)
 library(tidyr)
 library(yaml)
 library(purrr)
+library(glue)
 
 REF_DB_PATTERN <- "identity_filtered/\\s*(.*?)\\s*_blca_tax_table"
 
@@ -110,7 +111,7 @@ taxonomy_to_taxmat <- function(taxonomy) {
 taxmat_result <- taxonomy_to_taxmat(tax_file$sum.taxonomy)
 ranks <- taxmat_result$ranks
 taxmat <- taxmat_result$taxmat %>%
-    mutate(verbatimIdentification = tax_file$identificationRemarks)
+    mutate(identificationRemarks = tax_file$identificationRemarks)
 row.names(taxmat) <- tax_file$asv
 row.names(tax_file) <- tax_file$asv
 
@@ -120,7 +121,7 @@ if (exists("basta_file")) {
     taxmat_result_basta <- taxonomy_to_taxmat(basta_file$sum.taxonomy)
     ranks_basta <- taxmat_result_basta$ranks
     taxmat_basta <- taxmat_result_basta$taxmat %>%
-      mutate(verbatimIdentification = glue("Identification based on blastn against the full nt database (downloaded on {blast_date}), and with basta-lca with filtering on: {config$BLAST$percent_identity} percent identity, {config$BLAST$`e-value`} e-value, and {config$BLAST$alignment_length} alignment length"))
+      mutate(identificationRemarks = glue("Identification based on blastn against the full nt database (downloaded on {blast_date}), and with basta-lca with filtering on: {config$BLAST$percent_identity} percent identity, {config$BLAST$`e-value`} e-value, and {config$BLAST$alignment_length} alignment length"))
     row.names(taxmat_basta) <- basta_file$asv
     row.names(basta_file) <- basta_file$asv
 
