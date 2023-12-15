@@ -161,6 +161,7 @@ matched_batches <- purrr::map(name_batches, function(batch) {
   if (nrow(df) > 0) {
     df <- df %>%
       filter(match_type == "exact" | match_type == "exact_genus" | match_type == "exact_subgenus") %>%
+      filter(!is.na(scientificname)) %>%
       mutate(priority = ifelse(status == "accepted", 1, 0)) %>%
       group_by(input) %>%
       arrange(desc(priority)) %>%
@@ -178,7 +179,6 @@ taxmat$scientificNameID <- NA
 taxmat$taxonRank <- NA
 
 for (i in 1:nrow(taxmat)) {
-  
   lsids <- taxmat[i, ranks] %>%
     as.character() %>%
     sapply(function(x) { matches[[x]]$lsid }) %>%
