@@ -32,5 +32,8 @@ with open(manifest_path) as csv_file:
             if Path(target).exists() or Path(target).is_symlink():
                 Path(target).unlink()
                 print("Removed existing symlink %s" % (target))
+            else:
+                raise Exception(f"Path {source} does not exist")
+                
             os.symlink(source, target)
             print("Created symlink %s -> %s" % (target, source))
