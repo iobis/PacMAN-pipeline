@@ -12,6 +12,7 @@ library(Biostrings)
 library(ggplot2)
 
 args <- commandArgs(trailingOnly = T)
+message("args <- ", capture.output(dput(args))) # output for debugging
 config <- read_yaml(args[2])
 
 # Set the different paths for all the supplied libraries

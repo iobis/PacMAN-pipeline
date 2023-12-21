@@ -15,6 +15,7 @@ library(tidyr)
 library(tibble)
 
 args <- commandArgs(trailingOnly = T)
+message("args <- ", capture.output(dput(args))) # output for debugging
 config <- read_yaml(args[2])
 
 # Set the different paths for all the supplied libraries
@@ -301,42 +302,42 @@ if (config$DADA2$mergePairs$include) {
 
   seqtab <- makeSequenceTable(mergers)
 
-# When merging is done with returnRejects=TRUE, the abundance of the rejected merges is returned, but not the sequence
+  # When merging is done with returnRejects=TRUE, the abundance of the rejected merges is returned, but not the sequence
   # We want to collect also these single sequences and add them to the seqtab (to avoid loosing ANY data)
   if (config$DADA2$mergePairs$returnRejects == TRUE) {
 
     unknown_f <- list()
     unknown_r <- list()
 
-    #Forward reads:
+    # Forward reads:
     for (i in 1:length(sample.names)) {
       
-      #The most simple way to get the rejected sequences:
-      #https://github.com/benjjneb/dada2/issues/354
+      # The most simple way to get the rejected sequences:
+      # https://github.com/benjjneb/dada2/issues/354
       rejects <- mergers[[i]][!mergers[[i]]$accept,]
       rejects.fwd.seq <- dadas[[1]][[i]]$sequence[rejects$forward]
 
-      #$denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
-      #https://rdrr.io/bioc/dada2/man/dada-class.html
-      abundance_f<- dadas[[1]][[i]]$denoised[rejects.fwd.seq]
+      # $denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
+      # https://rdrr.io/bioc/dada2/man/dada-class.html
+      abundance_f <- dadas[[1]][[i]]$denoised[rejects.fwd.seq]
 
       #Make sequence table requires the correct names
       unknown_f[[i]] <- tibble(rejects.fwd.seq, abundance_f)
       colnames(unknown_f[[i]]) <- c("sequence", "abundance")
     }
     
-    #Reverse reads
+    # Reverse reads
     for (i in 1:length(sample.names)) {
       
-      #The most simple way to get the rejected sequences:
-      #https://github.com/benjjneb/dada2/issues/354
+      # The most simple way to get the rejected sequences:
+      # https://github.com/benjjneb/dada2/issues/354
       rejects <- mergers[[i]][!mergers[[i]]$accept,]
       rejects.rev.seq <- dadas[[2]][[i]]$sequence[rejects$reverse]
 
-      #$denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
-      #https://rdrr.io/bioc/dada2/man/dada-class.html
-      #However the abundances that I get with this are not correct, so something is off. 
-      abundance_r<- dadas[[2]][[i]]$denoised[rejects.fwd.seq]
+      # $denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
+      # https://rdrr.io/bioc/dada2/man/dada-class.html
+      # However the abundances that I get with this are not correct, so something is off. 
+      abundance_r <- dadas[[2]][[i]]$denoised[rejects.fwd.seq]
       
       # reverse complement reverse reads so that the following taxonomic assignment will work optimally.
       rejects.rev.seq <- sapply(sapply(sapply(rejects.rev.seq, DNAString), Biostrings::reverseComplement), toString)
@@ -398,16 +399,16 @@ if (length(files_exist[[4]])!=0) {
 
 message("removing chimeras")
 
-#removeBimeraDenovo requires all sequences to be unique. Due to the combination of many different sets,
-#we may have non-unique columns. So combine first duplicated sequences (and sum the values in the rows)
+# removeBimeraDenovo requires all sequences to be unique. Due to the combination of many different sets,
+# we may have non-unique columns. So combine first duplicated sequences (and sum the values in the rows)
 
-if (length(sample.names)==1&!config$DADA2$mergePairs$include){
-  seqtab = tapply(seqtab, colnames(seqtab), sum)
-  seqtab = t(as.data.frame(seqtab))
-  row.names(seqtab)=sample.names
+if (length(sample.names) == 1 & !config$DADA2$mergePairs$include) {
+  seqtab <- tapply(seqtab, colnames(seqtab), sum)
+  seqtab <- t(as.data.frame(seqtab))
+  row.names(seqtab) <- sample.names
 
 } else if (!config$DADA2$mergePairs$include&any(duplicated(colnames(seqtab)))) {
-seqtab=sapply(unique(colnames(seqtab)), function(x) rowSums(seqtab[,grepl(x, colnames(seqtab))]))
+  seqtab <- sapply(unique(colnames(seqtab)), function(x) rowSums(seqtab[,grepl(x, colnames(seqtab))]))
 }
 
 seqtab.nochim <- removeBimeraDenovo(seqtab,
@@ -447,9 +448,9 @@ seqtab.nochim[is.na(seqtab.nochim)] <- 0
 
 
 # This show sequence length distributions (see if you should include this)
-#seq_hist <- table(nchar(getSequences(seqtab)))
-#fname_seqh <- paste(args[6],"seq_hist.txt",sep="")
-#write.table(seq_hist, file = fname_seqh  , sep = "\t", quote=FALSE, col.names = FALSE)
+# seq_hist <- table(nchar(getSequences(seqtab)))
+# fname_seqh <- paste(args[6],"seq_hist.txt",sep="")
+# write.table(seq_hist, file = fname_seqh  , sep = "\t", quote=FALSE, col.names = FALSE)
 
 # Collect results of how many reads are available at each step in a table:
 getN <- function(x) sum(getUniques(x))
@@ -486,12 +487,12 @@ if (length(files_exist[[4]])!=0) {
 }
 
 rownames(track)
-#rownames(track) <- sample.names
-#message(track)
+# rownames(track) <- sample.names
+# message(track)
 
 # Read results of filtering step and append the results of ASV step:
 out <- read.table(paste0(outpath, "06-report/dada2/dada2_filtering_stats.txt"), header = TRUE)
-#track <- cbind(out, track)
+# track <- cbind(out, track)
 track <- merge(out, track, by = 0, all = TRUE)
 rownames(track) <- track$Row.names
 track <- subset(track, select = -Row.names)
