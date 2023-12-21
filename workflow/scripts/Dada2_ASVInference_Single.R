@@ -321,7 +321,7 @@ if (config$DADA2$mergePairs$include) {
       abundance_f<- dadas[[1]][[i]]$denoised[rejects.fwd.seq]
 
       #Make sequence table requires the correct names
-      unknown_f[[i]] <- tibble(rejects.fwd.seq, abundance)
+      unknown_f[[i]] <- tibble(rejects.fwd.seq, abundance_f)
       colnames(unknown_f[[i]]) <- c("sequence", "abundance")
     }
     
@@ -331,7 +331,7 @@ if (config$DADA2$mergePairs$include) {
       #The most simple way to get the rejected sequences:
       #https://github.com/benjjneb/dada2/issues/354
       rejects <- mergers[[i]][!mergers[[i]]$accept,]
-      rejects.rev.seq <- dadas[[1]][[i]]$sequence[rejects$reverse]
+      rejects.rev.seq <- dadas[[2]][[i]]$sequence[rejects$reverse]
 
       #$denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
       #https://rdrr.io/bioc/dada2/man/dada-class.html
@@ -341,7 +341,7 @@ if (config$DADA2$mergePairs$include) {
       # reverse complement reverse reads so that the following taxonomic assignment will work optimally.
       rejects.rev.seq <- sapply(sapply(sapply(rejects.rev.seq, DNAString), Biostrings::reverseComplement), toString)
       
-      unknown_r[[i]] <- tibble(rejects.rev.seq, abundance)
+      unknown_r[[i]] <- tibble(rejects.rev.seq, abundance_r)
       colnames(unknown_r[[i]]) <- c("sequence", "abundance")
     }
 
