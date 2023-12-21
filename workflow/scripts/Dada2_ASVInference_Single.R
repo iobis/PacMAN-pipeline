@@ -337,7 +337,7 @@ if (config$DADA2$mergePairs$include) {
       # $denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
       # https://rdrr.io/bioc/dada2/man/dada-class.html
       # However the abundances that I get with this are not correct, so something is off. 
-      abundance_r <- dadas[[2]][[i]]$denoised[rejects.fwd.seq]
+      abundance_r <- dadas[[2]][[i]]$denoised[rejects.rev.seq]
       
       # reverse complement reverse reads so that the following taxonomic assignment will work optimally.
       rejects.rev.seq <- sapply(sapply(sapply(rejects.rev.seq, DNAString), Biostrings::reverseComplement), toString)
