@@ -53,7 +53,7 @@ sample_file$votu_db <- config$DATABASE$name
 extra_fields <- config$meta$sequencing$extra_fields
 args_name_value <- data.frame(command = 1, value = 1)
 
-if (extra_fields != "None") {
+if (!is.null(extra_fields)) {
   extra_args <- str_split(extra_fields, ",", simplify = T)
   for (i in 1:length(extra_args)) {
     args_name_value[i,] <- str_split(extra_args[i], ":", simplify = T)
