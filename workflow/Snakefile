@@ -67,7 +67,7 @@ rule all:
                 PROJECT=PROJECT, RUN=RUN, samples=samples),
         expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", 
                 PROJECT=PROJECT, RUN=RUN, samples=samples),
-        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/rdp_vsearch_results.txt",
+        expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results.txt",
                 PROJECT=PROJECT, RUN=RUN),
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/vsearch/{DATABASE_vsearch}_vsearch_lcaout.tab",
                 PROJECT=PROJECT, RUN=RUN, DATABASE_vsearch=DATABASE_vsearch),
@@ -75,7 +75,7 @@ rule all:
                PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab",
                PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
-        expand("results/{PROJECT}/runs/{RUN}/05-dwca/Full_tax_table_with_lsids.tsv",
+        expand("results/{PROJECT}/runs/{RUN}/05-dwca/full_tax_table_with_lsids.tsv",
               PROJECT=PROJECT, RUN=RUN),
         expand("results/{PROJECT}/runs/{RUN}/05-dwca/Occurrence_table.tsv",
                PROJECT=PROJECT, RUN=RUN),
@@ -315,7 +315,7 @@ rule dada2_ASV:
 
 # RULES: TAXONOMIC ASSIGNMENTS ----------------------------------------------------------------
 
-#Vsearch is used to find the IDs of sequences with very high similarity in the ref database
+# Vsearch is used to find the IDs of sequences with very high similarity in the ref database
 rule vsearch:
     input:
         rep_seqs = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
@@ -333,7 +333,7 @@ rule vsearch:
         --lcaout {output.o2} --lca_cutoff 0.6 --notrunclabels \
         2> {output.log}"
 
-#RDP is used as the main assignment method
+# RDP is used as the main assignment method
 rule rdp_class:
     input:
       rep_seqs = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
@@ -347,27 +347,29 @@ rule rdp_class:
       -o {output.o1} \
       -q {input.rep_seqs}"
 
-#RDP results are filtered based on the specified cutoff, and the assignments are combined 
-rule filter_taxa:
+# RDP results are cleaned and filtered based on the specified cutoff, and the assignments are combined with vsearch results.
+rule clean_filter_taxa:
     input: 
       vsearch = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/vsearch/{DATABASE_vsearch}_vsearch_blast.b6", PROJECT=PROJECT, RUN=RUN, DATABASE_vsearch=DATABASE_vsearch),
       vsearch_lca = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/vsearch/{DATABASE_vsearch}_vsearch_lcaout.tab", PROJECT=PROJECT, RUN=RUN, DATABASE_vsearch=DATABASE_vsearch),
       rdp = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/rdp/{DATABASE_rdp}_rdp.output",PROJECT=PROJECT, RUN=RUN, DATABASE_rdp=DATABASE_rdp),
+      rep_seqs = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN),
     output: 
-      o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/rdp_vsearch_results.txt",
+      o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results.txt",
       o2 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/unknown_asvs.txt",
     conda:
       "envs/r.yaml"
     shell: 
-        "Rscript ./workflow/scripts/Compare_taxa.R \
+        "Rscript ./workflow/scripts/filter_taxa.R \
         results/{config[PROJECT]}/runs/{config[RUN]}/ \
         "+config_path+" \
         {input.rdp}    \
         {input.vsearch} \
-        {input.vsearch_lca}"
+        {input.vsearch_lca} \
+        {input.rep_seqs}"
 
 
-#The remaining fully unknown sequences from rdp are blasted against nt, so that all possible public information is checked.
+# The remaining fully unknown sequences from rdp are blasted against nt, so that all possible public information is checked.
 if config["BLAST"]["include"] == True:
     rule blast_unknown:
         input:
@@ -435,14 +437,14 @@ if config["BLAST"]["include"] == True:
 
 rule get_lsids:
   input:
-    f1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/rdp_vsearch_results.txt",
+    f1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results.txt",
                 PROJECT=PROJECT, RUN=RUN),
     f2 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
     f3 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab",
                 PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
   output:
-    o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Taxa_not_in_worms.tsv",
-    o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/Full_tax_table_with_lsids.tsv"
+    o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/taxa_not_in_worms.tsv",
+    o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/full_tax_table_with_lsids.tsv"
   conda:
     "envs/r.yaml"
   shell:
@@ -458,7 +460,7 @@ rule get_lsids:
 rule make_dwca:
   input:
     f1 = "results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt",
-    f2 = "results/{PROJECT}/runs/{RUN}/05-dwca/Full_tax_table_with_lsids.tsv",
+    f2 = "results/{PROJECT}/runs/{RUN}/05-dwca/full_tax_table_with_lsids.tsv",
     f3 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
   output:
     o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/Occurrence_table.tsv",
