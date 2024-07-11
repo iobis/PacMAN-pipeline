@@ -8,15 +8,17 @@ source("workflow/scripts/util.R")
 
 max_vsearch_results <- 5
 
-args <- commandArgs(trailingOnly = T)
-message("args <- ", capture.output(dput(args))) # output for debugging
-config <- read_yaml(args[2])
+if (!exists("cmd_args")) {
+  cmd_args <- commandArgs(trailingOnly = T)
+  message("cmd_args <- ", capture.output(dput(cmd_args)))
+}
 
-outpath <- args[1]
-rdp_file_path <- args[3]
-vsearch_file_path <- args[4]
-vsearch_lca_file_path <- args[5]
-rep_seqs_path <- args[6]
+config <- read_yaml(cmd_args[2])
+outpath <- cmd_args[1]
+rdp_file_path <- cmd_args[3]
+vsearch_file_path <- cmd_args[4]
+vsearch_lca_file_path <- cmd_args[5]
+rep_seqs_path <- cmd_args[6]
 
 rdp_confidence_threshold <- config$Rdp$cutoff
 vsearch_identity_threshold <- config$Vsearch$pident
@@ -79,6 +81,9 @@ vsearch_clean <- vsearch %>%
   ungroup()
 
 tax_names <- vsearch_clean$scientificName %>% na.omit() %>% unique() %>% sort()
+
+message("Matching names")
+
 matches <- match_worms(unique(tax_names)) %>%
   select(scientificName = input, scientificNameID = lsid)
 vsearch_clean <- vsearch_clean %>%
@@ -90,7 +95,9 @@ vsearch_clean <- vsearch_clean %>%
   )
 
 # process vsearch consensus results?
+
 # process rdp results
+# TODO: check terrimporter taxonomy format
 
 process_rdp_taxonomy <- function(row) {
   taxa <- as.character(row[seq(6, ncol(row), 3)])
@@ -145,7 +152,7 @@ combined <- bind_rows(rdp_clean, vsearch_clean) %>%
 
 unknowns <- combined %>% filter(method == "RDP classifier" & is.na(phylum)) %>% pull(asv)
 
-write.table(combined, paste0(outpath, "04-taxonomy/annotation_results.txt"), row.names = TRUE, col.names = TRUE, quote = FALSE, sep="\t", na = "")
+write.table(combined, paste0(outpath, "04-taxonomy/annotation_results.txt"), row.names = FALSE, col.names = TRUE, quote = FALSE, sep="\t", na = "")
 writeLines(unknowns, paste0(outpath, "04-taxonomy/unknown_asvs.txt"))
 
 ######### Combine info from vsearch to rdp ###############

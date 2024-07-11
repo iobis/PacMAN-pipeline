@@ -360,7 +360,7 @@ rule clean_filter_taxa:
     conda:
       "envs/r.yaml"
     shell: 
-        "Rscript ./workflow/scripts/filter_taxa.R \
+        "Rscript ./workflow/scripts/clean_filter_taxa.R \
         results/{config[PROJECT]}/runs/{config[RUN]}/ \
         "+config_path+" \
         {input.rdp}    \
@@ -435,26 +435,41 @@ if config["BLAST"]["include"] == True:
 
 # RULES: FORMAT DATA ----------------------------------------------------------------
 
-rule get_lsids:
+rule merge_blast:
   input:
-    f1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results.txt",
+    f1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results.txt", PROJECT=PROJECT, RUN=RUN),
+    f2 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
+    f3 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab", PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
+  output:
+    o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results_blast.txt",
+  conda:
+    "envs/r.yaml"
+  shell:
+    "Rscript ./workflow/scripts/merge_blast.R \
+    results/{wildcards.PROJECT}/runs/{wildcards.RUN}/04-taxonomy/ \
+    {input.f1} \
+    {input.f2} \
+    "+config_path+" \
+    {input.f3} \
+    {config[BLAST][database_date]}"
+
+
+rule make_tax_table:
+  input:
+    f1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results_blast.txt",
                 PROJECT=PROJECT, RUN=RUN),
     f2 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
-    f3 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab",
-                PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
   output:
     o1 = "results/{PROJECT}/runs/{RUN}/05-dwca/taxa_not_in_worms.tsv",
     o2 = "results/{PROJECT}/runs/{RUN}/05-dwca/full_tax_table_with_lsids.tsv"
   conda:
     "envs/r.yaml"
   shell:
-    "Rscript ./workflow/scripts/get_lsids.R \
+    "Rscript ./workflow/scripts/make_tax_table.R \
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
     {input.f1} \
     {input.f2} \
-    "+config_path+" \
-    {input.f3} \
-    {config[BLAST][database_date]}"
+    " + config_path
 
 
 rule make_dwca:
@@ -469,7 +484,7 @@ rule make_dwca:
   conda:
     "envs/r.yaml"
   shell:
-    "Rscript ./workflow/scripts/format_for_dwc_new.R \
+    "Rscript ./workflow/scripts/make_dwca.R \
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
     {input.f1} \
     {input.f2} \

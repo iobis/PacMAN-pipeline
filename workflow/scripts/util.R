@@ -29,3 +29,61 @@ match_worms <- function(tax_names) {
   matches <- bind_rows(matched_batches)
   return(matches)
 }
+
+# # Clean set of taxon names into taxonomy as a named list
+# clean_taxonomy <- function(taxa, prefixed, ranks) {
+#   if (prefixed) {
+#     taxa <- taxa[taxa != "" & taxa != "NA" & taxa != "nan"]
+#     parts <- str_match(taxa, "([a-z]+)__(.*)")
+#     recoded_ranks <- recode(parts[,2], "sk" = "superkingdom", "k" = "kingdom", "p" = "phylum", "c" = "class", "o" = "order", "f" = "family", "g" = "genus", "s" = "species")
+#     taxon_names <- as.list(parts[,3])
+#     names(taxon_names) <- recoded_ranks
+#     exported_ranks <- intersect(recoded_ranks, ranks)
+#     if (length(exported_ranks) == 0) {
+#       return(setNames(list(NA), ranks[1]))
+#     }
+#     return(taxon_names[exported_ranks])
+#   } else {
+#     if (length(taxa) == 0) {
+#       return(setNames(list(NA), ranks[1]))
+#     }
+#     taxa[taxa %in% c("", "NA", "nan", "unknown", "Unknown")] <- NA
+#     taxa[grepl("uncultured", taxa, ignore.case = TRUE)] <- NA
+#     taxa[grepl("sp\\.", taxa, ignore.case = TRUE)] <- NA
+#     taxon_names <- setNames(as.list(taxa), ranks[1:length(taxa)])
+#     return(taxon_names)
+#   }
+# }
+
+# taxonomy_to_taxmat <- function(taxonomy) {
+#   # Make educated guess about taxonomy format and clean taxonomies
+#   # TODO: fix, this logic will only work for some reference databases
+
+#   taxonomies <- str_split(str_replace(taxonomy, ";+$", ""), ";")
+
+#   max_taxonomy_length <- max(sapply(taxonomies, length))
+#   most_frequent_names <- names(head(sort(table(unlist(taxonomies)), decreasing = TRUE, na.last = TRUE)))
+#   most_frequent_names <- most_frequent_names[most_frequent_names != ""]
+#   frequent_names_prefixed <- all(str_detect(most_frequent_names, "([a-z]+)__(.*)"))
+
+#   if (frequent_names_prefixed) {
+#     prefixed <- TRUE
+#   } else {
+#     prefixed <- FALSE
+#   }
+
+#   if (max_taxonomy_length == 8 | "Metazoa" %in% most_frequent_names) {
+#     ranks <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species")
+#   } else if (max_taxonomy_length == 7) {
+#     ranks <- c("superkingdom", "phylum", "class", "order", "family", "genus", "species")
+#   }
+
+#   cleaned <- lapply(taxonomies, clean_taxonomy, prefixed = prefixed, ranks = ranks)
+
+#   taxmat <- cleaned %>%
+#     bind_rows() %>%
+#     as.data.frame() %>%
+#     select(!!!ranks)
+
+#   return(list(taxmat = taxmat, ranks = ranks))
+# }
