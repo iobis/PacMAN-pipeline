@@ -2,3 +2,5 @@
 .DS_Store
 *.bkp
 results
+all_seq_complete.clust.biom
+workflow/scripts/Rplots.pdf
