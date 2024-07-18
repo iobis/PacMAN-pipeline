@@ -70,7 +70,7 @@ The first step of the process was to trim and quality control the samples using 
 And the results for each sample in reads, and in percentages of original reads:
 
 ```{r, echo=F, warning=F}
-#Loop across all sample_ids and collect results to table
+# Loop across all sample_ids and collect results to table
 trimResults <- data.frame(Read1BeforeFiltering = NA, Read2BeforeFiltering = NA, Read1AfterFiltering = NA, Read2AfterFiltering = NA)
 
 for (i in 1:length(sample_ids)) {
@@ -79,7 +79,7 @@ for (i in 1:length(sample_ids)) {
   file <- file(trim_report, "r")
   line <- readLines(file)
 
-  total_reads <- line[grep(pattern="total reads:", line)]
+  total_reads <- line[grep(pattern = "total reads:", line)]
   numbers <- gsub("[^0-9]+", "", total_reads)
   as.numeric(numbers)
 
@@ -88,7 +88,6 @@ for (i in 1:length(sample_ids)) {
 }
 
 kable(trimResults)
-
 ```
 
 ## Cutadapt
@@ -100,10 +99,10 @@ The command(s) that was used was:
 
 ```{r, echo=F}
 #cut_report <- capture.output(cat("../PacMAN-pipeline-backup/results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt", sep = ""))
-  cut_report_1P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_1P_log.txt")
-  readLines(cut_report_1P, n = 2)
-  cut_report_2P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_2P_log.txt")
-  readLines(cut_report_2P, n = 2)
+cut_report_1P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_1P_log.txt")
+readLines(cut_report_1P, n = 2)
+cut_report_2P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_2P_log.txt")
+readLines(cut_report_2P, n = 2)
 ```
 
 
@@ -111,7 +110,6 @@ The command(s) that was used was:
 
 ```{r, echo=F, warning=F}
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
-
 
 for (i in 1:length(sample_ids)) {
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1P_log.txt")
@@ -138,14 +136,12 @@ kable(cutResults)
 cutResults_Percentage <- round(cutResults[,c("ReadwithPrimer", "ReadsWritten")] / cutResults$TotalReadsProcessed * 100, digits = 2)
 cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cutResults$BasePairsProcessed * 100, digits = 2)
 kable(cutResults_Percentage)
-
 ```
 
 ### Reverse reads
 
 ```{r, echo=F, warning=F}
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
-
 
 for (i in 1:length(sample_ids)) {
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2P_log.txt")
@@ -172,7 +168,6 @@ kable(cutResults)
 cutResults_Percentage <- round(cutResults[,c("ReadwithPrimer", "ReadsWritten")] / cutResults$TotalReadsProcessed * 100, digits = 2)
 cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cutResults$BasePairsProcessed * 100, digits = 2)
 kable(cutResults_Percentage)
-
 ```
 
 ### Unpaired forward reads
@@ -181,7 +176,6 @@ For forward unpaired reads they were:
 
 ```{r, echo=F, warning=F}
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
-
 
 for (i in 1:length(sample_ids)) {
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt")
@@ -208,7 +202,6 @@ kable(cutResults)
 cutResults_Percentage <- round(cutResults[,c("ReadwithPrimer", "ReadsWritten")] / cutResults$TotalReadsProcessed * 100, digits = 2)
 cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cutResults$BasePairsProcessed * 100, digits = 2)
 kable(cutResults_Percentage)
-
 ```
 
 ### Unpaired reverse
@@ -217,7 +210,6 @@ For reverse unpaired reads they were:
 
 ```{r, echo=F, warning=F}
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
-
 
 for (i in 1:length(sample_ids)) {
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2U_log.txt")
@@ -244,7 +236,6 @@ kable(cutResults)
 cutResults_Percentage <- round(cutResults[,c("ReadwithPrimer", "ReadsWritten")] / cutResults$TotalReadsProcessed * 100, digits = 2)
 cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cutResults$BasePairsProcessed * 100, digits = 2)
 kable(cutResults_Percentage)
-
 ```
 
 Currently the unpaired reads that are kept at this step are not analysed further. Keep this in mind if there is a large amount of unpaired forward and reverse reads.
@@ -367,21 +358,18 @@ Next, taxonomy was assigned to the inferred reads using rdp. It's important to n
 The command used for the rdp search was the following:
 
 ```{r, echo=F}
-
 cat("rdp_classifier -Xmx16g classify -t", config$Rdp$location_rdp_ref, " -o  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/rdp/" , config$Rdp$rdp_ref_name, "_rdp.output",
     " -q results/", config$PROJECT, "/runs/", config$RUN, "/03-dada2/rep-seqs.fna", sep = "")
-
 ```
 
 Additionally a vsearch local alignment was made to a reference database to find matches and their ids.
 
 ```{r, echo=F}
- cat("vsearch --usearch_global results/", config$PROJECT, "/runs/", config$RUN, "/03-dada2/rep-seqs.fna  --db", config$Vsearch$location_vsearch_db, " --id ", config$Vsearch$pident,
+cat("vsearch --usearch_global results/", config$PROJECT, "/runs/", config$RUN, "/03-dada2/rep-seqs.fna  --db", config$Vsearch$location_vsearch_db, " --id ", config$Vsearch$pident,
         " --blast6out results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/vsearch/", config$Vsearch$vsearch_db_name, "_vsearch_blast.b6 --threads 4  --output_no_hits --query_cov ", config$Vsearch$query_cov,
         " --maxaccepts 100 --maxrejects 100 --maxhits 10 ",
         " --lcaout results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/vsearch/", config$Vsearch$vsearch_db_name, "_vsearch_lcaout.tab  --lca_cutoff 0.6 --notrunclabels ",
         "2> --lcaout results/", config$PROJECT, "/runs/", config$RUN, "/06-report/vsearch/vsearch_", config$Vsearch$vsearch_db_name, ".log ", sep = "")
-
 ```
 
 This command indicates that from a maximum of 10 hits that all meet the criteria (identity and query coverage), the final result is a consensus taxonomy that over 60% of these hits agree on. 
@@ -390,34 +378,29 @@ This lca workflow is meant to filter out hits, were there are multiple conflicti
 The vsearch log indicates how many matches were made with this search:
 
 ```{r, echo=F}
+vsearch_log <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/vsearch/vsearch_", config$Vsearch$vsearch_db_name, ".log" )
 
-  vsearch_log <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/vsearch/vsearch_", config$Vsearch$vsearch_db_name, ".log" )
+file <- file(vsearch_log, "r")
+line <- readLines(file)
 
-  file <- file(vsearch_log, "r")
-  line <- readLines(file)
+total_matches<- line[grep(pattern="Matching unique query sequences:", line)]
 
-  total_matches<- line[grep(pattern="Matching unique query sequences:", line)]
-
- cat(total_matches, "with an identity cutoff of", config$Vsearch$pident, "a query coverage of", config$Vsearch$query_cov, "and an lca cutoff of 0.6")
+cat(total_matches, "with an identity cutoff of", config$Vsearch$pident, "a query coverage of", config$Vsearch$query_cov, "and an lca cutoff of 0.6")
 ```
-
 
 Finally all results are stored in the output files after a filtering step.
 
 ```{r, echo=F}
- cat("The rdp results were then filtered based off of the user defined probability cutoff:", config$Rdp$cutoff)
-
+cat("The rdp results were then filtered based off of the user defined probability cutoff:", config$Rdp$cutoff)
 ```
 
 The rdp results after filtering are stored as the taxonomic lineage, while the full results with probability, and the vsearch hits are stored in the field "identificationRemarks", and are included in the final Darwin Core files.
-
 
 ### Blast against the full ncbi-nt
 
 If chosen by the user (Blast: include: TRUE in the config file) the unknown sequences that did not have a match (results either "", or only "Eukaryota"), were further analysed with blastn.
 
 ```{R, echo=F}
-
 cat("The unknown sequences defined in this way can be found in: /results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/unknown_asvs.txt", sep="")
 
 unknown_asvs_loc=paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/unknown_asvs.txt")
@@ -427,21 +410,16 @@ n_unknown <- system(paste('grep -c "asv." ',unknown_asvs_loc), intern=T)
 n_asvs=system(paste('grep -c "^>" ',all_asvs_loc), intern=T)
 
 cat("In total there were ", n_unknown, " asvs, from a total of ", n_asvs)
-
 ```
-
 
 The used command was:
 
 ```{r, echo=F}
 if (config$BLAST$include) {
-
-cat("blastn -query  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blca/", config$DATABASE$name, "_unclassified-seqs_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".fna", 
-    " -out " , "results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".tab", 
-    " -outfmt 6 -perc_indentity ", config$BLAST$perc_identity, " ", "config$BLAST$database", sep = "")
-
+  cat("blastn -query  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blca/", config$DATABASE$name, "_unclassified-seqs_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".fna", 
+      " -out " , "results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".tab", 
+      " -outfmt 6 -perc_indentity ", config$BLAST$perc_identity, " ", "config$BLAST$database", sep = "")
 } else {
-
   cat("Blast was not included in this analysis run")
 }
 ```
@@ -450,18 +428,13 @@ The results of the blast query were then filtered with a last common ancestor sc
 A number of parameters can be chosen for the basta-lca analysis. The following command was used. 
 
 ```{r, echo=F}
-
 if (config$BLAST$include) {
-
-cat("basta sequence -p ", config$BLAST$portion_of_hits, " -i ", config$BLAST$percent_identity, " -l ", config$BLAST$alignment_length, " -e ", config$BLAST$e_value, " -n ", config$BLAST$max_hits, " -m ", config$BLAST$min_hits, " -d ", config$BLAST$tax_db,
- "  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".tab   results/", 
- config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_lca_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".tab gb", sep="")
-
+  cat("basta sequence -p ", config$BLAST$portion_of_hits, " -i ", config$BLAST$percent_identity, " -l ", config$BLAST$alignment_length, " -e ", config$BLAST$e_value, " -n ", config$BLAST$max_hits, " -m ", config$BLAST$min_hits, " -d ", config$BLAST$tax_db,
+  "  results/", config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".tab   results/", 
+  config$PROJECT, "/runs/", config$RUN, "/04-taxonomy/blast/", config$DATABASE$name, "_unclassified_blast_results_lca_cutoff", config$TAXONOMY$blca_confidence_cutoff, ".tab gb", sep="")
 } else {
-
   cat("Blast was not included in this analysis run")
 }
-
 ```
 
 A phyloseq object was built with this information, and can be found here:
@@ -493,50 +466,46 @@ if (colSums(is.na(tax_table(pseq)[,c(7)])) == 0) {
 In relative abundance (see total number of reads in the dada2 output), the most abundant taxa at phylum level and at species level are shown in the following images.
 
 ```{r, echo=F}
-
-#in case there are NA's in the pseq table:
+# in case there are NA's in the pseq table:
 pseq@otu_table <- replace(pseq@otu_table, is.na(pseq@otu_table), 0)
 
 pseq_rel <- transform_sample_counts(pseq, function(x) x / sum(x) )
 
 # Top 10 at phylum level:
-pseq_phyla=tax_glom(pseq,  taxrank="phylum")
+pseq_phyla <- tax_glom(pseq, taxrank = "phylum")
 top.phyla <- sort(tapply(taxa_sums(pseq), tax_table(pseq)[, "phylum"], sum), TRUE)
 top.phyla <- top.phyla[1:10]
 pseq_phyla <- subset_taxa(pseq_rel, phylum %in% names(top.phyla))
 plot_bar(pseq_phyla, x = "phylum", fill="phylum")+
-  geom_bar(stat="identity")+
+  geom_bar(stat = "identity")+
   theme_classic()+
   theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none', plot.title = element_text(size = 10, face = "bold"))+
   ggtitle(paste("Relative abundance of the most common phyla in the full set of samples (n =", nsamples(pseq), ")"))
 
 # Top 10 at class level:
 pmelt <- psmelt(pseq_rel)
-pseq_phyla=tax_glom(pseq,  taxrank="class")
+pseq_phyla <- tax_glom(pseq, taxrank = "class")
 top.phyla <- sort(tapply(taxa_sums(pseq), tax_table(pseq)[, "class"], sum), TRUE)
 top.phyla <- top.phyla[1:10]
 pseq_phyla <- subset_taxa(pseq_rel, class %in% names(top.phyla))
 plot_bar(pseq_phyla, x = "class", fill="class")+
-  geom_bar(stat="identity")+
+  geom_bar(stat = "identity")+
   theme_classic()+
   theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none', plot.title = element_text(size = 10, face = "bold"))+
   ggtitle(paste("Relative abundance of the most common taxonomic classes in the full set of samples (n =", nsamples(pseq), ")"))
 
-
 # Top 10 at species level:
 pmelt <- psmelt(pseq_rel)
-pseq_phyla=tax_glom(pseq,  taxrank="species")
+pseq_phyla <- tax_glom(pseq, taxrank = "species")
 top.phyla <- sort(tapply(taxa_sums(pseq), tax_table(pseq)[, "species"], sum), TRUE)
 top.phyla <- top.phyla[1:10]
 pseq_phyla <- subset_taxa(pseq_rel, species %in% names(top.phyla))
-plot_bar(pseq_phyla, x = "species", fill="species")+
-  geom_bar(stat="identity")+
+plot_bar(pseq_phyla, x = "species", fill = "species")+
+  geom_bar(stat = "identity")+
   theme_classic()+
   theme(axis.text.x = element_text(angle = -90, hjust = 0), legend.position = 'none', plot.title = element_text(size = 10, face = "bold"))+
   ggtitle(paste("Relative abundance of the most common species in the full set of samples (n =", nsamples(pseq), ")"))
-
 ```
-
 
 The relationship of the biodiversity between the samples is shown in the following ordination. The closer together the samples are depicted, the more similar the biodiversity measured in each of the samples was.
 (Works only if more than 2 samples are analysed in a run.)
@@ -550,8 +519,8 @@ if (nsamples(pseq_rel) > 2) {
   sample_data(pseq_rel)$sample_id <- sample_names(pseq_rel)
 
   plot_ordination(pseq_rel, pseq.ord) +
-    geom_point(size = 4, fill = 'white', shape = 21) +
-    geom_text(aes(label = sample_id), size = 4, vjust = 'inward', hjust ='inward') +
+    geom_point(size = 4, fill = "white", shape = 21) +
+    geom_text(aes(label = sample_id), size = 4, vjust = "inward", hjust = "inward") +
     theme_bw()
 }
 ```
@@ -582,8 +551,8 @@ occ_table <- read.table(occ_path, header = TRUE, sep = "\t")
 cat("The total number of occurrences was", nrow(occ_table), ".  \n")
 cat("Of which", sum(occ_table$scientificName!="Incertae sedis"), "were known, and therefore", sum(occ_table$scientificName=="Incertae sedis"), "or", sum(occ_table$scientificName=="Incertae sedis") / nrow(occ_table) * 100, "% remained unknown.  \n  \nThe sequences of these occurrences can nevertheless be added to the database, and it is possible that their taxonomy will be defined when reference databases develop.  \n  \n")
 
-notinworms_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/Taxa_not_in_worms.tsv")
-notinworms_table <- read.table(notinworms_path, header=TRUE, sep = "\t")
+notinworms_path <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/05-dwca/taxa_not_in_worms.tsv")
+notinworms_table <- read.table(notinworms_path, header = TRUE, sep = "\t")
 
 cat("The number of names not found in the marine records of WoRMS was", nrow(notinworms_table), ".")
 ```

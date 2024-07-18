@@ -7,22 +7,24 @@ library("dplyr")
 library("xml2")
 library("yaml")
 
-# Parse arguments
-args <- commandArgs(trailingOnly = T)
-message("args <- ", capture.output(dput(args))) # output for debugging
+if (!exists("cmd_args")) {
+  cmd_args <- commandArgs(trailingOnly = T)
+  message("cmd_args <- ", capture.output(dput(cmd_args)))
+}
 
-outpath <- args[1]
-tax_file_path <- args[3]
-otu_file_path <- args[2]
-rep_seqs_path <- args[4]
-sample_file_path <- args[5]
-config_path <- args[6]
+outpath <- cmd_args[1]
+tax_file_path <- cmd_args[3]
+otu_file_path <- cmd_args[2]
+rep_seqs_path <- cmd_args[4]
+sample_file_path <- cmd_args[5]
+config_path <- cmd_args[6]
 
 # LOAD data (this will be done from input later on)
 
-tax_file <- read.csv(tax_file_path, sep = "\t", header = T, row.names = 1)
+tax_file <- read.csv(tax_file_path, sep = "\t", header = T, quote = "'") %>%
+  tibble::column_to_rownames("asv")
 otu_file <- read.csv(otu_file_path, sep = "\t", header = T, row.names = 1, check.names = F)
-Rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
+rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
 sample_file <- read.csv(sample_file_path, sep = ";", header = T, row.names = 1)
 config <- read_yaml(config_path)
 
@@ -38,18 +40,19 @@ config <- read_yaml(config_path)
 #args[args[5:15] == "None"] <- NA
 
 sample_file$target_gene <- config$meta$sequencing$target_gene
-sample_file$subfragment <- config$meta$sequencing$subfragment 
-sample_file$pcr_primer_forward <- config$meta$sequencing$pcr_primer_forward 
-sample_file$pcr_primer_reverse <- config$meta$sequencing$pcr_primer_reverse 
-sample_file$pcr_primer_name_forward <- config$meta$sequencing$pcr_primer_name_forw 
-sample_file$pcr_primer_name_reverse <- config$meta$sequencing$pcr_primer_name_reverse 
-sample_file$pcr_primer_reference <- config$meta$sequencing$pcr_primer_reference 
+sample_file$subfragment <- config$meta$sequencing$subfragment
+sample_file$pcr_primer_forward <- config$meta$sequencing$pcr_primer_forward
+sample_file$pcr_primer_reverse <- config$meta$sequencing$pcr_primer_reverse
+sample_file$pcr_primer_name_forward <- config$meta$sequencing$pcr_primer_name_forw
+sample_file$pcr_primer_name_reverse <- config$meta$sequencing$pcr_primer_name_reverse
+sample_file$pcr_primer_reference <- config$meta$sequencing$pcr_primer_reference
 sample_file$lib_layout <- config$meta$sequencing$lib_layout
-sample_file$seq_meth <- config$meta$sequencing$seq_meth 
-sample_file$sop <- config$meta$sequencing$sop 
-sample_file$votu_db <- config$DATABASE$name 
+sample_file$seq_meth <- config$meta$sequencing$seq_meth
+sample_file$sop <- config$meta$sequencing$sop
+sample_file$votu_db <- config$DATABASE$name
 
 # Addition of possible extra fields:
+
 extra_fields <- config$meta$sequencing$extra_fields
 args_name_value <- data.frame(command = 1, value = 1)
 
@@ -71,7 +74,7 @@ sample_data <- phyloseq::sample_data(sample_file)
 
 # Here I make a phyloseq object with the three files
 phydata <- phyloseq::phyloseq(otu_table, tax_table, sample_data)
-phydata <- phyloseq::merge_phyloseq(phydata, Rep_seqs)
+phydata <- phyloseq::merge_phyloseq(phydata, rep_seqs)
 # Print the amount of information stored:
 phydata
 
