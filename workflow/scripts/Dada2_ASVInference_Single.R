@@ -455,13 +455,27 @@ seqtab.nochim[is.na(seqtab.nochim)] <- 0
 # Collect results of how many reads are available at each step in a table:
 getN <- function(x) sum(getUniques(x))
 
+#For merged reads only count those that were merged:
+# Define the filtering function
+filter_accept <- function(tbl) {
+  #tbl[tbl$accept == TRUE, ]
+  tbl %>% filter(accept)
+}
+
 # Make a table with all information on the reads retained from the run, if paired reads were merged:
 message("Making summary table")
 if (config$DADA2$mergePairs$include) {
+  #if Returnrejects, then the rejected pairs are also still in mergers.
+  if(config$DADA2$mergePairs$returnRejects) {
+
+    mergers_accepted <- sapply(mergers, function(tbl) {filter_accept(tbl)}, simplify = FALSE)
+    track <- cbind(sapply(dadas[[1]], getN), sapply(dadas[[2]], getN), sapply(mergers_accepted, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
+    colnames(track) <- c("denoisedF", "denoisedR", "merged", "nonchim", "ASVs")
+  } else { 
   track <- cbind(sapply(dadas[[1]], getN), sapply(dadas[[2]], getN), sapply(mergers, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
   colnames(track) <- c("denoisedF", "denoisedR", "merged", "nonchim", "ASVs")
 # If paired reads were not merged:
-} else {
+} } else {
   track <- cbind(sapply(dadas[[1]], getN), sapply(dadas[[2]], getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
   colnames(track) <- c("denoisedF", "denoisedR", "nonchim", "ASVs")
 }
