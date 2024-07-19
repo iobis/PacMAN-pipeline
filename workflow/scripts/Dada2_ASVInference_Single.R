@@ -315,7 +315,7 @@ if (config$DADA2$mergePairs$include) {
       # The most simple way to get the rejected sequences:
       # https://github.com/benjjneb/dada2/issues/354
       rejects <- mergers[[i]][!mergers[[i]]$accept,]
-      rejects.fwd.seq <- dadas[[1]][[i]]$sequence[rejects$forward]
+      rejects.fwd.seq <- dadas[[1]][[i]]$sequence[unique(rejects$forward)]
 
       # $denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
       # https://rdrr.io/bioc/dada2/man/dada-class.html
@@ -332,7 +332,7 @@ if (config$DADA2$mergePairs$include) {
       # The most simple way to get the rejected sequences:
       # https://github.com/benjjneb/dada2/issues/354
       rejects <- mergers[[i]][!mergers[[i]]$accept,]
-      rejects.rev.seq <- dadas[[2]][[i]]$sequence[rejects$reverse]
+      rejects.rev.seq <- dadas[[2]][[i]]$sequence[unique(rejects$reverse)]
 
       # $denoised: Integer vector, named by sequence valued by abundance, of the denoised sequences.
       # https://rdrr.io/bioc/dada2/man/dada-class.html
