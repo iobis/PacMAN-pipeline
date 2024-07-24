@@ -178,6 +178,7 @@ For forward unpaired reads they were:
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
+  if (file.exists(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt"))){
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt")
   text <- readLines(cut_report)
 
@@ -192,7 +193,7 @@ for (i in 1:length(sample_ids)) {
     }
     cutResults[i,] <- sample[!is.na(sample)]
     rownames(cutResults)[i] <- paste(sample_ids[i],"1U")
-  } else {
+ } } else {
     cutResults[i,] <- rep(0,6)
     rownames(cutResults)[i] <- paste(sample_ids[i],"1U")
   }
@@ -212,6 +213,7 @@ For reverse unpaired reads they were:
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
+  if (file.exists(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt"))){
   cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2U_log.txt")
   text <- readLines(cut_report)
 
@@ -226,7 +228,7 @@ for (i in 1:length(sample_ids)) {
     }
     cutResults[i,] <- sample[!is.na(sample)]
     rownames(cutResults)[i] <- paste(sample_ids[i],"2U")
-  } else {
+ } } else {
     cutResults[i,] <- rep(0,6)
     rownames(cutResults)[i] <- paste(sample_ids[i],"2U")
   }
