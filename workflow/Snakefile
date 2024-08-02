@@ -139,7 +139,7 @@ rule multiqc:
   conda:
     "envs/qc.yaml"
   shell:
-    "multiqc -dd 2 -n {output.raw_multi_html} {input.raw_qc_fw} {input.raw_qc_rv}"
+    "multiqc -dd 2 -fn {output.raw_multi_html} {input.raw_qc_fw} {input.raw_qc_rv}"
 
 # Note: there is an automatic pdf report, but this requires the installation of latex
 
