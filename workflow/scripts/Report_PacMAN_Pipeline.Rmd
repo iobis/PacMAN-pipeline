@@ -98,7 +98,6 @@ This is done so that reads that do not have a pair are not discarded at this sta
 The command(s) that was used was:
 
 ```{r, echo=F}
-#cut_report <- capture.output(cat("../PacMAN-pipeline-backup/results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_log.txt", sep = ""))
 cut_report_1P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_1P_log.txt")
 readLines(cut_report_1P, n = 2)
 cut_report_2P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_2P_log.txt")
@@ -120,7 +119,7 @@ for (i in 1:length(sample_ids)) {
     report <- text[c((rows[1]+2):(rows[2]-2))]
     sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
 
-    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
+    # Not all of the reports list ReadsTooShort, so add for those that don't a 0
     if (!grepl("short", report[4])) {
       sample <- append(sample, 0, after = 2)
     }
@@ -152,7 +151,7 @@ for (i in 1:length(sample_ids)) {
     report <- text[c((rows[1]+2):(rows[2]-2))]
     sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
 
-    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
+    # Not all of the reports list ReadsTooShort, so add for those that don't a 0
     if (!grepl("short", report[4])) {
       sample <- append(sample, 0, after = 2)
     }
@@ -178,22 +177,23 @@ For forward unpaired reads they were:
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
-  if (file.exists(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt"))){
-  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt")
-  text <- readLines(cut_report)
+  if (file.exists(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt"))) {
+    cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt")
+    text <- readLines(cut_report)
 
-  if (any(grepl("^===", text))) {
-    rows <- grep("^===", text)
-    report <- text[c((rows[1]+2):(rows[2]-2))]
-    sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+    if (any(grepl("^===", text))) {
+      rows <- grep("^===", text)
+      report <- text[c((rows[1]+2):(rows[2]-2))]
+      sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
 
-    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
-    if (!grepl("short", report[4])) {
-      sample <- append(sample, 0, after = 2)
+      # Not all of the reports list ReadsTooShort, so add for those that don't a 0
+      if (!grepl("short", report[4])) {
+        sample <- append(sample, 0, after = 2)
+      }
+      cutResults[i,] <- sample[!is.na(sample)]
+      rownames(cutResults)[i] <- paste(sample_ids[i],"1U")
     }
-    cutResults[i,] <- sample[!is.na(sample)]
-    rownames(cutResults)[i] <- paste(sample_ids[i],"1U")
- } } else {
+  } else {
     cutResults[i,] <- rep(0,6)
     rownames(cutResults)[i] <- paste(sample_ids[i],"1U")
   }
@@ -213,22 +213,23 @@ For reverse unpaired reads they were:
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
-  if (file.exists(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt"))){
-  cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2U_log.txt")
-  text <- readLines(cut_report)
+  if (file.exists(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt"))) {
+    cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2U_log.txt")
+    text <- readLines(cut_report)
 
-  if (any(grepl("^===", text))) {
-    rows <- grep("^===", text)
-    report <- text[c((rows[1]+2):(rows[2]-2))]
-    sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
+    if (any(grepl("^===", text))) {
+      rows <- grep("^===", text)
+      report <- text[c((rows[1]+2):(rows[2]-2))]
+      sample <- report %>% str_extract_all("\\b\\d{1,3}(,\\d{3})*(\\.\\d+)?\\b(?![^(]*\\))") %>% unlist %>% {gsub(',','',.)} %>% as.numeric
 
-    #Not all of the reports list ReadsTooShort, so add for those that don't a 0
-    if (!grepl("short", report[4])) {
-      sample <- append(sample, 0, after = 2)
+      # Not all of the reports list ReadsTooShort, so add for those that don't a 0
+      if (!grepl("short", report[4])) {
+        sample <- append(sample, 0, after = 2)
+      }
+      cutResults[i,] <- sample[!is.na(sample)]
+      rownames(cutResults)[i] <- paste(sample_ids[i],"2U")
     }
-    cutResults[i,] <- sample[!is.na(sample)]
-    rownames(cutResults)[i] <- paste(sample_ids[i],"2U")
- } } else {
+  } else {
     cutResults[i,] <- rep(0,6)
     rownames(cutResults)[i] <- paste(sample_ids[i],"2U")
   }
