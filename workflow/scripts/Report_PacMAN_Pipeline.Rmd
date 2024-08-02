@@ -104,7 +104,6 @@ cut_report_2P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, 
 readLines(cut_report_2P, n = 2)
 ```
 
-
 ### Forward reads
 
 ```{r, echo=F, warning=F}
@@ -213,7 +212,7 @@ For reverse unpaired reads they were:
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
-  if (file.exists(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_1U_log.txt"))) {
+  if (file.exists(paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2U_log.txt"))) {
     cut_report <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[i], "_2U_log.txt")
     text <- readLines(cut_report)
 
