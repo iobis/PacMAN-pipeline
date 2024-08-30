@@ -32,6 +32,7 @@ dna <- readDNAStringSet(rep_seqs_path)
 seq_lengths <- data.frame(asv = names(dna), seq_length = width(dna))
 
 # process vsearch results
+message("process vsearch results 1/2")
 
 colnames(vsearch) <- c("asv", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
 
@@ -53,6 +54,8 @@ split_taxonomy <- function(taxonomy_string) {
   names(values) <- keys
   return(values)
 }
+
+message("process vsearch results 2/2")
 
 vsearch_clean <- vsearch %>%
   mutate(
@@ -150,7 +153,13 @@ combined <- bind_rows(rdp_clean, vsearch_clean) %>%
   arrange(asv, method) %>%
   relocate(asv, method, scientificName, confidence, identity)
 
+#Add either those that have a kingdom (confidence 0.8), but no phylum:
 unknowns <- combined %>% filter(method == "RDP classifier" & is.na(phylum)) %>% pull(asv)
+  #Add also completely unknown sequences for blast:
+  unknowns <- c(unknowns, seq_lengths %>% filter(!asv %in% combined$asv)%>% pull(asv))
+
+#OR add only those that did not get any id (so superkingdom is less than 0.8 confidence)
+
 
 write.table(combined, paste0(outpath, "04-taxonomy/annotation_results.txt"), row.names = FALSE, col.names = TRUE, quote = FALSE, sep="\t", na = "")
 writeLines(unknowns, paste0(outpath, "04-taxonomy/unknown_asvs.txt"))

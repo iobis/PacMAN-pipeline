@@ -46,15 +46,15 @@ rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
 if (!is.null(basta_file_path)) {
   if (file.size(basta_file_path) > 0) {
     message("0. Results of Blast annotation read")
-    basta_file <- read.csv(basta_file_path, sep = "\t", header = F) %>%
-      setNames(c("asv", "sum.taxonomy"))
+    basta_file <- read.csv(basta_file_path, sep = "\t", header = T) #%>%
+      #setNames(c("asv", "sum.taxonomy"))
   }
 }
 
 if (exists("basta_file")) {
 
     basta_clean <- basta_file %>%
-      rename(taxonomy = sum.taxonomy) %>%
+      dplyr::rename(taxonomy = Taxonomy, asv=ASV) %>%
       mutate(
         taxonomy = str_replace_all(taxonomy, "_", " ")
       ) %>%
@@ -72,7 +72,7 @@ if (exists("basta_file")) {
     matches <- match_worms(unique(tax_names)) %>%
       select(scientificName = input, scientificNameID = lsid)
     basta_clean <- basta_clean %>%
-      left_join(matches, by = "scientificName") %>%
+    left_join(matches, by = "scientificName") %>%
       mutate(
         method = "BASTA",
         basta_identity_threshold = basta_identity_threshold

@@ -388,6 +388,7 @@ if config["BLAST"]["include"] == True:
             -out {output.o2}  \
             -outfmt 6 \
             -perc_identity {config[BLAST][percent_identity]} \
+            -qcov_hsp_perc {config[BLAST][percent_coverage]} \
             -num_threads {threads} \
             {config[BLAST][database]}" 
 
@@ -433,13 +434,31 @@ if config["BLAST"]["include"] == True:
                 {output.basta_results} \
                 gb"
 
+    rule filter_blast_species:
+            input: 
+              blast_results = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results.tab",
+              blast_lca = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab",
+              fasta = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
+            output: 
+              o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca_mod.tab",
+            conda:
+              "envs/r.yaml"
+            shell: 
+              "Rscript ./workflow/scripts/remove_low_id_blast_hits.R \
+              {input.blast_results}    \
+              {input.blast_lca} \
+              {input.fasta} \
+              {output.o1}"
+
+
+
 # RULES: FORMAT DATA ----------------------------------------------------------------
 
 rule merge_blast:
   input:
     f1 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results.txt", PROJECT=PROJECT, RUN=RUN),
     f2 = "results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna",
-    f3 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca.tab", PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
+    f3 = expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/blast/unclassified_blast_results_lca_mod.tab", PROJECT=PROJECT, RUN=RUN) if config["BLAST"]["include"] else [],
   output:
     o1 = "results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results_blast.txt",
   conda:
