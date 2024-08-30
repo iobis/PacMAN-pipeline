@@ -28,7 +28,7 @@ config <- read_yaml(config_path)
 param_rdp_confidence_threshold <- config$Rdp$cutoff
 param_vsearch_identity_threshold <- config$Vsearch$pident
 param_vsearch_cover_threshold <- config$Vsearch$query_cov
-param_basta_identity_threshold <- ifelse(config$BLAST$include, config$BLAST$percent_identity, NULL)
+param_basta_identity_threshold <- ifelse(config$BLAST$include, config$BLAST$percent_identity, NA)
 
 # Read input files
 

@@ -5,21 +5,23 @@
 # @author: A. ABdala
 # modified by Saara Suominen on the 15.6.2021
 
-#input=snakemake@input[[1]] Not working with the shell command, files are read as {input}
 library(yaml)
 library(dada2)
-#library(Biostrings)
 library(ggplot2)
 
-args <- commandArgs(trailingOnly = TRUE)
+if (!exists("cmd_args")) {
+  cmd_args <- commandArgs(trailingOnly = T)
+  message("cmd_args <- ", capture.output(dput(cmd_args)))
+}
+
 # Add all arguments for dada2 parameters from configfile!
-config <- read_yaml(args[2])
+config <- read_yaml(cmd_args[2])
 
 # Set the different paths for all the supplied libraries
-paths <- args[3:length(args)]
+paths <- cmd_args[3:length(cmd_args)]
 #print(paths)
 
-outpath <- args[1]
+outpath <- cmd_args[1]
 #print(outpath)
 
 # Set the different paths for all the supplied libraries
@@ -58,7 +60,7 @@ for (i in 1:4) {
 
   for (j in 1:length(allfiles[[i]])) {
     info <- file.info(allfiles[[i]][j])
-    if (!is.na(info$size) & info$size > 36) { # 36 is the size of an empty .gz file
+    if (!is.na(info$size) & info$size > 43) { # 43 is the size of an empty .gz file
       files_loop <- c(files_loop, allfiles[[i]][j])
     }
   }
@@ -87,30 +89,36 @@ for (i in 1:4) {
     message("Making quality plots")
     for (j in 1:length(quals[[i]])) {
       dir.create(dirname(quals[[i]][j]), showWarnings = FALSE)
-      p <- plotQualityProfile(files_exist[[i]][j])
-      ggsave(quals[[i]][j], plot = p, dpi = 150, width = 10, height = 10, units = "cm")
+      tryCatch({
+        p <- plotQualityProfile(files_exist[[i]][j])
+        ggsave(quals[[i]][j], plot = p, dpi = 150, width = 10, height = 10, units = "cm")
+      }, warning = function(w) {
+        message(w)
+      }, error = function(e) {
+        message(glue::glue("Not able to plot quality profile for {files_exist[[i]][j]}"))
+      })
     }
 
-    #Make aggregate plot of all reads
+    # Make aggregate plot of all reads
     print(plotQualityProfile(files_exist[[i]], aggregate = T))
     ggsave(paste0(outpath,"06-report/dada2/aggregate_quality_profiles_", names(allfiles)[i], ".png"), dpi = 300, width = 10, height = 10, units = "cm")
 
-    #Create path and file names for filtered samples"
+    # Create path and file names for filtered samples"
     filts[[i]] <- gsub("02-cutadapt/checked/", "03-dada2/filtered/", files_exist[[i]])
 
-    #assign names to files
+    # Assign names to files
     names(filts[[i]]) <- sample.names[[i]]
 
   } else {
 
-    message(paste("No reads to process for", names(allfiles)[i], sep=" "))
+    message(paste("No reads to process for", names(allfiles)[i], sep = " "))
 
   }
 }
 
 # Run filtering on reads:
 # Paired reads together and single reads separately
-if (config$meta$sequencing$lib_layout=="Paired") {
+if (config$meta$sequencing$lib_layout == "Paired") {
   message("Filtering and Trimming paired reads based on parameter set in the config file")
 
   out <- filterAndTrim(files_exist[[1]], filts[[1]], files_exist[[2]], filts[[2]],
@@ -135,72 +143,72 @@ if (config$meta$sequencing$lib_layout=="Paired") {
     verbose = config$DADA2$filterAndTrim$verbose
   )
 
-# Write out to save the effect of filtering on the reads:
-rownames(out) <- sample.names[[1]]
-out <- as.data.frame(out)
-colnames(out)[2] <- "reads.out.paired"
-stats_reads <- out
-#write.table(out, paste0(outpath, "06-report/dada2/dada2_filtering_stats_paired_reads.txt"), row.names = TRUE, col.names = TRUE, quote = FALSE)
+  # Write out to save the effect of filtering on the reads:
+  rownames(out) <- sample.names[[1]]
+  out <- as.data.frame(out)
+  colnames(out)[2] <- "reads.out.paired"
+  stats_reads <- out
+  #write.table(out, paste0(outpath, "06-report/dada2/dada2_filtering_stats_paired_reads.txt"), row.names = TRUE, col.names = TRUE, quote = FALSE)
 
-qualfiltsFs <- gsub(".png", "_filtered.png", quals[[1]])
-qualfiltsRs <- gsub(".png", "_filtered.png", quals[[2]])
+  qualfiltsFs <- gsub(".png", "_filtered.png", quals[[1]])
+  qualfiltsRs <- gsub(".png", "_filtered.png", quals[[2]])
 
-# Make quality profile plots.
-message("Making quality plots of the filtered reads")
-filts_passedF <- c()
-filts_passedR <- c()
-plot_list <- list()
+  # Make quality profile plots.
+  message("Making quality plots of the filtered reads")
+  filts_passedF <- c()
+  filts_passedR <- c()
+  plot_list <- list()
 
-for (j in 1:length(qualfiltsFs)) {
-  if (file.exists(filts[[1]][j])) {
+  for (j in 1:length(qualfiltsFs)) {
+    if (file.exists(filts[[1]][j])) {
       filts_passedF <- c(filts_passedF, filts[[1]][j])
       dir.create(dirname(qualfiltsFs[j]), showWarnings = FALSE)
       p <- plotQualityProfile(filts[[1]][j])
       ggsave(qualfiltsFs[j], plot = p, dpi = 150, width = 10, height = 10, units = "cm")
+    }
+    if (file.exists(filts[[2]][j])) {
+      filts_passedR <- c(filts_passedR, filts[[2]][j])
+      dir.create(dirname(qualfiltsRs[j]), showWarnings = FALSE)
+      q <- plotQualityProfile(filts[[2]][j])
+      ggsave(qualfiltsRs[j], plot = q, dpi = 150, width = 10, height = 10, units = "cm")
+    }
   }
-  if (file.exists(filts[[2]][j])) {
-    filts_passedR <- c(filts_passedR, filts[[2]][j])
-    dir.create(dirname(qualfiltsRs[j]), showWarnings = FALSE)
-    q <- plotQualityProfile(filts[[2]][j])
-    ggsave(qualfiltsRs[j], plot = q, dpi = 150, width = 10, height = 10, units = "cm")
+
+  print(plotQualityProfile(filts_passedF, aggregate = T))
+  ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_paired_filtered_forward.png"), dpi = 300, width = 10, height = 10, units = "cm")
+  print(plotQualityProfile(filts_passedR, aggregate = T))
+  ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png"), dpi = 300, width = 10, height = 10, units = "cm")
+
+} else {
+
+  message("Paired read files will be analysed in single-end mode")
+
+  #Append files_exist 1P and files_exist 2P to the single reads so that they are analysed in the same workflow
+  #Forward reads:
+  if (length(files_exist[[3]] != 0)) { 
+    files_exist[[3]] <- c(files_exist[[1]], files_exist[[3]])
+    filts[[3]] <- c(filts[[1]], filts[[3]])
+    quals[[3]] <- c(quals[[1]], quals[[3]])
+    sample.names[[3]] <- c(sample.names[[1]], sample.names[[3]])
+  } else {
+    files_exist[[3]] <- files_exist[[1]]
+    filts[[3]] <- filts[[1]]
+    quals[[3]] <- quals[[1]]
+    sample.names[[3]] <- sample.names[[1]]
   }
-}
 
-print(plotQualityProfile(filts_passedF, aggregate = T))
-ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_paired_filtered_forward.png"), dpi = 300, width = 10, height = 10, units = "cm")
-print(plotQualityProfile(filts_passedR, aggregate = T))
-ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png"), dpi = 300, width = 10, height = 10, units = "cm")
-
-} else {
-
-message("Paired read files will be analysed in single-end mode")
-
-#Append files_exist 1P and files_exist 2P to the single reads so that they are analysed in the same workflow
-#Forward reads:
-if (length(files_exist[[3]] != 0)) { 
-files_exist[[3]]=c(files_exist[[1]], files_exist[[3]])
-filts[[3]]=c(filts[[1]], filts[[3]])
-quals[[3]]=c(quals[[1]], quals[[3]])
-sample.names[[3]]=c(sample.names[[1]], sample.names[[3]])
-} else {
-files_exist[[3]]=files_exist[[1]]
-filts[[3]]=filts[[1]]
-quals[[3]]=quals[[1]]
-sample.names[[3]]=sample.names[[1]]
-}
-
-#Reverse reads:
-if (length(files_exist[[4]] != 0)) { 
-files_exist[[4]]=c(files_exist[[2]], files_exist[[4]])
-filts[[4]]=c(filts[[2]], filts[[4]])
-quals[[4]]=c(quals[[2]], quals[[4]])
-sample.names[[4]]=c(sample.names[[2]], sample.names[[4]])
-} else {
-files_exist[[4]]=files_exist[[2]]
-filts[[4]]=filts[[2]]
-quals[[4]]=quals[[2]]
-sample.names[[4]]=sample.names[[2]]
-}
+  #Reverse reads:
+  if (length(files_exist[[4]] != 0)) { 
+    files_exist[[4]] <- c(files_exist[[2]], files_exist[[4]])
+    filts[[4]] <- c(filts[[2]], filts[[4]])
+    quals[[4]] <- c(quals[[2]], quals[[4]])
+    sample.names[[4]] <- c(sample.names[[2]], sample.names[[4]])
+  } else {
+    files_exist[[4]] <- files_exist[[2]]
+    filts[[4]] <- filts[[2]]
+    quals[[4]] <- quals[[2]]
+    sample.names[[4]] <- sample.names[[2]]
+  }
 
 } 
 
@@ -239,13 +247,12 @@ if (length(files_exist[[3]]) != 0) {
   colnames(out) <- c("reads.in.forward.single", "reads.out.forward.single")
   
   if (config$meta$sequencing$lib_layout=="Paired") {
-  stats_reads <- cbind(stats_reads, out[match(rownames(stats_reads), rownames(out)),])
-  #stats_reads$reads.out.forward.single = out$reads.out.forward.single[match(rownames(stats_reads), rownames(out))]
-  #write.table(out, paste0(outpath, "06-report/dada2/dada2_filtering_stats_unpaired_forward_reads.txt"), row.names = TRUE, col.names = TRUE, quote = FALSE)
+    stats_reads <- cbind(stats_reads, out[match(rownames(stats_reads), rownames(out)),])
+    #stats_reads$reads.out.forward.single = out$reads.out.forward.single[match(rownames(stats_reads), rownames(out))]
+    #write.table(out, paste0(outpath, "06-report/dada2/dada2_filtering_stats_unpaired_forward_reads.txt"), row.names = TRUE, col.names = TRUE, quote = FALSE)
   } else {
     stats_reads <- out
   }
-
 
   qualfiltsFs_single <- gsub(".png", "_filtered.png", quals[[3]])
 
@@ -263,7 +270,7 @@ if (length(files_exist[[3]]) != 0) {
     }
   }
 
-if (length(filts_passedF)!=0){ 
+  if (length(filts_passedF)!=0) {
     print(plotQualityProfile(filts_passedF, aggregate = T))
     ggsave(paste0(outpath, "06-report/dada2/aggregate_quality_profiles_filtered_unpaired_forward.png"), dpi = 300, width = 10, height = 10, units = "cm")
   }
@@ -311,7 +318,6 @@ if (length(files_exist[[4]]) != 0) {
   filts_passedR <- c()
   plot_list <- list()
 
-
   for (j in 1:length(qualfiltsRs_single)) {
     if (file.exists(filts[[4]][j])){
       filts_passedR <- c(filts_passedR, filts[[4]][j])
@@ -340,12 +346,14 @@ if (file.exists("Rplots.pdf")) {
   ## are written in this case. Check for the output files, and if they
   ## don't exist, create empty ones.
  
- for (i in 1:length(allfiles)) {
+for (i in 1:length(allfiles)) {
   for(fn in allfiles[[i]]){
-    fn <- gsub("02-cutadapt/checked", "03-dada2/filtered",fn)
-    if(!file.exists(fn)){
+    fn <- gsub("02-cutadapt/checked", "03-dada2/filtered", fn)
+    if (!file.exists(fn)) {
       cat(gettextf('creating empty file %s\n', fn))
       gzf = gzfile(fn)
       cat('', file=gzf, fill=FALSE)
       close(gzf)
-    }}}
+    }
+  }
+}
