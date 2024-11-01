@@ -75,20 +75,7 @@ The repository includes a Dockerfile to run the entire pipeline in a Docker cont
 
 ```bash
 docker build --no-cache --platform linux/amd64 -t pipeline .
-docker run --platform linux/amd64 -v $(pwd):/root/pipeline -it pipeline /bin/bash
-snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config_files/config.yaml
-```
-
-Example when using external data and results folders:
-
-```bash
-docker build -t pipeline .
-
-docker run \
-   -v $(pwd):/src \
-   --rm \
-   pipeline \
-   /bin/bash -c "snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config/config_rey_noblast_2samples.yaml"
+docker run --platform linux/amd64 -v $(pwd):/root/pipeline pipeline
 ```
 
 ## Steps
