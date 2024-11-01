@@ -289,9 +289,9 @@ rule dada2_filter:
     conda:
         "envs/dada2.yaml"
     shell:
-        "Rscript ./workflow/scripts/Dada2_FilterAndTrim_combined.R \
+        "Rscript workflow/scripts/Dada2_FilterAndTrim_combined.R \
         results/{config[PROJECT]}/runs/{config[RUN]}/ \
-        "+config_path+" \
+        {config_path} \
         {input.f1}"
 
 rule dada2_ASV:
@@ -310,7 +310,7 @@ rule dada2_ASV:
     shell:
         "Rscript ./workflow/scripts/Dada2_ASVInference_Single.R \
         results/{config[PROJECT]}/runs/{config[RUN]}/ \
-        "+config_path+" \
+        {config_path} \
         {input.FiltF}"
 
 # RULES: TAXONOMIC ASSIGNMENTS ----------------------------------------------------------------
@@ -362,7 +362,7 @@ rule clean_filter_taxa:
     shell: 
         "Rscript ./workflow/scripts/clean_filter_taxa.R \
         results/{config[PROJECT]}/runs/{config[RUN]}/ \
-        "+config_path+" \
+        {config_path} \
         {input.rdp}    \
         {input.vsearch} \
         {input.vsearch_lca} \
@@ -468,7 +468,7 @@ rule merge_blast:
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/04-taxonomy/ \
     {input.f1} \
     {input.f2} \
-    "+config_path+" \
+    {config_path} \
     {input.f3} \
     {config[BLAST][database_date]}"
 
@@ -488,7 +488,7 @@ rule make_tax_table:
     results/{wildcards.PROJECT}/runs/{wildcards.RUN}/05-dwca/ \
     {input.f1} \
     {input.f2} \
-    " + config_path
+    {config_path}"
 
 
 rule make_dwca:
@@ -508,8 +508,8 @@ rule make_dwca:
     {input.f1} \
     {input.f2} \
     {input.f3} \
-    {config[meta][sampling][sample_data_file]}\
-    "+config_path+" "
+    {config[meta][sampling][sample_data_file]} \
+    {config_path}"
 
 
 # Make here also a simple overview image to be added to the report?
@@ -523,4 +523,4 @@ rule reporting:
   output:
     "results/{PROJECT}/runs/{RUN}/06-report/report.html"
   shell:
-    "Rscript -e \"rmarkdown::render('workflow/scripts/Report_PacMAN_Pipeline.Rmd', output_file = '../../results/{PROJECT}/runs/{RUN}/06-report/report.html', params=list(config='"+config_path+"'))\""
+    "Rscript -e \"rmarkdown::render('workflow/scripts/Report_PacMAN_Pipeline.Rmd', output_file = '../../results/{PROJECT}/runs/{RUN}/06-report/report.html', params=list(config='{config_path}'))\""
