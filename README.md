@@ -74,8 +74,8 @@ Removing the `-np` flag will initiate the run.
 The repository includes a Dockerfile to run the entire pipeline in a Docker container. To do so, add your data files to the `data` directory and run the following commands to build the container and run the pipeline:
 
 ```bash
-docker build --no-cache --platform linux/amd64 -t pipeline .
-docker run --platform linux/amd64 -v $(pwd):/root/pipeline pipeline
+docker build --no-cache --platform linux/amd64 -t pacman-pipeline .
+docker run --platform linux/amd64 -v $(pwd):/root/pipeline pacman-pipeline
 ```
 
 ## Steps
