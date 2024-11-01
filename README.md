@@ -74,7 +74,7 @@ Removing the `-np` flag will initiate the run.
 The repository includes a Dockerfile to run the entire pipeline in a Docker container. To do so, add your data files to the `data` directory and run the following commands to build the container and run the pipeline:
 
 ```bash
-docker build --progress=plain --platform linux/amd64 -t pipeline .
+docker build --no-cache --platform linux/amd64 -t pipeline .
 docker run --platform linux/amd64 -v $(pwd):/root/pipeline -it pipeline /bin/bash
 snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config_files/config.yaml
 ```

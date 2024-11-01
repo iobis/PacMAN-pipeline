@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV BASH_ENV ~/.bashrc
+ENV BASH_ENV=~/.bashrc
 SHELL ["/bin/bash", "-c"]
 
 WORKDIR /root
@@ -12,15 +12,17 @@ RUN apt update --yes && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN wget --no-check-certificate https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-RUN bash Miniconda3-latest-Linux-x86_64.sh -b
+RUN wget --no-check-certificate https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+    chmod +x Miniconda3-latest-Linux-x86_64.sh && \
+    bash Miniconda3-latest-Linux-x86_64.sh -b && \
+    rm Miniconda3-latest-Linux-x86_64.sh
+
 RUN ./miniconda3/bin/conda init bash
 
-RUN miniconda3/bin/conda install -n base -c conda-forge mamba
-RUN miniconda3/bin/mamba create -c conda-forge -c bioconda -n snakemake snakemake
-RUN miniconda3/bin/conda config --add channels conda-forge
-RUN miniconda3/bin/conda config --add channels bioconda
-RUN miniconda3/bin/conda config --add channels r
+RUN miniconda3/bin/conda install -n base -c conda-forge mamba && \
+    miniconda3/bin/mamba create -c conda-forge -c bioconda -n snakemake snakemake && \
+    miniconda3/bin/conda config --add channels conda-forge && \
+    miniconda3/bin/conda config --add channels bioconda
 
 RUN echo "source activate snakemake" >> .bashrc
 
