@@ -1,8 +1,9 @@
 FROM ubuntu:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
-SHELL ["/bin/bash", "-c"]
 ENV BASH_ENV ~/.bashrc
+SHELL ["/bin/bash", "-c"]
+
 WORKDIR /root
 
 RUN apt update --yes && \
@@ -20,3 +21,10 @@ RUN miniconda3/bin/mamba create -c conda-forge -c bioconda -n snakemake snakemak
 RUN miniconda3/bin/conda config --add channels conda-forge
 RUN miniconda3/bin/conda config --add channels bioconda
 RUN miniconda3/bin/conda config --add channels r
+
+RUN echo "source activate snakemake" >> .bashrc
+
+RUN mkdir -p /root/pipeline
+WORKDIR /root/pipeline
+
+CMD ["bash", "-c", "source /root/miniconda3/etc/profile.d/conda.sh && conda activate snakemake && snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config_files/config.yaml"]

@@ -75,7 +75,7 @@ The repository includes a Dockerfile to run the entire pipeline in a Docker cont
 
 ```bash
 docker build --progress=plain --platform linux/amd64 -t pipeline .
-docker run --platform linux/amd64 -v $(pwd):/src -it pipeline /bin/bash
+docker run --platform linux/amd64 -v $(pwd):/root/pipeline -it pipeline /bin/bash
 snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config_files/config.yaml
 ```
 
