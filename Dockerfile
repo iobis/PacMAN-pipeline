@@ -17,11 +17,10 @@ RUN wget --no-check-certificate https://repo.anaconda.com/miniconda/Miniconda3-l
     bash Miniconda3-latest-Linux-x86_64.sh -b && \
     rm Miniconda3-latest-Linux-x86_64.sh
 
-RUN ./miniconda3/bin/conda init bash
-
-RUN miniconda3/bin/conda create -c conda-forge -c bioconda -n snakemake snakemake
-
-RUN echo "source activate snakemake" >> .bashrc
+RUN miniconda3/bin/conda init bash && \
+    miniconda3/bin/conda create --yes -c conda-forge -c bioconda -n snakemake snakemake && \
+    miniconda3/bin/conda clean --all --yes && \
+    echo "source activate snakemake" >> .bashrc
 
 RUN mkdir -p /pipeline
 COPY workflow /pipeline/workflow/
