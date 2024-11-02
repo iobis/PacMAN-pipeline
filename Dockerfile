@@ -27,4 +27,4 @@ COPY workflow /pipeline/workflow/
 COPY resources /pipeline/resources/
 WORKDIR /pipeline
 
-CMD ["bash", "-c", "source /root/miniconda3/etc/profile.d/conda.sh && conda activate snakemake && snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config_files/config.yaml"]
+CMD source /root/miniconda3/etc/profile.d/conda.sh && conda activate snakemake && snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config_files/config.yaml
