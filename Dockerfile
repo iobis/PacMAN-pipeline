@@ -23,7 +23,9 @@ RUN miniconda3/bin/conda create -c conda-forge -c bioconda -n snakemake snakemak
 
 RUN echo "source activate snakemake" >> .bashrc
 
-RUN mkdir -p /root/pipeline
-WORKDIR /root/pipeline
+RUN mkdir -p /pipeline
+COPY workflow /pipeline/workflow/
+COPY resources /pipeline/resources/
+WORKDIR /pipeline
 
 CMD ["bash", "-c", "source /root/miniconda3/etc/profile.d/conda.sh && conda activate snakemake && snakemake --rerun-incomplete --use-conda -p --cores all --configfile data/config_files/config.yaml"]

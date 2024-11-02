@@ -75,7 +75,10 @@ The repository includes a Dockerfile to run the entire pipeline in a Docker cont
 
 ```bash
 docker build --no-cache --platform linux/amd64 -t pacman-pipeline .
-docker run --platform linux/amd64 -v $(pwd):/root/pipeline pacman-pipeline
+```
+
+```bash
+docker run --platform linux/amd64 -v $(pwd)/data:/pipeline/data -v $(pwd)/results:/pipeline/results -v $(pwd)/.snakemake:/pipeline/.snakemake pacman-pipeline
 ```
 
 ## Steps
