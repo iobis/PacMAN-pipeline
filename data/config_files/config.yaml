@@ -1,0 +1,144 @@
+
+# Name of the project
+PROJECT: PacMAN
+
+# Name of the analysis run
+RUN: COI
+
+# Metadata for the sequencing run:
+# Here values can be added that are shared across all samples (can also be added to the sample data csv file if wanted).
+# Values that differ between samples should be added to the sample_data_template.csv file!
+meta:
+  sampling:
+    sample_data_file: data/config_files/sample_data.csv
+  sequencing:
+    target_gene: COI
+    subfragment: 5P 
+    pcr_primer_forward: GGWACWGGWTGAACWGTWTAYCCYCC
+    pcr_primer_reverse: TAIACYTCIGGRTGICCRAARAAYCA
+    pcr_primer_name_forw: COINexF-mlCOIintF
+    pcr_primer_name_reverse: NexR-jgHCO2198
+    pcr_primer_reference:  Geller2013;Leray2016
+    lib_layout: Paired
+    seq_meth: MiSeq
+    sop: 
+    extra_fields:
+
+# CSV file of the samples that should be analysed.
+# This needs to have three columns: sample-id, file-path, direction
+# Where file path points to each sample's forward and reverse files separately
+# direction is either 'forward' or 'reverse'
+SAMPLE_SET: data/config_files/manifest.csv
+
+# CutAdapt
+# Use N instead of I in the sequence https://github.com/marcelm/cutadapt/issues/546
+cutadapt:
+  forward_primer: GGWACWGGWTGAACWGTWTAYCCYCC
+  reverse_primer: TANACYTCNGGRTGNCCRAARAAYCA
+  rc_forward_primer: GGRGGRTAWACWGTTCAWCCWGTWCC
+  rc_reverse_primer: TGRTTYTTYGGNCAYCCNGARGTNTA
+  extra_params: "--discard-untrimmed"
+  se_extra_params: "--discard-untrimmed"
+
+# dada2
+# We include here all available parameters, so that the user has full control
+# over the dada2 calculation. Most of these are populated by default values
+# Those that are most often changed are: Trunc_len, TruncQ, minLen, and maxEE
+DADA2:
+
+  filterAndTrim:
+    Trunc_len_f: 200
+    Trunc_len_r: 150
+    TruncQ: 2
+    Trim_right: 0
+    Trim_left: 0
+    maxLen: Inf
+    minLen: 20
+    maxN: 0
+    minQ: 2 #0
+    MaxEE: 2 #Inf
+    Rm.phix: TRUE
+    orient.fwd: NULL
+    matchIDs: FALSE
+    id.sep: \\s
+    id.field: NULL
+    compress: TRUE
+    multithread: TRUE
+    num: 100000
+    OMP: TRUE
+    verbose: FALSE
+
+# DADA2 analysis part2 ######################
+
+  learnERRORS:
+    multithread: TRUE
+    nbases: 1e8
+    #errorEstimationFunction: see dada
+    randomize: FALSE
+    MAX_CONSIST: 10
+    OMEGA_C: 0
+    verbose: FALSE
+
+  plotERRORS:
+    #nti/ntj depict the nucleotides that
+    nti: ACTG
+    ntj: ACTG
+    obs: TRUE
+    err_out: TRUE
+    err_in: FALSE
+    nominalQ: TRUE
+
+  derepFastq:
+    num: 1e6
+
+  dada:
+    errorEstimationFunction: loessErrfun
+    selfConsist: FALSE
+    pool: TRUE
+    priors: ""
+
+# In case the reads are not overlapping, but paired, there are two choices.
+# 1. Skip the merging with include: FALSE, ASVs will be inferred from the forw and reverse reads separately
+# 2. justConcatenate, concantenates the reads with a number of NNNNs in between. This may complicate the taxonomic assignment step.
+  mergePairs:
+    include: TRUE
+    minOverlap: 12
+    maxMismatch: 0
+    returnRejects: TRUE
+    propagateCol: NULL
+    justConcatenate: FALSE
+    trimOverhang: FALSE
+
+  removeBimeraDenovo:
+    method: consensus
+
+# DATABASE
+Vsearch:
+# The vsearch database needs to be in sintax format. This can be built from most databases using the CRABS toolkit.
+  location_vsearch_db: data/reference_databases/COI_ncbi_1_50000_pcr_pga_taxon_derep_clean_sintax.fasta
+  vsearch_db_name: COI_ncbi_1_5000
+  pident: 0.97
+  query_cov: 0.85
+Rdp:  
+  location_rdp_ref: data/reference_databases/COI_terrimporter/rRNAClassifier.properties
+  rdp_ref_name: COI_terrimporter_5.1.0
+  cutoff: 0.6
+
+# Blast against the ncbi nt database, if blast should be run remotely, add "-remote -db nt" to the database field
+# However Blast should not be run remotely unless there are few sequences (<50)
+# tax_db is the mapping of taxonomy information to the database
+# In most cases this would be ncbi-nt and mappings for this.
+# Instructions for downloading these can be found in the BASTA documentation
+BLAST:
+  include: False
+  database: -db /home/ubuntu/data/reference_databases/ncbi/nt/20211125/nt #-remote -db nt #
+  database_date: 2021-11-25
+  tax_db: /home/ubuntu/data/databases/ncbi/taxonomy
+  portion_of_hits: 80 #portion of hits used for evaluation, default=100
+  percent_identity: 95 #default =80
+  e-value: 5e-13
+  alignment_length: 250
+  max_hits: 5 #all hits considered = 0
+  min_hits: 1
+
+# Darwin_core Formatting

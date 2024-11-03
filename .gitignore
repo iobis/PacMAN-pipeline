@@ -5,3 +5,7 @@ results
 all_seq_complete.clust.biom
 workflow/scripts/Rplots.pdf
 .bash_history
+data/raw_sequences/*
+data/reference_databases/*
+!data/raw_sequences/README.md
+!data/reference_databases/README.md
