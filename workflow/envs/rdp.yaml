@@ -1,4 +1,4 @@
 channels:
  - bioconda
 dependencies:
- - rdp_classifier=2.13
+ - rdp_classifier=2.14
