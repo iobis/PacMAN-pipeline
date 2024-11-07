@@ -35,7 +35,7 @@ The following files are required to run the pipeline:
       - A fasta file in the sintax format
       - [Download example database here](https://pacman-databases.s3.us-east-1.amazonaws.com/COI_ncbi_1_50000_pcr_pga_taxon_derep_clean_sintax.fasta)
 4. Run configuration
-   - Modify the [config.yml](data/config_files/config.yml) file for the specific run
+   - Modify the [config.yaml](data/config_files/config.yaml) file for the specific run
    - `PROJECT` name: Usually a specific sample set
    - `RUN` name: the run with a specific combination of samples and/or parameters for the analysis
    - `SAMPLE_SET`: manifest file path
