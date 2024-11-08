@@ -27,14 +27,16 @@ The following files are required to run the pipeline:
    - :warning: **Note** Control samples can be marked by adding `occurrenceStatus` as `absent`
    --> The ASVs from these samples will be removed from all samples, before the occurrence table is made
    - Example: [sample_data.csv](data/config_files/sample_data.csv)
-3. Reference databases
+3. Raw sequences
+   - Paired-end fastq files
+4. Reference databases
    - For RDB classifier
       - A trained classifier like those available here, or build by following this tutorial
       - [Download example database here](https://pacman-databases.s3.us-east-1.amazonaws.com/COI_terrimporter.zip)
    - For vsearch
       - A fasta file in the sintax format
       - [Download example database here](https://pacman-databases.s3.us-east-1.amazonaws.com/COI_ncbi_1_50000_pcr_pga_taxon_derep_clean_sintax.fasta)
-4. Run configuration
+5. Run configuration
    - Modify the [config.yaml](data/config_files/config.yaml) file for the specific run
    - `PROJECT` name: Usually a specific sample set
    - `RUN` name: the run with a specific combination of samples and/or parameters for the analysis
@@ -87,7 +89,11 @@ The pipeline can also be run with Docker. In this case you will not need a copy 
 docker run --platform linux/amd64 -v $(pwd)/data:/pipeline/data -v $(pwd)/results:/pipeline/results -v $(pwd)/.snakemake:/pipeline/.snakemake pieterprovoost/pacman-pipeline
 ```
 
-On Windows, use `%cd%` instead of `$(pwd)`.
+On Windows, you may have to use `%cd%` instead of `$(pwd)`.
+
+### Example output
+
+Download example output for a single sample [here](https://pacman-databases.s3.us-east-1.amazonaws.com/example_dataset_coi.zip).
 
 ## About the pipeline
 
