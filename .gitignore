@@ -9,3 +9,6 @@ data/raw_sequences/*
 data/reference_databases/*
 !data/raw_sequences/README.md
 !data/reference_databases/README.md
+data/config_files/config_*
+data/config_files/manifest_*
+data/config_files/sample_data_*

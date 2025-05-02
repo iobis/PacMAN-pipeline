@@ -6,6 +6,7 @@ library("phyloseq")
 library("dplyr")
 library("xml2")
 library("yaml")
+library("readr")
 
 if (!exists("cmd_args")) {
   cmd_args <- commandArgs(trailingOnly = T)
@@ -21,7 +22,7 @@ config_path <- cmd_args[6]
 
 # LOAD data (this will be done from input later on)
 
-tax_file <- read.csv(tax_file_path, sep = "\t", header = T, quote = "'") %>%
+tax_file <- read_tsv(tax_file_path, quote = "'") %>%
   tibble::column_to_rownames("asv")
 otu_file <- read.csv(otu_file_path, sep = "\t", header = T, row.names = 1, check.names = F)
 rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
