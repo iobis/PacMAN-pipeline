@@ -104,7 +104,12 @@ loessErrfun_mod4 <- function(trans) {
 }
 
 # Get sample names
-sample.names <- gsub("_1P.fastq.gz", "", basename(filtFs))
+if (config$meta$sequencing$lib_layout == "Paired") {
+  sample.names <- gsub("_1P.fastq.gz", "", basename(filtFs))
+} else {
+  sample.names <- gsub("_1U.fastq.gz", "", basename(filtFs))
+}
+
 message(paste0("Sample ", sample.names, " will be analyzed", collapse = "\n"))
 
 # Assign names to files
@@ -224,7 +229,7 @@ for (i in 1:4) {
   } else if (!grepl("single", names(allfiles)[i])) {
 
     message("Error: no paired reads to process")
-    stop()
+    #stop()
 
   # If no files found for the unpaired reads, continue with the workflow
   # It has to be made sure in the snakefile that this step is run despite not requiring output files
@@ -236,6 +241,8 @@ for (i in 1:4) {
 }
 
 # Merge forward and reverse paired reads
+
+if (config$meta$sequencing$lib_layout == "Paired") {
 message("Attempting merge")
 
 # Define function for merging and formatting seqtabs: next steps require an integer matrix
@@ -249,6 +256,7 @@ merge_format_seqtab <- function(seqtab1, seqtab2) {
   m <- reshape2::acast(df, sample ~ sequence, value.var = "value")
   mode(m) <- "integer"
   return(m)
+}
 }
 
 if (config$DADA2$mergePairs$include) {
@@ -380,8 +388,13 @@ if (config$DADA2$mergePairs$include) {
 # It has to be an integer matrix with samples as rownames and sequences as column names
 if (length(files_exist[[3]])!=0) {
   message("Adding ASVs from unpaired forward reads to ASV-table")
+  
+  if (config$meta$sequencing$lib_layout == "Paired") {
   seqtab3 <- makeSequenceTable(dadas[[3]])
-  seqtab <- merge_format_seqtab(seqtab, seqtab3)
+  seqtab <- merge_format_seqtab(seqtab, seqtab3)  
+  } else {
+  seqtab <- makeSequenceTable(dadas[[3]])
+  }
 }
 
 if (length(files_exist[[4]])!=0) {

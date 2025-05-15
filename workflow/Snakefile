@@ -36,35 +36,36 @@ rule all:
         expand("results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
                PROJECT=PROJECT, samples=samples),
         expand("results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz",
-               PROJECT=PROJECT, samples=samples),
+               PROJECT=PROJECT, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
         expand("results/{PROJECT}/samples/{samples}/qc/fw_fastqc.html",
                PROJECT=PROJECT, samples=samples),
         expand("results/{PROJECT}/samples/{samples}/qc/rv_fastqc.html",
-               PROJECT=PROJECT, samples=samples),
+               PROJECT=PROJECT, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
         expand("results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip",
                PROJECT=PROJECT, samples=samples),
         expand("results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip",
-               PROJECT=PROJECT, samples=samples),
-        expand("results/{PROJECT}/samples/multiqc_{RUN}.html",
-               PROJECT=PROJECT, RUN=RUN), 
+               PROJECT=PROJECT, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
+        #expand("results/{PROJECT}/samples/multiqc_{RUN}.html",
+        #       PROJECT=PROJECT, RUN=RUN), 
+        f"results/{PROJECT}/samples/multiqc_{RUN}.html",
         expand("results/{PROJECT}/samples/{samples}/fastp/{samples}_1P.fastq.gz",
-               PROJECT=PROJECT, RUN=RUN, samples=samples),
+               PROJECT=PROJECT, RUN=RUN, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
         expand("results/{PROJECT}/samples/{samples}/fastp/{samples}_2P.fastq.gz",
-               PROJECT=PROJECT, RUN=RUN, samples=samples),       
+               PROJECT=PROJECT, RUN=RUN, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],       
         expand("results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
                PROJECT=PROJECT, RUN=RUN, samples=samples), 
         expand("results/{PROJECT}/samples/{samples}/fastp/{samples}_2U.fastq.gz",
-               PROJECT=PROJECT, RUN=RUN, samples=samples),      
+               PROJECT=PROJECT, RUN=RUN, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],      
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
-               PROJECT=PROJECT, RUN=RUN, samples=samples),
+               PROJECT=PROJECT, RUN=RUN, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
-               PROJECT=PROJECT, RUN=RUN, samples=samples),
+               PROJECT=PROJECT, RUN=RUN, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
                PROJECT=PROJECT, RUN=RUN, samples=samples),
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
-               PROJECT=PROJECT, RUN=RUN, samples=samples),
+               PROJECT=PROJECT, RUN=RUN, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
         expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1P.fastq.gz",
-                PROJECT=PROJECT, RUN=RUN, samples=samples),
+                PROJECT=PROJECT, RUN=RUN, samples=samples) if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
         expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", 
                 PROJECT=PROJECT, RUN=RUN, samples=samples),
         expand("results/{PROJECT}/runs/{RUN}/04-taxonomy/annotation_results.txt",
@@ -93,7 +94,7 @@ rule init_structure:
         config["SAMPLE_SET"]
     output:
         r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
-        r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz",
+        r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz" if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
     conda:
         "envs/python.yaml"
     shell:
@@ -106,40 +107,88 @@ rule init_structure:
 
 # This section contains all quality control
 
-rule fast_qc:
-    """
-    Runs QC on raw reads
-    """
-    input:
-        r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
-        r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz",
-    output:
-        o1 = "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.html",
-        o2 = "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.html",
-        s1 = "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip",
-        s2 = "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip",
-    conda:
-        "envs/qc.yaml"
-    shell:
-        "fastqc {input.r1} {input.r2} -o results/{wildcards.PROJECT}/samples/{wildcards.samples}/qc/"
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+  rule fast_qc:
+      """
+      Runs QC on raw reads
+      """
+      input:
+          r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
+          r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz",
+      output:
+          o1 = "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.html",
+          o2 = "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.html",
+          s1 = "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip",
+          s2 = "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip",
+      conda:
+          "envs/qc.yaml"
+      shell:
+          "fastqc {input.r1} {input.r2} -o results/{wildcards.PROJECT}/samples/{wildcards.samples}/qc/"
 
+else:
+  rule fast_qc:
+      """
+      Runs QC on raw reads
+      """
+      input:
+          r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
+      output:
+          o1 = "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.html",
+          s1 = "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip",
+      conda:
+          "envs/qc.yaml"
+      shell:
+          "fastqc {input.r1} -o results/{wildcards.PROJECT}/samples/{wildcards.samples}/qc/"
 
 # MULTIQC creates a report of all generated fastqc files, that can be found in: multiqc_data/multiqc_general_stats
 # Also can be viewed in html
 # Later check if this can be somehow linked to the report.
 
-rule multiqc:
-  input:
-    raw_qc_fw = expand(
-      "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip", samples=samples, PROJECT=PROJECT),
-    raw_qc_rv = expand(
-      "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip", samples=samples, PROJECT=PROJECT),
-  output:
-    raw_multi_html = "results/{PROJECT}/samples/multiqc_{RUN}.html"
-  conda:
-    "envs/qc.yaml"
-  shell:
-    "multiqc -dd 2 -fn {output.raw_multi_html} {input.raw_qc_fw} {input.raw_qc_rv}"
+
+#def get_multiqc_inputs(wildcards):
+#    inputs = expand(
+#        "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip",
+#        samples=samples,
+#        PROJECT=PROJECT,
+#    )
+#    if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+#        inputs += expand(
+#            "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip",
+#            samples=samples,
+#            PROJECT=PROJECT,
+#        )
+#    print("Returning from get_multiqc_inputs:", inputs)
+#    return list(inputs)
+    
+
+
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+    rule multiqc:
+        input:
+            raw_qc_fw = expand(
+                "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip", samples=samples, PROJECT=PROJECT),
+            raw_qc_rv = expand(
+                "results/{PROJECT}/samples/{samples}/qc/rv_fastqc.zip", samples=samples, PROJECT=PROJECT),
+        output:
+            raw_multi_html = "results/{PROJECT}/samples/multiqc_{RUN}.html"
+        conda:
+            "envs/qc.yaml"
+        shell:
+            "multiqc -dd 2 -fn {output.raw_multi_html} {input.raw_qc_fw} {input.raw_qc_rv}"
+
+else:
+    rule multiqc_singles:
+        input:
+            raw_qc_fw = expand(
+                "results/{PROJECT}/samples/{samples}/qc/fw_fastqc.zip", samples=samples, PROJECT=PROJECT),
+        output:
+            raw_multi_html = "results/{PROJECT}/samples/multiqc_{RUN}.html"
+        conda:
+            "envs/qc.yaml"
+        shell:
+            "multiqc -dd 2 -fn {output.raw_multi_html} {input.raw_qc_fw}"
+
+
 
 # Note: there is an automatic pdf report, but this requires the installation of latex
 
@@ -148,110 +197,155 @@ rule multiqc:
 # Fastp https://github.com/OpenGene/fastp was chosen as it 
 # automatically trims illumina adapters as well as poly-G tails from NovaSeq datasets
 # This is added to the samples/ folder (shared by all runs)
-rule fastp:
-  input:
-    r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
-    r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz",
-  output:
-    p1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1P.fastq.gz",
-    p2 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2P.fastq.gz",
-    u1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
-    u2 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2U.fastq.gz",
-    h = "results/{PROJECT}/samples/{samples}/fastp/fastp.html",
-    j = "results/{PROJECT}/samples/{samples}/fastp/fastp.json",
-  log:
-    f1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_log.txt",
-  conda:
-    "envs/trim.yaml"
-  shell:
-    "fastp -i {input.r1} -I {input.r2} -o {output.p1} -O {output.p2} \
-    --unpaired1 {output.u1} --unpaired2 {output.u2} \
-    -h {output.h} -j {output.j} 2> {log.f1}"
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+  rule fastp:
+    input:
+      r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
+      r2 = "results/{PROJECT}/samples/{samples}/rawdata/reverse_reads/rv.fastq.gz" if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
+    output:
+      p1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1P.fastq.gz" if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
+      p2 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2P.fastq.gz" if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
+      u1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
+      u2 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2U.fastq.gz" if config["meta"]["sequencing"]["lib_layout"] == "Paired" else [],
+      h = "results/{PROJECT}/samples/{samples}/fastp/fastp.html",
+      j = "results/{PROJECT}/samples/{samples}/fastp/fastp.json",
+    log:
+      f1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_log.txt",
+    conda:
+      "envs/trim.yaml"
+    shell:
+      "fastp -i {input.r1} -I {input.r2} -o {output.p1} -O {output.p2} \
+      --unpaired1 {output.u1} --unpaired2 {output.u2} \
+      -h {output.h} -j {output.j} 2> {log.f1}"
+
+else:
+  rule fastp:
+    input:
+      r1 = "results/{PROJECT}/samples/{samples}/rawdata/forward_reads/fw.fastq.gz",
+    output:
+      u1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
+      h = "results/{PROJECT}/samples/{samples}/fastp/fastp.html",
+      j = "results/{PROJECT}/samples/{samples}/fastp/fastp.json",
+    log:
+      f1 = "results/{PROJECT}/samples/{samples}/fastp/{samples}_log.txt",
+    conda:
+      "envs/trim.yaml"
+    shell:
+      "fastp -i {input.r1} -o {output.u1} \
+      -h {output.h} -j {output.j} 2> {log.f1}"
+
 
 # RULES: ADAPTER TRIMMING ----------------------------------------------------------------
 
 #Run cutadapt separately for both files, as cutadapt paired-end will automatically
 #discard any reads that do not have a pair. Run also for any remaining unpaired reads.
 
-rule cutadapt_forward: 
-  input:
-    p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1P.fastq.gz",
-  output:
-    o = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
-    #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
-  log:
-    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1P_log.txt",
-  conda:
-    "envs/trim.yaml"
-  shell:
-    "cutadapt \
-    -g {config[cutadapt][forward_primer]} \
-    -a {config[cutadapt][rc_reverse_primer]} \
-    -o {output.o} \
-    --minimum-length 1 \
-    --rc \
-    {config[cutadapt][se_extra_params]} \
-    {input.p} \
-    1> {log.f} "
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+  rule cutadapt_forward: 
+    input:
+      p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1P.fastq.gz",
+    output:
+      o = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
+      #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
+    log:
+      f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1P_log.txt",
+    conda:
+      "envs/trim.yaml"
+    shell:
+      "cutadapt \
+      -g {config[cutadapt][forward_primer]} \
+      -a {config[cutadapt][rc_reverse_primer]} \
+      -o {output.o} \
+      --minimum-length 1 \
+      --rc \
+      {config[cutadapt][se_extra_params]} \
+      {input.p} \
+      1> {log.f} "
 
 #To use the same rule with other inputs/outputs etc: 
 #use rule a as b with:
     #output:
         #"test2.out"
 
-rule cutadapt_reverse: 
-  input:
-    p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2P.fastq.gz",
-  output:
-    o = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
-    #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
-  log:
-    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2P_log.txt",
-  conda:
-    "envs/trim.yaml"
-  shell:
-    "cutadapt \
-    -g {config[cutadapt][reverse_primer]} \
-    -a {config[cutadapt][rc_forward_primer]} \
-    -o {output.o} \
-    --minimum-length 1 \
-    --rc \
-    {config[cutadapt][se_extra_params]} \
-    {input.p} \
-    1> {log.f} "
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+  rule cutadapt_reverse: 
+    input:
+      p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2P.fastq.gz",
+    output:
+      o = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
+      #o3 = directory("{PROJECT}/runs/{RUN}/cutadapt/{samples}/"),
+    log:
+      f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2P_log.txt",
+    conda:
+      "envs/trim.yaml"
+    shell:
+      "cutadapt \
+      -g {config[cutadapt][reverse_primer]} \
+      -a {config[cutadapt][rc_forward_primer]} \
+      -o {output.o} \
+      --minimum-length 1 \
+      --rc \
+      {config[cutadapt][se_extra_params]} \
+      {input.p} \
+      1> {log.f} "
 
 
-use rule cutadapt_forward as cutadapt_forward_single with: 
+rule cutadapt_forward_single: 
   input:
     p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
   output:
     o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
   log:
-    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1U_log.txt"
+    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1U_log.txt",
+  conda:
+    "envs/trim.yaml"
+  shell:
+    "cutadapt \
+     -g {config[cutadapt][forward_primer]} \
+     -a {config[cutadapt][rc_reverse_primer]} \
+     -o {output.o} \
+     --minimum-length 1 \
+     --rc \
+     {config[cutadapt][se_extra_params]} \
+     {input.p} \
+     1> {log.f} "
 
-use rule cutadapt_reverse as cutadapt_reverse_single with: 
-  input:
-    p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2U.fastq.gz",
-  output:
-    o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
-  log:
-    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2U_log.txt"
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+  rule cutadapt_reverse_single: 
+    input:
+      p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2U.fastq.gz",
+    output:
+      o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
+    log:
+      f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2U_log.txt",
+    conda:
+      "envs/trim.yaml"
+    shell:
+      "cutadapt \
+      -g {config[cutadapt][reverse_primer]} \
+      -a {config[cutadapt][rc_forward_primer]} \
+      -o {output.o} \
+      --minimum-length 1 \
+      --rc \
+      {config[cutadapt][se_extra_params]} \
+      {input.p} \
+      1> {log.f} "
 
 
 #Dada2 requires reads to be in the right paired sequence, therefore the pairing is checked
-#if config["meta"]["sequencing"]["lib_layout"] == "Paired":
-rule check_paired:
-  input: 
-    f1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
-    f2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
-  output:
-    p =  directory("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}"),
-    p1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1P.fastq.gz",
-    p2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2P.fastq.gz",
-    u1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1U.fastq.gz",
-    u2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2U.fastq.gz",
-  shell:
-    "python workflow/scripts/check_paired.py {input.f1} {input.f2} {output.p} {output.p} {output.p}"
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+  rule check_paired:
+    input: 
+      f1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1P.fastq.gz",
+      f2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2P.fastq.gz",
+    output:
+      p =  directory("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}"),
+      p1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1P.fastq.gz",
+      p2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2P.fastq.gz",
+      u1 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1U.fastq.gz",
+      u2 = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2U.fastq.gz",
+    shell:
+      "python workflow/scripts/check_paired.py {input.f1} {input.f2} {output.p} {output.p} {output.p}"
 
 #To keep all single reads, concatenate reads that were leftover from fastp and analysed by cutadapt separately
 #However, this requires a change in the file structure (1P, 2P, 1U, and 2U) files should be in the same folder
@@ -273,45 +367,82 @@ rule check_paired:
 #    output:
  #     o = "results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2U.fastq.gz"
 
-# RULES: ASV INFERENCE ----------------------------------------------------------------
+# RULES: ASV INFERENCE PAIRED-END----------------------------------------------------------------
 
-rule dada2_filter:
-    input:
-        f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1P.fastq.gz",
+if config["meta"]["sequencing"]["lib_layout"] == "Paired":
+  rule dada2_filter:
+      input:
+          f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_1P.fastq.gz",
+                          PROJECT=PROJECT, RUN=RUN, samples=samples),
+          f2 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2P.fastq.gz",
                         PROJECT=PROJECT, RUN=RUN, samples=samples),
-        f2 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/checked/{samples}/{samples}_2P.fastq.gz",
-                        PROJECT=PROJECT, RUN=RUN, samples=samples),
-    output:
-        FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
-                           PROJECT=PROJECT, RUN=RUN, samples=samples),
-        FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
-                           PROJECT=PROJECT, RUN=RUN, samples=samples),
-    conda:
-        "envs/dada2.yaml"
-    shell:
-        "Rscript workflow/scripts/Dada2_FilterAndTrim_combined.R \
-        results/{config[PROJECT]}/runs/{config[RUN]}/ \
-        {config_path} \
-        {input.f1}"
+      output:
+          FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
+                             PROJECT=PROJECT, RUN=RUN, samples=samples),
+          FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
+                             PROJECT=PROJECT, RUN=RUN, samples=samples),
+      conda:
+          "envs/dada2.yaml"
+      shell:
+          "Rscript workflow/scripts/Dada2_FilterAndTrim_combined.R \
+          results/{config[PROJECT]}/runs/{config[RUN]}/ \
+          {config_path} \
+          {input.f1}"
 
-rule dada2_ASV:
-    input:
-        FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
-                           PROJECT=PROJECT, RUN=RUN, samples=samples),
-        FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
-                           PROJECT=PROJECT, RUN=RUN, samples=samples),
-    output:
-        o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
-        o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
-    log:
-        o1 = expand("results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
-    conda:
-        "envs/dada2.yaml"
-    shell:
-        "Rscript ./workflow/scripts/Dada2_ASVInference_Single.R \
-        results/{config[PROJECT]}/runs/{config[RUN]}/ \
-        {config_path} \
-        {input.FiltF}"
+  rule dada2_ASV:
+      input:
+          FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1P.fastq.gz",
+                             PROJECT=PROJECT, RUN=RUN, samples=samples),
+          FiltR = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_2P.fastq.gz",
+                             PROJECT=PROJECT, RUN=RUN, samples=samples),
+      output:
+          o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+          o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
+      log:
+          o1 = expand("results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+      conda:
+          "envs/dada2.yaml"
+      shell:
+          "Rscript ./workflow/scripts/Dada2_ASVInference_Single.R \
+          results/{config[PROJECT]}/runs/{config[RUN]}/ \
+          {config_path} \
+          {input.FiltF}"
+
+# RULES: ASV INFERENCE SINGLE-END READS----------------------------------------------------------------
+
+else:
+  rule dada2_filter:
+      input:
+          f1 = expand("results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
+                          PROJECT=PROJECT, RUN=RUN, samples=samples),
+      output:
+          FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1U.fastq.gz",
+                             PROJECT=PROJECT, RUN=RUN, samples=samples),
+      conda:
+          "envs/dada2.yaml"
+      shell:
+          "Rscript workflow/scripts/Dada2_FilterAndTrim_combined.R \
+          results/{config[PROJECT]}/runs/{config[RUN]}/ \
+          {config_path} \
+          {input.f1}"
+
+  rule dada2_ASV:
+      input:
+          FiltF = expand("results/{PROJECT}/runs/{RUN}/03-dada2/filtered/{samples}/{samples}_1U.fastq.gz",
+                             PROJECT=PROJECT, RUN=RUN, samples=samples),
+      output:
+          o2 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/seqtab-nochim.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+          o3 = expand("results/{PROJECT}/runs/{RUN}/03-dada2/rep-seqs.fna", PROJECT=PROJECT, RUN=RUN, samples=samples),
+      log:
+         o1 = expand("results/{PROJECT}/runs/{RUN}/06-report/dada2/dada2_stats.txt", PROJECT=PROJECT, RUN=RUN, samples=samples),
+      conda:
+         "envs/dada2.yaml"
+      shell:
+          "Rscript ./workflow/scripts/Dada2_ASVInference_Single.R \
+          results/{config[PROJECT]}/runs/{config[RUN]}/ \
+          {config_path} \
+          {input.FiltF}"
+
 
 # RULES: TAXONOMIC ASSIGNMENTS ----------------------------------------------------------------
 

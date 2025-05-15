@@ -26,6 +26,7 @@ outpath <- cmd_args[1]
 
 # Set the different paths for all the supplied libraries
 # NOTICE: only forward files given as input
+
 filesForw <- paths
 filesRev <- gsub("_1P", "_2P", filesForw)
 
@@ -183,14 +184,14 @@ if (config$meta$sequencing$lib_layout == "Paired") {
 
   message("Paired read files will be analysed in single-end mode")
 
-  #Append files_exist 1P and files_exist 2P to the single reads so that they are analysed in the same workflow
+  #Append files_exist 1P and files_exist 2P to the single reads so that they are analysed in the same workflow -> not actual single reads workflow 
   #Forward reads:
-  if (length(files_exist[[3]] != 0)) { 
+  if (length(files_exist[[1]]) != 0 & length(files_exist[[3]]) != 0) { 
     files_exist[[3]] <- c(files_exist[[1]], files_exist[[3]])
     filts[[3]] <- c(filts[[1]], filts[[3]])
     quals[[3]] <- c(quals[[1]], quals[[3]])
     sample.names[[3]] <- c(sample.names[[1]], sample.names[[3]])
-  } else {
+  } else if(length(files_exist[[1]]) != 0) {
     files_exist[[3]] <- files_exist[[1]]
     filts[[3]] <- filts[[1]]
     quals[[3]] <- quals[[1]]
@@ -198,12 +199,12 @@ if (config$meta$sequencing$lib_layout == "Paired") {
   }
 
   #Reverse reads:
-  if (length(files_exist[[4]] != 0)) { 
+  if (length(files_exist[[2]]) != 0 & length(files_exist[[4]]) != 0) { 
     files_exist[[4]] <- c(files_exist[[2]], files_exist[[4]])
     filts[[4]] <- c(filts[[2]], filts[[4]])
     quals[[4]] <- c(quals[[2]], quals[[4]])
     sample.names[[4]] <- c(sample.names[[2]], sample.names[[4]])
-  } else {
+  } else if(length(files_exist[[2]]) != 0) {
     files_exist[[4]] <- files_exist[[2]]
     filts[[4]] <- filts[[2]]
     quals[[4]] <- quals[[2]]
