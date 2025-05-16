@@ -391,7 +391,7 @@ for (i in 1:length(allfiles)) {
     if (config$meta$sequencing$lib_layout == "Paired") {
         fn <- gsub("02-cutadapt/checked", "03-dada2/filtered", fn)
       } else {
-        fn <- gsub("02-cutadapt/", "03-dada2/filtered", fn)
+        fn <- gsub("02-cutadapt", "03-dada2/filtered", fn)
       }
       
 

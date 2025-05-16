@@ -57,17 +57,18 @@ remarks <- tax_file %>%
   )) %>%
   ungroup()
   
-# Construct taxonomy table
+# Construct taxonomy table (in one case superkingdom not found.)
 
 tax <- tax_file %>%
   filter(method == "RDP classifier") %>%
-  select(asv, scientificName, scientificNameID, domain, superkingdom, phylum, class, order, family, genus, species) %>%
+  select(any_of(c("asv", "scientificName", "scientificNameID", "domain", "superkingdom", "phylum", "class", "order", "family", "genus", "species"))) %>%
   left_join(remarks, by = "asv") %>%
   rowwise() %>%
   mutate(
     taxonRank = case_when(
       scientificName == domain ~ "domain",
-      scientificName == superkingdom ~ "superkingdom",
+      #scientificName == superkingdom ~ "superkingdom",
+      scientificName == coalesce(cur_data()[["superkingdom"]], NA_character_) ~ "superkingdom",
       scientificName == phylum ~ "phylum",
       scientificName == class ~ "class",
       scientificName == order ~ "order",
