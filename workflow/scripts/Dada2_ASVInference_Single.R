@@ -20,11 +20,24 @@ config <- read_yaml(args[2])
 
 # Set the different paths for all the supplied libraries
 # NOTICE: only forward files given as input
-filtFs <- args[3:length(args)]
-filtFs_single <- gsub("_1P", "_1U", filtFs)
 
-filtRs <- gsub("_1P", "_2P", filtFs)
-filtRs_single <- gsub("_2P", "_2U", filtRs)
+ if (config$meta$sequencing$lib_layout == "Paired") {
+
+    filtFs <- args[3:length(args)]
+    filtFs_single <- gsub("_1P", "_1U", filtFs)
+    filtRs <- gsub("_1P", "_2P", filtFs)
+    filtRs_single <- gsub("_2P", "_2U", filtRs)
+  
+  } else {
+  
+    filtFs <- c()
+    filtFs_single <- args[3:length(args)]
+    filtRs <- c()
+    filtRs_single <- c()
+
+  }
+
+
 
 outpath <- args[1]
 
@@ -107,16 +120,20 @@ loessErrfun_mod4 <- function(trans) {
 if (config$meta$sequencing$lib_layout == "Paired") {
   sample.names <- gsub("_1P.fastq.gz", "", basename(filtFs))
 } else {
-  sample.names <- gsub("_1U.fastq.gz", "", basename(filtFs))
+  sample.names <- gsub("_1U.fastq.gz", "", basename(filtFs_single))
 }
 
 message(paste0("Sample ", sample.names, " will be analyzed", collapse = "\n"))
 
 # Assign names to files
+ if (config$meta$sequencing$lib_layout == "Paired") {
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
 names(filtFs_single) <- sample.names
 names(filtRs_single) <- sample.names
+} else {
+names(filtFs_single) <- sample.names
+}
 
 allfiles <- list(filtFs, filtRs, filtFs_single, filtRs_single)
 names(allfiles) <- c("filtFs", "filtRs", "filtFs_single", "filtRs_single")
@@ -132,12 +149,14 @@ for (i in 1:4) {
 
   files_loop <- c()
 
+if (length(allfiles[[i]])>0) {
   for (j in 1:length(allfiles[[i]])) {
     info <- file.info(allfiles[[i]][j])
     if (!is.na(info$size) & info$size > 36) { # 36 is the size of an empty .gz file
       files_loop <- c(files_loop, allfiles[[i]][j])
     }
   }
+}
 
   if (is.null(files_loop)) {
     files_exist[i] <- list(NULL)
@@ -372,7 +391,7 @@ if (config$DADA2$mergePairs$include) {
     seqtab <- merge_format_seqtab(seqtab, seqtab_unmerged_r)
   }
 
-} else {
+} else if (length(dadas[[1]])>0) {
 
   message("no merging of paired reads")
   # Combine forward and reverse sequences to one table
@@ -382,18 +401,21 @@ if (config$DADA2$mergePairs$include) {
   colnames(seqtab2) <- sapply(sapply(sapply(colnames(seqtab2), DNAString), Biostrings::reverseComplement), toString)
   seqtab <- cbind(seqtab1, seqtab2)
 
+} else { #In case only single-ended read
+
+  message("Making sequence table from single-ended forward reads")
+  seqtab <- makeSequenceTable(dadas[[3]])
+
 }
 
 # Add ASVs from single reads to full table, and format table to the right format to continue with the pipeline
 # It has to be an integer matrix with samples as rownames and sequences as column names
+
 if (length(files_exist[[3]])!=0) {
-  message("Adding ASVs from unpaired forward reads to ASV-table")
-  
   if (config$meta$sequencing$lib_layout == "Paired") {
+  message("Adding ASVs from unpaired forward reads to ASV-table")
   seqtab3 <- makeSequenceTable(dadas[[3]])
   seqtab <- merge_format_seqtab(seqtab, seqtab3)  
-  } else {
-  seqtab <- makeSequenceTable(dadas[[3]])
   }
 }
 
@@ -488,9 +510,13 @@ if (config$DADA2$mergePairs$include) {
   track <- cbind(sapply(dadas[[1]], getN), sapply(dadas[[2]], getN), sapply(mergers, getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
   colnames(track) <- c("denoisedF", "denoisedR", "merged", "nonchim", "ASVs")
 # If paired reads were not merged:
-} } else {
+} } else  if (length(dadas[[1]])>0){
   track <- cbind(sapply(dadas[[1]], getN), sapply(dadas[[2]], getN), rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
   colnames(track) <- c("denoisedF", "denoisedR", "nonchim", "ASVs")
+#If only single-ended reads
+} else {
+  track <- cbind(rowSums(seqtab.nochim), rowSums(seqtab.nochim != 0))
+  colnames(track) <- c("nonchim", "ASVs")
 }
 
 # Add also information on the reads that came from possibly evaluated single reads

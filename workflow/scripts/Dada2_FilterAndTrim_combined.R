@@ -42,8 +42,21 @@ sample.names <- list()
 dir.create(paste0(outpath, "03-dada2/quality"), recursive = TRUE)
 dir.create(paste0(outpath, "06-report/dada2/"))
 
+if (config$meta$sequencing$lib_layout == "Paired") {
+
 allfiles <- list(filesForw, filesRev, filesForw_single, filesRev_single)
 names(allfiles) <- c("filesForw", "filesRev", "filesForw_single", "filesRev_single")
+
+} else {
+
+  allfiles <- list(
+    filesForw = NULL,
+    filesRev = NULL,
+    filesForw_single = filesForw_single,
+    filesRev_single = NULL
+    )
+}
+
 files_exist <- list()
 filts <- list()
 quals <- list()
@@ -59,20 +72,23 @@ for (i in 1:4) {
 
   files_loop <- c()
 
+if (length(allfiles[[i]])>0) {
   for (j in 1:length(allfiles[[i]])) {
     info <- file.info(allfiles[[i]][j])
     if (!is.na(info$size) & info$size > 43) { # 43 is the size of an empty .gz file
       files_loop <- c(files_loop, allfiles[[i]][j])
     }
   }
-
+}
   if (is.null(files_loop)) {
     files_exist[i] <- list(NULL)
   } else {
     files_exist[[i]] <- files_loop
   }
 
-  if (length(files_exist[[i]] != 0)) {
+print(paste("files exist:", files_exist))
+
+  if (length(files_exist[[i]]) != 0) {
     message(paste("making quality plots of raw reads:", i, ": (1) forward paired (2) reverse paired (3) forward single and (4) reverse single " , sep = " "))
 
     sample.names[[i]] <- gsub("_1P.fastq.gz", "", basename(files_exist[[i]]))
@@ -83,7 +99,15 @@ for (i in 1:4) {
 
     message(paste(names(allfiles)[i], "reads of sample", sample.names[[i]], "will be analysed", collapse = "\n"))
 
+    if (config$meta$sequencing$lib_layout == "Paired") {
+    
     quals[[i]] <- gsub("02-cutadapt/checked/", "03-dada2/quality/", files_exist[[i]])
+    
+    } else {
+
+    quals[[i]] <- gsub("02-cutadapt/", "03-dada2/quality/", files_exist[[i]])
+    
+    }
     quals[[i]] <- gsub(".fastq.gz", ".png", quals[[i]])
 
     plot_list <- list()
@@ -105,7 +129,15 @@ for (i in 1:4) {
     ggsave(paste0(outpath,"06-report/dada2/aggregate_quality_profiles_", names(allfiles)[i], ".png"), dpi = 300, width = 10, height = 10, units = "cm")
 
     # Create path and file names for filtered samples"
-    filts[[i]] <- gsub("02-cutadapt/checked/", "03-dada2/filtered/", files_exist[[i]])
+
+    if (config$meta$sequencing$lib_layout == "Paired") {
+
+      filts[[i]] <- gsub("02-cutadapt/checked/", "03-dada2/filtered/", files_exist[[i]])
+    } else {
+
+      filts[[i]] <- gsub("02-cutadapt/", "03-dada2/filtered/", files_exist[[i]])
+
+      }
 
     # Assign names to files
     names(filts[[i]]) <- sample.names[[i]]
@@ -215,11 +247,15 @@ if (config$meta$sequencing$lib_layout == "Paired") {
 
 # Same for single reads:
 
-message("Filtering and Trimming unpaired forward reads based on parameter set in the config file")
+
 
 if (length(files_exist[[3]]) != 0) {
 
+message("Filtering and Trimming unpaired forward reads based on parameter set in the config file")
+
+  #print(filts)
   #filts[[3]] <- filts[[3]][file.exists(filts[[3]])]
+  print(filts)
   out <- filterAndTrim(files_exist[[3]], filts[[3]],
     truncLen = config$DADA2$filterAndTrim$Trunc_len_f,
     truncQ = config$DADA2$filterAndTrim$TruncQ,
@@ -278,9 +314,11 @@ if (length(files_exist[[3]]) != 0) {
 
 }
 
-message("Filtering and Trimming unpaired reverse reads based on parameter set in the config file")
+
 
 if (length(files_exist[[4]]) != 0) {
+
+  message("Filtering and Trimming unpaired reverse reads based on parameter set in the config file")
 
   out <- filterAndTrim(files_exist[[4]], filts[[4]],
     truncLen = config$DADA2$filterAndTrim$Trunc_len_r,
@@ -349,7 +387,14 @@ if (file.exists("Rplots.pdf")) {
  
 for (i in 1:length(allfiles)) {
   for(fn in allfiles[[i]]){
-    fn <- gsub("02-cutadapt/checked", "03-dada2/filtered", fn)
+
+    if (config$meta$sequencing$lib_layout == "Paired") {
+        fn <- gsub("02-cutadapt/checked", "03-dada2/filtered", fn)
+      } else {
+        fn <- gsub("02-cutadapt/", "03-dada2/filtered", fn)
+      }
+      
+
     if (!file.exists(fn)) {
       cat(gettextf('creating empty file %s\n', fn))
       gzf = gzfile(fn)
