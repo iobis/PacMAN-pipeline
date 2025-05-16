@@ -72,7 +72,9 @@ And the results for each sample in reads, and in percentages of original reads:
 ```{r, echo=F, warning=F}
 # Loop across all sample_ids and collect results to table
 trimResults <- data.frame(Read1BeforeFiltering = NA, Read2BeforeFiltering = NA, Read1AfterFiltering = NA, Read2AfterFiltering = NA)
+trimResultsSingleReads <- data.frame(Read1BeforeFiltering = NA, Read1AfterFiltering = NA)
 
+if (config$meta$sequencing$lib_layout=="Paired") {
 for (i in 1:length(sample_ids)) {
   trim_report <- paste0("../../results/", config$PROJECT, "/samples/", sample_ids[i], "/fastp/", sample_ids[i], "_log.txt")
 
@@ -85,9 +87,27 @@ for (i in 1:length(sample_ids)) {
 
   trimResults[i,] <- numbers
   rownames(trimResults)[i] <- sample_ids[i]
-}
+} } else {
 
+for (i in 1:length(sample_ids)) {
+  trim_report <- paste0("../../results/", config$PROJECT, "/samples/", sample_ids[i], "/fastp/", sample_ids[i], "_log.txt")
+  file <- file(trim_report, "r")
+  line <- readLines(file)
+
+  total_reads <- line[grep(pattern = "total reads:", line)]
+  numbers <- gsub("[^0-9]+", "", total_reads)
+  as.numeric(numbers)
+
+  trimResultsSingleReads[i,] <- numbers
+  rownames(trimResultsSingleReads)[i] <- sample_ids[i]
+
+}}
+
+if (config$meta$sequencing$lib_layout=="Paired") {
 kable(trimResults)
+} else {
+kable(trimResultsSingleReads)
+}
 ```
 
 ## Cutadapt
@@ -98,15 +118,22 @@ This is done so that reads that do not have a pair are not discarded at this sta
 The command(s) that was used was:
 
 ```{r, echo=F}
+if (config$meta$sequencing$lib_layout=="Paired") {
 cut_report_1P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_1P_log.txt")
 readLines(cut_report_1P, n = 2)
 cut_report_2P <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_2P_log.txt")
 readLines(cut_report_2P, n = 2)
+} else {
+cut_report_1U <- paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/cutadapt/", sample_ids[1], "_1U_log.txt")
+readLines(cut_report_1U, n = 2)
+}
 ```
 
 ### Forward reads
 
 ```{r, echo=F, warning=F}
+
+if (config$meta$sequencing$lib_layout=="Paired") {
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
@@ -134,11 +161,20 @@ kable(cutResults)
 cutResults_Percentage <- round(cutResults[,c("ReadwithPrimer", "ReadsWritten")] / cutResults$TotalReadsProcessed * 100, digits = 2)
 cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cutResults$BasePairsProcessed * 100, digits = 2)
 kable(cutResults_Percentage)
+
+} else {
+
+cat("Pipeline run in single-end mode  \n  \n")
+
+}
 ```
 
 ### Reverse reads
 
 ```{r, echo=F, warning=F}
+
+if (config$meta$sequencing$lib_layout=="Paired") {
+
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
@@ -166,6 +202,12 @@ kable(cutResults)
 cutResults_Percentage <- round(cutResults[,c("ReadwithPrimer", "ReadsWritten")] / cutResults$TotalReadsProcessed * 100, digits = 2)
 cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cutResults$BasePairsProcessed * 100, digits = 2)
 kable(cutResults_Percentage)
+
+} else {
+
+cat("Pipeline run in single-end mode  \n  \n")
+
+}
 ```
 
 ### Unpaired forward reads
@@ -209,6 +251,9 @@ kable(cutResults_Percentage)
 For reverse unpaired reads they were:
 
 ```{r, echo=F, warning=F}
+
+if (config$meta$sequencing$lib_layout=="Paired") {
+
 cutResults <- data.frame(TotalReadsProcessed = NA, ReadwithPrimer = NA, ReverseComplemented=NA, ReadsTooShort = NA, ReadsWritten = NA, BasePairsProcessed = NA, BasePairsWritten = NA)
 
 for (i in 1:length(sample_ids)) {
@@ -238,6 +283,12 @@ kable(cutResults)
 cutResults_Percentage <- round(cutResults[,c("ReadwithPrimer", "ReadsWritten")] / cutResults$TotalReadsProcessed * 100, digits = 2)
 cutResults_Percentage$BasePairsWritten <- round(cutResults$BasePairsWritten / cutResults$BasePairsProcessed * 100, digits = 2)
 kable(cutResults_Percentage)
+
+} else {
+
+cat("Pipeline run in single-end mode  \n  \n")
+
+}
 ```
 
 Currently the unpaired reads that are kept at this step are not analysed further. Keep this in mind if there is a large amount of unpaired forward and reverse reads.
@@ -271,7 +322,18 @@ cat("filterAndTrim(filesForw, filtFs, filesRev, filtRs,
 The quality profile of all analysed paired reads before trimming (Forward reads in left panel, while reverse reads are in right panel):
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%", fig.cap="caption", fig.show='hold', fig.align='center'}
+if (config$meta$sequencing$lib_layout=="Paired") {
+
 knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesForw.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesRev.png")))
+
+} else {
+
+cat("Pipeline run in single-end mode  \n  \n")
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filesForw_single.png")))
+
+}
+
+
 ```
 
 And after trimming it was:
@@ -279,7 +341,14 @@ And after trimming it was:
 ```{r, echo=FALSE, out.width="49%", out.height="20%", fig.cap="caption", fig.show='hold', fig.align='center'}
 if (config$meta$sequencing$lib_layout=="Paired") {
   knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_forward.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_paired_filtered_reverse.png")))
+
+  } else {
+
+cat("Pipeline run in single-end mode  \n  \n")
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/aggregate_quality_profiles_filtered_unpaired_forward.png")))
+
 }
+
 ```
 
 In case unpaired reads were kept after trimming and primer removal, quality profiles for unpaired reads can also be found in:
@@ -304,7 +373,17 @@ cat("learnErrors(filtFs, multithread = ", config$DADA2$learnERRORS$multithread, 
 The forward and reverse error profiles were the following (in absolute numbers and in percentage of analysed reads):
 
 ```{r, echo=FALSE, out.width="49%", out.height="20%",fig.cap="caption",fig.show='hold',fig.align='center'}
+
+if (config$meta$sequencing$lib_layout=="Paired") {
+
 knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_filtFs.png"), paste0("../../results/", config$PROJECT, "/runs/", config$RUN, "/06-report/dada2/error_profile_filtRs.png")))
+
+  } else {
+
+cat("Pipeline run in single-end mode  \n  \n")
+knitr::include_graphics(c(paste0("../../results/", config$PROJECT, "/runs/", config$RUN,"/06-report/dada2/error_profile_filtFs_single.png")))
+
+}
 ```
 
 Next the reads were dereplicated with the following command:
