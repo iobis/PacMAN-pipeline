@@ -28,6 +28,7 @@ config <- read_yaml(config_path)
 param_rdp_confidence_threshold <- config$Rdp$cutoff
 param_vsearch_identity_threshold <- config$Vsearch$pident
 param_vsearch_cover_threshold <- config$Vsearch$query_cov
+param_vsearch_lca_cutoff <- config$Vsearch$lca_cutoff
 param_basta_identity_threshold <- ifelse(config$BLAST$include, config$BLAST$percent_identity, NA)
 
 # Read input files
@@ -48,6 +49,7 @@ remarks <- tax_file %>%
           rdp_confidence_threshold = param_rdp_confidence_threshold,
           vsearch_identity_threshold = param_vsearch_identity_threshold,
           vsearch_cover_threshold = param_vsearch_identity_threshold,
+          vsearch_lca_cutoff = param_vsearch_lca_cutoff,
           basta_identity_threshold = param_basta_identity_threshold
         ),
         annotations = tibble(method, scientificName, scientificNameID, accession = seqid, confidence = confidence, identity, query_cover)
@@ -61,13 +63,14 @@ remarks <- tax_file %>%
 
 tax <- tax_file %>%
   filter(method == "RDP classifier") %>%
-  select(asv, scientificName, scientificNameID, domain, superkingdom, phylum, class, order, family, genus, species) %>%
+  # select(asv, scientificName, scientificNameID, domain, superkingdom, phylum, class, order, family, genus, species) %>%
+  select(asv, scientificName, scientificNameID, domain, phylum, class, order, family, genus, species) %>%
   left_join(remarks, by = "asv") %>%
   rowwise() %>%
   mutate(
     taxonRank = case_when(
       scientificName == domain ~ "domain",
-      scientificName == superkingdom ~ "superkingdom",
+      # scientificName == superkingdom ~ "superkingdom",
       scientificName == phylum ~ "phylum",
       scientificName == class ~ "class",
       scientificName == order ~ "order",

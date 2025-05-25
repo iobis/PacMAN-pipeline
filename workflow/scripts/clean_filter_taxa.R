@@ -23,18 +23,20 @@ rep_seqs_path <- cmd_args[6]
 rdp_confidence_threshold <- config$Rdp$cutoff
 vsearch_identity_threshold <- config$Vsearch$pident
 vsearch_cover_threshold <- config$Vsearch$query_cov
+vsearch_lca_cutoff <- config$Vsearch$lca_cutoff
 
 rdp <- read.csv(rdp_file_path, sep = "\t", header = F)
 vsearch <- read.csv(vsearch_file_path, sep = "\t", header = F)
-vsearch_lca <- read.csv(vsearch_lca_file_path, sep = "\t", header = F)
+colnames(vsearch) <- c("asv", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+vsearch_lca <- read.csv(vsearch_lca_file_path, sep = "\t", header = F, na.strings = "")
+colnames(vsearch_lca) <- c("asv", "taxonomy")
 
 dna <- readDNAStringSet(rep_seqs_path)
 seq_lengths <- data.frame(asv = names(dna), seq_length = width(dna))
 
-# process vsearch results
-message("process vsearch results 1/2")
+# process vsearch hits
 
-colnames(vsearch) <- c("asv", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+message("Process vsearch results")
 
 vsearch <- vsearch %>%
   separate(sseqid, sep=";", into = c("vsearch_seqid", "vsearch_taxonomy")) %>%
@@ -54,8 +56,6 @@ split_taxonomy <- function(taxonomy_string) {
   names(values) <- keys
   return(values)
 }
-
-message("process vsearch results 2/2")
 
 vsearch_clean <- vsearch %>%
   mutate(
@@ -77,18 +77,51 @@ vsearch_clean <- vsearch %>%
   ) %>%
   select(-taxonomy) %>%
   mutate(across(where(is.character), ~na_if(.x, ""))) %>%
+  mutate(across(where(is.character), ~na_if(.x, "NA"))) %>%
   group_by(asv) %>%
   slice_max(identity, n = 5, with_ties = FALSE) %>%
   rowwise() %>%
   mutate(scientificName = coalesce(species, genus, family, order, class, phylum)) %>%
   ungroup()
 
-tax_names <- vsearch_clean$scientificName %>% na.omit() %>% unique() %>% sort()
+# process vsearch lca results
+
+vsearch_lca_clean <- vsearch_lca %>%
+  filter(!is.na(taxonomy)) %>%
+  mutate(
+    taxonomy = str_replace(taxonomy, "tax=", ""),
+    taxonomy = str_replace(taxonomy, "_", " "),
+  ) %>%
+  rowwise() %>%
+  mutate(parsed = list(split_taxonomy(taxonomy))) %>%
+  unnest_wider(parsed, names_sep = "_") %>%
+  ungroup() %>%
+  dplyr::rename(
+    domain = parsed_d,
+    phylum = parsed_p,
+    class = parsed_c,
+    order = parsed_o,
+    family = parsed_f,
+    genus = parsed_g,
+    species = parsed_s
+  ) %>%
+  select(-taxonomy) %>%
+  mutate(across(where(is.character), ~na_if(.x, ""))) %>%
+  mutate(across(where(is.character), ~na_if(.x, "NA"))) %>%
+  group_by(asv) %>%
+  rowwise() %>%
+  mutate(scientificName = coalesce(species, genus, family, order, class, phylum)) %>%
+  ungroup()
+
+# match names
+
+tax_names <- c(vsearch_clean$scientificName, vsearch_lca_clean$scientificName) %>% na.omit() %>% unique() %>% sort()
 
 message("Matching names")
 
 matches <- match_worms(unique(tax_names)) %>%
   select(scientificName = input, scientificNameID = lsid)
+
 vsearch_clean <- vsearch_clean %>%
   left_join(matches, by = "scientificName") %>%
   mutate(
@@ -97,7 +130,12 @@ vsearch_clean <- vsearch_clean %>%
     vsearch_cover_threshold = vsearch_cover_threshold
   )
 
-# process vsearch consensus results?
+vsearch_lca_clean <- vsearch_lca_clean %>%
+  left_join(matches, by = "scientificName") %>%
+  mutate(
+    method = "VSEARCH LCA",
+    vsearch_lca_cutoff = vsearch_lca_cutoff
+  )
 
 # process rdp results
 # TODO: check terrimporter taxonomy format
@@ -149,8 +187,8 @@ rdp_clean <- rdp_clean %>%
 
 # combine vsearch and rdp results
 
-combined <- bind_rows(rdp_clean, vsearch_clean) %>%
-  arrange(asv, method) %>%
+combined <- bind_rows(rdp_clean, vsearch_clean, vsearch_lca_clean) %>%
+  arrange(asv, match(method, c("RDP classifier", "VSEARCH LCA", "VSEARCH"))) %>%
   relocate(asv, method, scientificName, confidence, identity)
 
 #Add either those that have a kingdom (confidence 0.8), but no phylum:
@@ -159,7 +197,6 @@ unknowns <- combined %>% filter(method == "RDP classifier" & is.na(phylum)) %>% 
   unknowns <- c(unknowns, seq_lengths %>% filter(!asv %in% combined$asv)%>% pull(asv))
 
 #OR add only those that did not get any id (so superkingdom is less than 0.8 confidence)
-
 
 write.table(combined, paste0(outpath, "04-taxonomy/annotation_results.txt"), row.names = FALSE, col.names = TRUE, quote = FALSE, sep="\t", na = "")
 writeLines(unknowns, paste0(outpath, "04-taxonomy/unknown_asvs.txt"))

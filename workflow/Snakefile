@@ -329,8 +329,8 @@ rule vsearch:
     shell:
         "vsearch --usearch_global {input.rep_seqs}  --db {input.vsearch_db} --id {config[Vsearch][pident]} \
         --blast6out {output.o1} --threads 4  --output_no_hits --query_cov {config[Vsearch][query_cov]}\
-        --maxaccepts 100 --maxrejects 100 --maxhits 10 \
-        --lcaout {output.o2} --lca_cutoff 0.6 --notrunclabels \
+        --maxaccepts {config[Vsearch][maxaccepts]} --maxrejects {config[Vsearch][maxrejects]} --maxhits {config[Vsearch][maxhits]} \
+        --lcaout {output.o2} --lca_cutoff {config[Vsearch][lca_cutoff]} --notrunclabels \
         2> {output.log}"
 
 # RDP is used as the main assignment method

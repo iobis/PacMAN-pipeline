@@ -119,10 +119,14 @@ Vsearch:
   vsearch_db_name: COI_ncbi_1_5000
   pident: 0.97
   query_cov: 0.85
+  maxaccepts: 100
+  maxrejects: 100
+  maxhits: 100
+  lca_cutoff: 1
 Rdp:  
   location_rdp_ref: data/reference_databases/COI_terrimporter/rRNAClassifier.properties
   rdp_ref_name: COI_terrimporter_5.1.0
-  cutoff: 0.6
+  cutoff: 0.8
 
 # Blast against the ncbi nt database, if blast should be run remotely, add "-remote -db nt" to the database field
 # However Blast should not be run remotely unless there are few sequences (<50)
