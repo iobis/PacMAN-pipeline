@@ -21,23 +21,17 @@ config <- read_yaml(args[2])
 # Set the different paths for all the supplied libraries
 # NOTICE: only forward files given as input
 
- if (config$meta$sequencing$lib_layout == "Paired") {
-
-    filtFs <- args[3:length(args)]
-    filtFs_single <- gsub("_1P", "_1U", filtFs)
-    filtRs <- gsub("_1P", "_2P", filtFs)
-    filtRs_single <- gsub("_2P", "_2U", filtRs)
-  
-  } else {
-  
-    filtFs <- c()
-    filtFs_single <- args[3:length(args)]
-    filtRs <- c()
-    filtRs_single <- c()
-
-  }
-
-
+if (config$meta$sequencing$lib_layout == "Paired") {
+  filtFs <- args[3:length(args)]
+  filtFs_single <- gsub("_1P", "_1U", filtFs)
+  filtRs <- gsub("_1P", "_2P", filtFs)
+  filtRs_single <- gsub("_2P", "_2U", filtRs)
+} else {
+  filtFs <- c()
+  filtFs_single <- args[3:length(args)]
+  filtRs <- c()
+  filtRs_single <- c()
+}
 
 outpath <- args[1]
 
@@ -126,13 +120,13 @@ if (config$meta$sequencing$lib_layout == "Paired") {
 message(paste0("Sample ", sample.names, " will be analyzed", collapse = "\n"))
 
 # Assign names to files
- if (config$meta$sequencing$lib_layout == "Paired") {
-names(filtFs) <- sample.names
-names(filtRs) <- sample.names
-names(filtFs_single) <- sample.names
-names(filtRs_single) <- sample.names
+if (config$meta$sequencing$lib_layout == "Paired") {
+  names(filtFs) <- sample.names
+  names(filtRs) <- sample.names
+  names(filtFs_single) <- sample.names
+  names(filtRs_single) <- sample.names
 } else {
-names(filtFs_single) <- sample.names
+  names(filtFs_single) <- sample.names
 }
 
 allfiles <- list(filtFs, filtRs, filtFs_single, filtRs_single)
@@ -144,19 +138,18 @@ seqtab <- list()
 files_exist <- list()
 
 for (i in 1:4) {
-
   message("Check that files are not empty")
 
   files_loop <- c()
 
-if (length(allfiles[[i]])>0) {
-  for (j in 1:length(allfiles[[i]])) {
-    info <- file.info(allfiles[[i]][j])
-    if (!is.na(info$size) & info$size > 36) { # 36 is the size of an empty .gz file
-      files_loop <- c(files_loop, allfiles[[i]][j])
+  if (length(allfiles[[i]]) > 0) {
+    for (j in 1:length(allfiles[[i]])) {
+      info <- file.info(allfiles[[i]][j])
+      if (!is.na(info$size) & info$size > 36) { # 36 is the size of an empty .gz file
+        files_loop <- c(files_loop, allfiles[[i]][j])
+      }
     }
   }
-}
 
   if (is.null(files_loop)) {
     files_exist[i] <- list(NULL)
