@@ -258,7 +258,7 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
       -o {output.o} \
       --minimum-length 1 \
       --rc \
-      {config[cutadapt][se_extra_params]} \
+      {config[cutadapt][extra_params]} \
       {input.p} \
       1> {log.f} "
 
@@ -285,52 +285,30 @@ if config["meta"]["sequencing"]["lib_layout"] == "Paired":
       -o {output.o} \
       --minimum-length 1 \
       --rc \
-      {config[cutadapt][se_extra_params]} \
+      {config[cutadapt][extra_params]} \
       {input.p} \
       1> {log.f} "
 
-
-rule cutadapt_forward_single: 
-  input:
-    p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
-  output:
-    o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
-  log:
-    f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1U_log.txt",
-  conda:
-    "envs/trim.yaml"
-  shell:
-    "cutadapt \
-     -g {config[cutadapt][forward_primer]} \
-     -a {config[cutadapt][rc_reverse_primer]} \
-     -o {output.o} \
-     --minimum-length 1 \
-     --rc \
-     {config[cutadapt][se_extra_params]} \
-     {input.p} \
-     1> {log.f} "
-
-if config["meta"]["sequencing"]["lib_layout"] == "Paired":
-  rule cutadapt_reverse_single: 
+if config["meta"]["sequencing"]["lib_layout"] == "Single-end":
+  rule cutadapt_forward_single: 
     input:
-      p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_2U.fastq.gz",
+      p = "results/{PROJECT}/samples/{samples}/fastp/{samples}_1U.fastq.gz",
     output:
-      o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_2U.fastq.gz",
+      o =  "results/{PROJECT}/runs/{RUN}/02-cutadapt/{samples}/{samples}_1U.fastq.gz",
     log:
-      f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_2U_log.txt",
+      f = "results/{PROJECT}/runs/{RUN}/06-report/cutadapt/{samples}_1U_log.txt",
     conda:
       "envs/trim.yaml"
     shell:
       "cutadapt \
-      -g {config[cutadapt][reverse_primer]} \
-      -a {config[cutadapt][rc_forward_primer]} \
+      -g {config[cutadapt][forward_primer]} \
+      -a {config[cutadapt][reverse_primer]} \
       -o {output.o} \
       --minimum-length 1 \
       --rc \
-      {config[cutadapt][se_extra_params]} \
+      {config[cutadapt][extra_params]} \
       {input.p} \
       1> {log.f} "
-
 
 #Dada2 requires reads to be in the right paired sequence, therefore the pairing is checked
 if config["meta"]["sequencing"]["lib_layout"] == "Paired":
