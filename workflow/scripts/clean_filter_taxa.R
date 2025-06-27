@@ -15,7 +15,7 @@ if (!exists("cmd_args")) {
 
 config <- read_yaml(cmd_args[2])
 outpath <- cmd_args[1]
-rdp_file_path <- cmd_args[3]
+rdp_file_path <- cmd_args[3] 
 vsearch_file_path <- cmd_args[4]
 vsearch_lca_file_path <- cmd_args[5]
 rep_seqs_path <- cmd_args[6]
@@ -41,10 +41,14 @@ vsearch <- vsearch %>%
   mutate(pident = as.numeric(pident) / 100) %>%
   left_join(seq_lengths, by = "asv") %>%
   mutate(
-    query_cover = (qend - qstart) / seq_length
+    query_cover = (qend - qstart + 1) / seq_length
   ) %>%
   select(asv, taxonomy = vsearch_taxonomy, seqid = vsearch_seqid, identity = pident, query_cover) %>%
   filter(!is.na(taxonomy))
+
+if (nrow(vsearch) == 0) {
+  stop("No vsearch results, stopping")
+}
 
 split_taxonomy <- function(taxonomy_string) {
   pairs <- str_split(taxonomy_string, ",")[[1]]
