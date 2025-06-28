@@ -83,13 +83,14 @@ tax <- tax_file %>%
 
 unidentified_asvs <- names(rep_seqs)[which(!names(rep_seqs) %in% tax$asv)]
 
-unidentified <- data.frame(
-  asv = unidentified_asvs,
-  scientificName = "Incertae sedis",
-  scientificNameID = "urn:lsid:marinespecies.org:taxname:12"
-)
-
-tax <- bind_rows(tax, unidentified)
+if (length(unidentified_asvs) > 0) {
+  unidentified <- data.frame(
+    asv = unidentified_asvs,
+    scientificName = "Incertae sedis",
+    scientificNameID = "urn:lsid:marinespecies.org:taxname:12"
+  )
+  tax <- bind_rows(tax, unidentified)
+}
 
 # Add sequence
 
