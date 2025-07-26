@@ -39,6 +39,9 @@ rep_seqs <- Biostrings::readDNAStringSet(rep_seqs_path)
 # Combine annotations into identificationRemarks
 
 remarks <- tax_file %>%
+  mutate(scientificNameID = if (!"scientificNameID" %in% names(.)) NA else scientificNameID) %>%
+  mutate(seqid = if (!"seqid" %in% names(.)) NA else seqid) %>%
+  mutate(query_cover = if (!"query_cover" %in% names(.)) NA else query_cover) %>%
   group_by(asv) %>%
   summarize(identificationRemarks = as.character(
     toJSON(
@@ -67,14 +70,13 @@ tax <- tax_file %>%
   mutate(
     taxonRank = case_when(
       scientificName == domain ~ "domain",
-      #scientificName == superkingdom ~ "superkingdom",
       scientificName == coalesce(cur_data()[["superkingdom"]], NA_character_) ~ "superkingdom",
-      scientificName == phylum ~ "phylum",
-      scientificName == class ~ "class",
-      scientificName == order ~ "order",
-      scientificName == family ~ "family",
-      scientificName == genus ~ "genus",
-      scientificName == species ~ "species",
+      scientificName == coalesce(cur_data()[["phylum"]], NA_character_) ~ "phylum",
+      scientificName == coalesce(cur_data()[["class"]], NA_character_) ~ "class",
+      scientificName == coalesce(cur_data()[["order"]], NA_character_) ~ "order",
+      scientificName == coalesce(cur_data()[["family"]], NA_character_) ~ "family",
+      scientificName == coalesce(cur_data()[["genus"]], NA_character_) ~ "genus",
+      scientificName == coalesce(cur_data()[["species"]], NA_character_) ~ "species",
       TRUE ~ NA
     )
   )
@@ -83,13 +85,14 @@ tax <- tax_file %>%
 
 unidentified_asvs <- names(rep_seqs)[which(!names(rep_seqs) %in% tax$asv)]
 
-unidentified <- data.frame(
-  asv = unidentified_asvs,
-  scientificName = "Incertae sedis",
-  scientificNameID = "urn:lsid:marinespecies.org:taxname:12"
-)
-
-tax <- bind_rows(tax, unidentified)
+if (length(unidentified_asvs) > 0) {
+  unidentified <- data.frame(
+    asv = unidentified_asvs,
+    scientificName = "Incertae sedis",
+    scientificNameID = "urn:lsid:marinespecies.org:taxname:12"
+  )
+  tax <- bind_rows(tax, unidentified)
+}
 
 # Add sequence
 

@@ -15,7 +15,7 @@ if (!exists("cmd_args")) {
 
 config <- read_yaml(cmd_args[2])
 outpath <- cmd_args[1]
-rdp_file_path <- cmd_args[3]
+rdp_file_path <- cmd_args[3] 
 vsearch_file_path <- cmd_args[4]
 vsearch_lca_file_path <- cmd_args[5]
 rep_seqs_path <- cmd_args[6]
@@ -41,61 +41,66 @@ vsearch <- vsearch %>%
   mutate(pident = as.numeric(pident) / 100) %>%
   left_join(seq_lengths, by = "asv") %>%
   mutate(
-    query_cover = (qend - qstart) / seq_length
+    query_cover = (qend - qstart + 1) / seq_length
   ) %>%
   select(asv, taxonomy = vsearch_taxonomy, seqid = vsearch_seqid, identity = pident, query_cover) %>%
   filter(!is.na(taxonomy))
 
-split_taxonomy <- function(taxonomy_string) {
-  pairs <- str_split(taxonomy_string, ",")[[1]]
-  pairs_list <- str_split(pairs, ":")
-  keys <- sapply(pairs_list, `[`, 1)
-  values <- sapply(pairs_list, `[`, 2)
-  names(values) <- keys
-  return(values)
+if (nrow(vsearch) > 0) {
+  split_taxonomy <- function(taxonomy_string) {
+    pairs <- str_split(taxonomy_string, ",")[[1]]
+    pairs_list <- str_split(pairs, ":")
+    keys <- sapply(pairs_list, `[`, 1)
+    values <- sapply(pairs_list, `[`, 2)
+    names(values) <- keys
+    return(values)
+  }
+
+  message("process vsearch results 2/2")
+
+  vsearch_clean <- vsearch %>%
+    mutate(
+      taxonomy = str_replace(taxonomy, "tax=", ""),
+      taxonomy = str_replace(taxonomy, "_", " "),
+    ) %>%
+    rowwise() %>%
+    mutate(parsed = list(split_taxonomy(taxonomy))) %>%
+    unnest_wider(parsed, names_sep = "_") %>%
+    ungroup() %>%
+    dplyr::rename(
+      domain = parsed_d,
+      phylum = parsed_p,
+      class = parsed_c,
+      order = parsed_o,
+      family = parsed_f,
+      genus = parsed_g,
+      species = parsed_s
+    ) %>%
+    select(-taxonomy) %>%
+    mutate(across(where(is.character), ~na_if(.x, ""))) %>%
+    group_by(asv) %>%
+    slice_max(identity, n = 5, with_ties = FALSE) %>%
+    rowwise() %>%
+    mutate(scientificName = coalesce(species, genus, family, order, class, phylum)) %>%
+    ungroup()
+
+  tax_names <- vsearch_clean$scientificName %>% na.omit() %>% unique() %>% sort()
+
+  message("Matching names")
+
+  matches <- match_worms(unique(tax_names)) %>%
+    select(scientificName = input, scientificNameID = lsid)
+  vsearch_clean <- vsearch_clean %>%
+    left_join(matches, by = "scientificName") %>%
+    mutate(
+      method = "VSEARCH",
+      vsearch_identity_threshold = vsearch_identity_threshold,
+      vsearch_cover_threshold = vsearch_cover_threshold
+    )
+} else {
+  vsearch_clean <- NULL
 }
 
-message("process vsearch results 2/2")
-
-vsearch_clean <- vsearch %>%
-  mutate(
-    taxonomy = str_replace(taxonomy, "tax=", ""),
-    taxonomy = str_replace(taxonomy, "_", " "),
-  ) %>%
-  rowwise() %>%
-  mutate(parsed = list(split_taxonomy(taxonomy))) %>%
-  unnest_wider(parsed, names_sep = "_") %>%
-  ungroup() %>%
-  dplyr::rename(
-    domain = parsed_d,
-    phylum = parsed_p,
-    class = parsed_c,
-    order = parsed_o,
-    family = parsed_f,
-    genus = parsed_g,
-    species = parsed_s
-  ) %>%
-  select(-taxonomy) %>%
-  mutate(across(where(is.character), ~na_if(.x, ""))) %>%
-  group_by(asv) %>%
-  slice_max(identity, n = 5, with_ties = FALSE) %>%
-  rowwise() %>%
-  mutate(scientificName = coalesce(species, genus, family, order, class, phylum)) %>%
-  ungroup()
-
-tax_names <- vsearch_clean$scientificName %>% na.omit() %>% unique() %>% sort()
-
-message("Matching names")
-
-matches <- match_worms(unique(tax_names)) %>%
-  select(scientificName = input, scientificNameID = lsid)
-vsearch_clean <- vsearch_clean %>%
-  left_join(matches, by = "scientificName") %>%
-  mutate(
-    method = "VSEARCH",
-    vsearch_identity_threshold = vsearch_identity_threshold,
-    vsearch_cover_threshold = vsearch_cover_threshold
-  )
 
 # process vsearch consensus results?
 
@@ -138,10 +143,14 @@ rdp_clean <- rdp %>%
   bind_rows()
 
 tax_names <- rdp_clean$scientificName %>% na.omit() %>% unique() %>% sort()
-matches <- match_worms(unique(tax_names)) %>%
-  select(scientificName = input, scientificNameID = lsid)
+matches <- match_worms(unique(tax_names))
+if (nrow(matches) > 0) {
+  matches <- matches %>%
+    select(scientificName = input, scientificNameID = lsid)
+  rdp_clean <- rdp_clean %>%
+    left_join(matches, by = "scientificName")
+}
 rdp_clean <- rdp_clean %>%
-  left_join(matches, by = "scientificName") %>%
   mutate(
     method = "RDP classifier",
     rdp_confidence_threshold = rdp_confidence_threshold
@@ -151,15 +160,16 @@ rdp_clean <- rdp_clean %>%
 
 combined <- bind_rows(rdp_clean, vsearch_clean) %>%
   arrange(asv, method) %>%
+  mutate(identity = if (!"identity" %in% names(.)) NA else identity) %>%
+  mutate(phylum = if (!"phylum" %in% names(.)) NA else phylum) %>%
   relocate(asv, method, scientificName, confidence, identity)
 
 #Add either those that have a kingdom (confidence 0.8), but no phylum:
 unknowns <- combined %>% filter(method == "RDP classifier" & is.na(phylum)) %>% pull(asv)
-  #Add also completely unknown sequences for blast:
-  unknowns <- c(unknowns, seq_lengths %>% filter(!asv %in% combined$asv)%>% pull(asv))
+#Add also completely unknown sequences for blast:
+unknowns <- c(unknowns, seq_lengths %>% filter(!asv %in% combined$asv)%>% pull(asv))
 
 #OR add only those that did not get any id (so superkingdom is less than 0.8 confidence)
-
 
 write.table(combined, paste0(outpath, "04-taxonomy/annotation_results.txt"), row.names = FALSE, col.names = TRUE, quote = FALSE, sep="\t", na = "")
 writeLines(unknowns, paste0(outpath, "04-taxonomy/unknown_asvs.txt"))

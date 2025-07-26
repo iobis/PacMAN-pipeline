@@ -537,10 +537,12 @@ Note also that the sequences of the ASVs are stored in the tax_table of the phyl
 The total number of taxa assigned at each taxonomic level:
 
 ```{r, echo=F}
-if (colSums(is.na(tax_table(pseq)[,c(7)])) == 0) {
-  colSums(tax_table(pseq)[,c(1:7)]!="") 
-} else {
-  colSums(!is.na(tax_table(pseq)[,c(1:7)]))
+if (ncol(tax_table(pseq)) >= 7) {
+  if (colSums(is.na(tax_table(pseq)[,c(7)])) == 0) {
+    colSums(tax_table(pseq)[,c(1:7)]!="") 
+  } else {
+    colSums(!is.na(tax_table(pseq)[,c(1:7)]))
+  }
 }
 ```
 
