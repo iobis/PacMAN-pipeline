@@ -23,7 +23,7 @@ with open(manifest_path) as csv_file:
     reader = csv.reader(csv_file)
     next(reader)
     for row in reader:
-        sample_id, file_path, direction = row
+        sample_id, file_path, direction = row[:3]
 
         if sample_id == sample_name:
             target_file = "fw.fastq.gz" if direction == "forward" else "rv.fastq.gz"
