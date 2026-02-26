@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: If you use this work, please cite it as below.
+title: PacMAN-pipeline
+type: software
+abstract: Bioinformatics pipeline for eDNA samples from PacMAN
+url: https://github.com/iobis/PacMAN-pipeline
+license: MIT
+authors:
+  - given-names: Pieter
+    family-names: Provoost
+    orcid: "https://orcid.org/0000-0002-4236-0384"
+  - family-names: SSuominen1
+    orcid: "https://orcid.org/0000-0001-9401-8460"
+  - given-names: Saara
+    family-names: Suominen
+    orcid: "https://orcid.org/0000-0001-9401-8460"
+  - given-names: Saara
+    family-names: Suominen
+    orcid: "https://orcid.org/0000-0001-9401-8460"
+  - name: Intergovernmental Oceanographic Commission of UNESCO
+    alias: IOC-UNESCO
+    website: "https://obis.org"
+date-released: 2025-09-15
